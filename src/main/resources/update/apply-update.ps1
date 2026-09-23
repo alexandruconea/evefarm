@@ -8,6 +8,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $previousDir = "$InstallDir.old"
+Set-Location -LiteralPath $PSScriptRoot
+[System.IO.Directory]::SetCurrentDirectory($PSScriptRoot)
 
 function Write-Log([string]$Message) {
     Add-Content -LiteralPath $LogFile -Value ("{0:s} {1}" -f (Get-Date), $Message)

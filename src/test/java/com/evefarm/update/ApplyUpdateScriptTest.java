@@ -32,12 +32,17 @@ class ApplyUpdateScriptTest {
     }
 
     private int run(Path install, Path staged, Path log) throws Exception {
+        return run(install, staged, log, temp);
+    }
+
+    private int run(Path install, Path staged, Path log, Path workingDirectory) throws Exception {
         Process finished = new ProcessBuilder("cmd.exe", "/c", "exit").start();
         finished.waitFor(10, TimeUnit.SECONDS);
         Process process = new ProcessBuilder(List.of("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
                 "-File", script().toString(), "-ProcessId", String.valueOf(finished.pid()),
                 "-InstallDir", install.toString(), "-StagedDir", staged.toString(), "-LogFile", log.toString(),
                 "-NoLaunch"))
+                .directory(workingDirectory.toFile())
                 .redirectErrorStream(true)
                 .redirectOutput(ProcessBuilder.Redirect.DISCARD)
                 .start();
@@ -58,6 +63,21 @@ class ApplyUpdateScriptTest {
         assertEquals("new", Files.readString(install.resolve("version.txt")));
         assertEquals("old", Files.readString(temp.resolve("EVEFarm.old").resolve("version.txt")));
         assertFalse(Files.exists(staged));
+        assertTrue(Files.readString(log).contains("installed the new version"));
+    }
+
+    @Test
+    void theSwapWorksWhenTheScriptStartsInsideTheAppFolder() throws Exception {
+        Path install = Files.createDirectories(temp.resolve("EVEFarm"));
+        Files.writeString(install.resolve("version.txt"), "old");
+        Path staged = Files.createDirectories(temp.resolve("EVEFarm.update"));
+        Files.writeString(staged.resolve("version.txt"), "new");
+        Path log = temp.resolve("updater.log");
+
+        run(install, staged, log, install);
+
+        assertEquals("new", Files.readString(install.resolve("version.txt")),
+                "an app started by double-click runs inside its own folder; that must not block the update");
         assertTrue(Files.readString(log).contains("installed the new version"));
     }
 

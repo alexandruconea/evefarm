@@ -196,6 +196,19 @@ class UpdateInstallerTest {
     }
 
     @Test
+    void theSwapScriptDoesNotRunInsideTheFolderItReplaces() throws Exception {
+        Path install = installedOldVersion();
+        Path script = temp.resolve("work").resolve("apply-update.ps1");
+        UpdateInstaller.PreparedUpdate update = new UpdateInstaller.PreparedUpdate(VERSION, install,
+                install.resolveSibling("EVEFarm.update"));
+
+        ProcessBuilder swap = UpdateInstaller.swapProcess(script, update, temp.resolve("updater.log"), 42);
+
+        assertEquals(script.getParent().toFile(), swap.directory());
+        assertFalse(swap.directory().toPath().startsWith(install));
+    }
+
+    @Test
     void anAppFolderNeedsTheLauncherAndTheJar() throws Exception {
         Path install = installedOldVersion();
         assertTrue(UpdateInstaller.isAppFolder(install));

@@ -131,15 +131,19 @@ public final class UpdateInstaller {
         }
         Path log = AppPaths.appDataDir().resolve("logs").resolve("updater.log");
         Files.createDirectories(log.getParent());
-        new ProcessBuilder(List.of("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
+        swapProcess(script, update, log, ProcessHandle.current().pid()).start();
+    }
+
+    static ProcessBuilder swapProcess(Path script, PreparedUpdate update, Path log, long processId) {
+        return new ProcessBuilder(List.of("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
                 "-WindowStyle", "Hidden", "-File", script.toString(),
-                "-ProcessId", String.valueOf(ProcessHandle.current().pid()),
+                "-ProcessId", String.valueOf(processId),
                 "-InstallDir", update.installDir().toString(),
                 "-StagedDir", update.stagedDir().toString(),
                 "-LogFile", log.toString()))
+                .directory(script.getParent().toFile())
                 .redirectErrorStream(true)
-                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-                .start();
+                .redirectOutput(ProcessBuilder.Redirect.DISCARD);
     }
 
     public static void cleanUpAfterUpdate() {
