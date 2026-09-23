@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Check the tag matches the version in pom.xml
+        shell: pwsh
+        run: |
+          $version = ([xml](Get-Content -Raw pom.xml)).project.version
+          if ("v$version" -ne "${{ github.ref_name }}") {
+            throw "Tag ${{ github.ref_name }} doesn't match the version in pom.xml ($version). Tag it v$version."
+          }
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Build and test
+        shell: pwsh
+        run: ./mvnw.cmd -B verify
+
+      - name: Package EVEFarm.exe and zip it
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force stage | Out-Null
+          Copy-Item target/evefarm.jar stage/
+          jpackage --type app-image --input stage --dest dist --name EVEFarm `
+            --main-jar evefarm.jar --main-class com.evefarm.Main --icon packaging/evefarm.ico `
+            --app-version $env:VERSION --vendor "Alex Conea" `
+            --description "EVE Online multi-character asset and net-worth tracker"
+          Copy-Item packaging/README.txt dist/EVEFarm/
+          & "$env:SystemRoot\System32\tar.exe" -a -c -f "dist/EVEFarm-$env:VERSION-win64.zip" -C dist EVEFarm
+          if ($LASTEXITCODE -ne 0) { throw "zip failed" }
+
+      - name: Sign the zip
+        shell: pwsh
+        env:
+          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+        run: java -cp target/classes packaging/SignRelease.java "dist/EVEFarm-$env:VERSION-win64.zip" $env:VERSION
+
+      - name: Create a draft release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $zip = "dist/EVEFarm-$env:VERSION-win64.zip"
+          gh release create "${{ github.ref_name }}" $zip "$zip.sig" "$zip.sha256" `
+            --draft --title "EVE Farm $env:VERSION" --generate-notes

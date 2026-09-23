@@ -1,0 +1,10 @@
+ALTER TABLE price_cache ADD COLUMN sell_max REAL;
+ALTER TABLE price_cache ADD COLUMN sell_avg REAL;
+ALTER TABLE price_cache ADD COLUMN sell_median REAL;
+ALTER TABLE price_cache ADD COLUMN sell_percentile REAL;
+ALTER TABLE price_cache ADD COLUMN sell_min REAL;
+ALTER TABLE price_cache ADD COLUMN buy_max REAL;
+ALTER TABLE price_cache ADD COLUMN buy_avg REAL;
+ALTER TABLE price_cache ADD COLUMN buy_median REAL;
+ALTER TABLE price_cache ADD COLUMN buy_percentile REAL;
+ALTER TABLE price_cache ADD COLUMN buy_min REAL;
