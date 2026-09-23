@@ -99,10 +99,9 @@ public final class Main {
             return;
         }
         JOptionPane.showMessageDialog(null,
-                "Windows DPAPI isn't available on this system, so your EVE SSO login tokens will be "
-                        + "stored UNENCRYPTED in the local database file:\n" + AppPaths.databaseFile() + "\n\n"
-                        + "This is expected only if you're running EVE Farm outside of Windows.",
-                "Tokens Not Encrypted", JOptionPane.WARNING_MESSAGE);
+                "Windows DPAPI isn't available on this system. EVE Farm will not store or read login tokens "
+                        + "or API keys in plaintext.\n\nAuthenticated features require the packaged Windows application.",
+                "Secret Storage Unavailable", JOptionPane.WARNING_MESSAGE);
     }
 
     private static void installLookAndFeel(String theme) {

@@ -98,7 +98,7 @@ public final class LpOfferPricingService {
             }
             requiredCost += requiredPrice * required.quantity();
         }
-        Double requiredItemsCost = offer.requiredItems().isEmpty() ? 0.0 : (allRequiredPriced ? requiredCost : null);
+        Double requiredItemsCost = requiredItemsCost(offer.requiredItems().isEmpty(), allRequiredPriced, requiredCost);
 
         Double otherCost = combine(requiredItemsCost, buildMaterialsCost);
         Double iskPerLpSell = computeIskPerLp(sellPrice, outputUnits, offer.iskCost(), offer.lpCost(), otherCost);
@@ -160,6 +160,13 @@ public final class LpOfferPricingService {
         double materialModifier = 1.0 - (meLevel * 0.01);
         double roundedTo2 = Math.round(runs * baseQuantity * materialModifier * 100.0) / 100.0;
         return Math.max(runs, (long) Math.ceil(roundedTo2));
+    }
+
+    static Double requiredItemsCost(boolean noRequiredItems, boolean allRequiredPriced, double cost) {
+        if (noRequiredItems) {
+            return 0.0;
+        }
+        return allRequiredPriced ? Double.valueOf(cost) : null;
     }
 
     private Double combine(Double a, Double b) {

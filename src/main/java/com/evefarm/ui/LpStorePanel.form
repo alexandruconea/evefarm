@@ -88,6 +88,9 @@
       </Properties>
     </Component>
     <Component class="javax.swing.JComboBox" name="characterCombo">
+      <AuxValues>
+        <AuxValue name="JavaCodeGenerator_TypeParameters" type="java.lang.String" value="&lt;String&gt;"/>
+      </AuxValues>
     </Component>
     <Component class="javax.swing.JLabel" name="corporationLabel">
       <Properties>
@@ -95,6 +98,9 @@
       </Properties>
     </Component>
     <Component class="javax.swing.JComboBox" name="corporationCombo">
+      <AuxValues>
+        <AuxValue name="JavaCodeGenerator_TypeParameters" type="java.lang.String" value="&lt;String&gt;"/>
+      </AuxValues>
     </Component>
     <Component class="javax.swing.JCheckBox" name="favoriteCheckBox">
       <Properties>

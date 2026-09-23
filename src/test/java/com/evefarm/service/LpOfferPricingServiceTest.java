@@ -56,4 +56,14 @@ class LpOfferPricingServiceTest {
     void zeroMaterialEfficiencyAppliesNoReduction() {
         assertEquals(200, service.applyMaterialEfficiency(50, 4, 0));
     }
+
+    @Test
+    void requiredItemCostIsUnknownWithoutUnboxingWhenAnyPriceIsMissing() {
+        assertNull(LpOfferPricingService.requiredItemsCost(false, false, 123.0));
+    }
+
+    @Test
+    void requiredItemCostIsZeroWhenTheOfferRequiresNoItems() {
+        assertEquals(0.0, LpOfferPricingService.requiredItemsCost(true, false, 123.0));
+    }
 }

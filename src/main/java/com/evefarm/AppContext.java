@@ -67,7 +67,6 @@ import com.evefarm.update.UpdateService;
 
 public final class AppContext {
 
-    public final Database database;
     public final SettingsDao settingsDao;
     public final CharacterDao characterDao;
     public final TokenDao tokenDao;
@@ -117,7 +116,6 @@ public final class AppContext {
     public final UpdateInstaller updateInstaller;
 
     public AppContext(Database database) {
-        this.database = database;
         this.settingsDao = new SettingsDao(database);
         this.characterDao = new CharacterDao(database);
         this.tokenDao = new TokenDao(database);

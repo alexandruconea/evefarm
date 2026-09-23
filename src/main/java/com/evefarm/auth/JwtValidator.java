@@ -5,26 +5,45 @@ import com.auth0.jwk.JwkProvider;
 import com.auth0.jwk.UrlJwkProvider;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.IncorrectClaimException;
+import com.auth0.jwt.exceptions.TokenExpiredException;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.evefarm.util.AppInfo;
 
+import java.net.MalformedURLException;
 import java.net.URI;
+import java.security.PublicKey;
+import java.security.interfaces.ECPublicKey;
 import java.security.interfaces.RSAPublicKey;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public final class JwtValidator {
 
     private static final String JWKS_URL = "https://login.eveonline.com/oauth/jwks";
-    private static final String EXPECTED_ISSUER = "https://login.eveonline.com";
+    private static final String[] ACCEPTED_ISSUERS = {
+            "https://login.eveonline.com", "https://login.eveonline.com/", "login.eveonline.com"};
     private static final String AUDIENCE_LITERAL = "EVE Online";
+    private static final long CLOCK_SKEW_SECONDS = 60;
+    private static final int JWKS_TIMEOUT_MILLIS = 15_000;
 
     private final JwkProvider jwkProvider;
 
     public JwtValidator() {
+        this(defaultJwkProvider());
+    }
+
+    JwtValidator(JwkProvider jwkProvider) {
+        this.jwkProvider = jwkProvider;
+    }
+
+    private static JwkProvider defaultJwkProvider() {
         try {
-            this.jwkProvider = new UrlJwkProvider(URI.create(JWKS_URL).toURL());
-        } catch (java.net.MalformedURLException e) {
+            return new UrlJwkProvider(URI.create(JWKS_URL).toURL(), JWKS_TIMEOUT_MILLIS, JWKS_TIMEOUT_MILLIS, null,
+                    Map.of("User-Agent", AppInfo.userAgent()));
+        } catch (MalformedURLException e) {
             throw new IllegalStateException("Invalid JWKS URL", e);
         }
     }
@@ -33,10 +52,11 @@ public final class JwtValidator {
         try {
             DecodedJWT unverified = JWT.decode(accessTokenJwt);
             Jwk jwk = jwkProvider.get(unverified.getKeyId());
-            Algorithm algorithm = Algorithm.RSA256((RSAPublicKey) jwk.getPublicKey(), null);
 
-            DecodedJWT decoded = JWT.require(algorithm)
-                    .withIssuer(EXPECTED_ISSUER, "login.eveonline.com")
+            DecodedJWT decoded = JWT.require(algorithmFor(jwk.getPublicKey()))
+                    .withIssuer(ACCEPTED_ISSUERS)
+                    .acceptLeeway(CLOCK_SKEW_SECONDS)
+                    .ignoreIssuedAt()
                     .build()
                     .verify(accessTokenJwt);
 
@@ -63,8 +83,30 @@ public final class JwtValidator {
             Instant expiresAt = decoded.getExpiresAtAsInstant();
             return new CharacterIdentity(characterId, characterName, scopes, expiresAt, ownerHash);
         } catch (Exception e) {
-            throw new IllegalStateException("Failed to validate EVE SSO access token", e);
+            throw new IllegalStateException(describeFailure(e), e);
         }
+    }
+
+    static Algorithm algorithmFor(PublicKey key) {
+        if (key instanceof RSAPublicKey rsa) {
+            return Algorithm.RSA256(rsa, null);
+        }
+        if (key instanceof ECPublicKey ec) {
+            return Algorithm.ECDSA256(ec, null);
+        }
+        throw new IllegalStateException("Unsupported EVE SSO signing key type: " + key.getAlgorithm());
+    }
+
+    static String describeFailure(Exception e) {
+        String reason = e.getMessage() == null || e.getMessage().isBlank()
+                ? e.getClass().getSimpleName() : e.getMessage();
+        boolean clockRelated = e instanceof TokenExpiredException
+                || e instanceof IncorrectClaimException claim
+                && ("nbf".equals(claim.getClaimName()) || "iat".equals(claim.getClaimName()));
+        if (clockRelated) {
+            reason += " Check that this computer's date and time are set automatically.";
+        }
+        return "Failed to validate EVE SSO access token: " + reason;
     }
 
     private static long parseCharacterId(String subject) {

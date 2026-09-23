@@ -29,6 +29,8 @@ public final class UpdateInstaller {
     public static final String TRUSTED_DOWNLOAD_PREFIX =
             "https://github.com/" + AppInfo.REPOSITORY + "/releases/download/";
     private static final long MAX_DOWNLOAD_BYTES = 1024L * 1024 * 1024;
+    private static final long MAX_EXTRACTED_BYTES = 2L * 1024 * 1024 * 1024;
+    private static final int MAX_ZIP_ENTRIES = 10_000;
     private static final String APP_FOLDER = "EVEFarm";
     private static final String LAUNCHER = "EVEFarm.exe";
 
@@ -100,7 +102,12 @@ public final class UpdateInstaller {
         progress.report("Unpacking", 0, 0);
         Path staged = installDir.resolveSibling(installDir.getFileName() + ".update");
         deleteRecursively(staged);
-        extractAppFolder(zip, staged);
+        try {
+            extractAppFolder(zip, staged);
+        } catch (IOException | RuntimeException e) {
+            deleteRecursively(staged);
+            throw e;
+        }
         if (!isAppFolder(staged)) {
             deleteRecursively(staged);
             throw new IOException("The update doesn't contain " + LAUNCHER + " - it was not installed.");
@@ -189,11 +196,24 @@ public final class UpdateInstaller {
     }
 
     static void extractAppFolder(Path zip, Path target) throws IOException {
+        extractAppFolder(zip, target, MAX_EXTRACTED_BYTES, MAX_ZIP_ENTRIES);
+    }
+
+    static void extractAppFolder(Path zip, Path target, long maxExtractedBytes, int maxEntries) throws IOException {
+        if (maxExtractedBytes < 1 || maxEntries < 1) {
+            throw new IllegalArgumentException("Extraction limits must be positive");
+        }
         Path root = target.toAbsolutePath().normalize();
         Files.createDirectories(root);
+        long extractedBytes = 0;
+        int entryCount = 0;
+        byte[] buffer = new byte[64 * 1024];
         try (ZipInputStream in = new ZipInputStream(Files.newInputStream(zip))) {
             ZipEntry entry;
             while ((entry = in.getNextEntry()) != null) {
+                if (++entryCount > maxEntries) {
+                    throw new IOException("The update contains too many files - stopped.");
+                }
                 String name = entry.getName().replace('\\', '/');
                 if (!name.startsWith(APP_FOLDER + "/")) {
                     throw new IOException("Unexpected file in the update: " + name);
@@ -210,8 +230,18 @@ public final class UpdateInstaller {
                     Files.createDirectories(destination);
                 } else {
                     Files.createDirectories(destination.getParent());
-                    Files.copy(in, destination, StandardCopyOption.REPLACE_EXISTING);
+                    try (OutputStream out = Files.newOutputStream(destination)) {
+                        int read;
+                        while ((read = in.read(buffer)) != -1) {
+                            extractedBytes += read;
+                            if (extractedBytes > maxExtractedBytes) {
+                                throw new IOException("The unpacked update is too large - stopped.");
+                            }
+                            out.write(buffer, 0, read);
+                        }
+                    }
                 }
+                in.closeEntry();
             }
         }
     }

@@ -57,8 +57,7 @@ public final class EveSsoClient {
         try {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() / 100 != 2) {
-                throw new IllegalStateException(
-                        "EVE SSO token request failed: HTTP " + response.statusCode() + " - " + response.body());
+                throw new IllegalStateException("EVE SSO token request failed: HTTP " + response.statusCode());
             }
             return objectMapper.readValue(response.body(), TokenResponse.class);
         } catch (java.io.IOException | InterruptedException e) {

@@ -91,7 +91,7 @@ public final class SchedulerService {
         });
     }
 
-    private void refreshPrices() {
+    void refreshPrices() {
         boolean recent = updateCooldownDao.findLastRefreshed(UpdateCategories.MARKET_PRICES)
                 .map(last -> last.plus(MIN_PRICE_REFRESH_INTERVAL).isAfter(Instant.now()))
                 .orElse(false);
@@ -106,24 +106,29 @@ public final class SchedulerService {
         }
     }
 
-    private void captureAllSnapshots() {
-        forEachCharacter("capture snapshot", id -> {
+    void captureAllSnapshots() {
+        boolean allSucceeded = forEachCharacter("capture snapshot", id -> {
             assetService.refreshAssetsForCharacter(id);
             trackerSnapshotService.captureSnapshot(id);
             return null;
         });
-        updateCooldownDao.markRefreshed(UpdateCategories.ASSETS);
-        updateCooldownDao.markRefreshed(UpdateCategories.TRACKER);
+        if (allSucceeded) {
+            updateCooldownDao.markRefreshed(UpdateCategories.ASSETS);
+            updateCooldownDao.markRefreshed(UpdateCategories.TRACKER);
+        }
     }
 
-    private void forEachCharacter(String action, java.util.function.Function<Long, Void> work) {
+    private boolean forEachCharacter(String action, java.util.function.Function<Long, Void> work) {
         List<EveCharacter> characters = characterService.listCharacters();
+        boolean allSucceeded = true;
         for (EveCharacter character : characters) {
             try {
                 work.apply(character.characterId());
             } catch (Exception e) {
+                allSucceeded = false;
                 LOG.log(Level.WARNING, "Failed to " + action + " for character " + character.characterId(), e);
             }
         }
+        return allSucceeded;
     }
 }

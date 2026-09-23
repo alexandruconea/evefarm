@@ -164,6 +164,28 @@ class UpdateInstallerTest {
     }
 
     @Test
+    void extractionStopsWhenExpandedContentExceedsTheLimit() throws Exception {
+        Path zip = appZip(Map.of("EVEFarm/app/evefarm.jar", "content larger than the test limit"));
+
+        IOException error = assertThrows(IOException.class,
+                () -> UpdateInstaller.extractAppFolder(zip, temp.resolve("limited"), 8, 10));
+
+        assertTrue(error.getMessage().contains("too large"));
+    }
+
+    @Test
+    void extractionStopsWhenTheArchiveContainsTooManyEntries() throws Exception {
+        Path zip = appZip(Map.of(
+                "EVEFarm/one.txt", "1",
+                "EVEFarm/two.txt", "2"));
+
+        IOException error = assertThrows(IOException.class,
+                () -> UpdateInstaller.extractAppFolder(zip, temp.resolve("many"), 1024, 1));
+
+        assertTrue(error.getMessage().contains("too many files"));
+    }
+
+    @Test
     void aFolderWithReadOnlyFilesIsDeletedCompletely() throws Exception {
         Path install = installedOldVersion();
         assertTrue(install.resolve("EVEFarm.exe").toFile().setReadOnly());

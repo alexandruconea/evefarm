@@ -5,6 +5,7 @@ import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.util.AppPaths;
 
 import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -27,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -62,14 +64,42 @@ public final class BackupRestoreService {
     }
 
     private void writeSnapshot(Path destination) throws IOException {
-        Path target = destination.toAbsolutePath();
+        Path target = destination.toAbsolutePath().normalize();
+        ensureSafeBackupTarget(target, AppPaths.databaseFile(), AppPaths.pendingRestoreFile());
         Files.createDirectories(target.getParent());
-        Files.deleteIfExists(target);
-        synchronized (database) {
-            try (Statement statement = database.connection().createStatement()) {
-                statement.execute("VACUUM INTO '" + target.toString().replace("'", "''") + "'");
-            } catch (SQLException e) {
-                throw new IOException("Failed to write the backup to " + target, e);
+        Path partial = target.resolveSibling("." + target.getFileName() + "." + UUID.randomUUID() + ".partial");
+        try {
+            synchronized (database) {
+                try (Statement statement = database.connection().createStatement()) {
+                    statement.execute("VACUUM INTO '" + partial.toString().replace("'", "''") + "'");
+                } catch (SQLException e) {
+                    throw new IOException("Failed to write the backup to " + target, e);
+                }
+            }
+            try {
+                Files.move(partial, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(partial, target, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(partial);
+        }
+    }
+
+    static void ensureSafeBackupTarget(Path target, Path liveDatabase, Path pendingRestore) throws IOException {
+        Path normalizedTarget = target.toAbsolutePath().normalize();
+        Path normalizedLive = liveDatabase.toAbsolutePath().normalize();
+        Path normalizedPending = pendingRestore.toAbsolutePath().normalize();
+        List<Path> reserved = List.of(
+                normalizedLive,
+                normalizedLive.resolveSibling(normalizedLive.getFileName() + "-wal"),
+                normalizedLive.resolveSibling(normalizedLive.getFileName() + "-shm"),
+                normalizedPending);
+        for (Path path : reserved) {
+            if (normalizedTarget.equals(path)
+                    || (Files.exists(normalizedTarget) && Files.exists(path)
+                    && Files.isSameFile(normalizedTarget, path))) {
+                throw new IOException("Refusing to overwrite an EVE Farm working database file: " + target);
             }
         }
     }

@@ -5,6 +5,7 @@ import com.evefarm.esi.EsiException;
 import com.evefarm.esi.UniverseApi;
 import com.evefarm.esi.dto.StationDto;
 import com.evefarm.esi.dto.StructureDto;
+import com.evefarm.esi.dto.UniverseNameDto;
 
 import java.util.Collection;
 import java.util.List;
@@ -22,6 +23,10 @@ public final class LocationNameCacheService {
     private static final int CONCURRENCY = 10;
 
     private static final long STRUCTURE_ID_THRESHOLD = 1_000_000_000_000L;
+    private static final long MIN_POTENTIAL_STRUCTURE_ID = 100_000_000L;
+    private static final long FIRST_SOLAR_SYSTEM_ID = 30_000_000L;
+    private static final long END_SOLAR_SYSTEM_IDS = 33_000_000L;
+    private static final long ASSET_SAFETY_ID = 2004L;
 
     private final UniverseApi universeApi;
     private final LocationCacheDao locationCacheDao;
@@ -42,8 +47,15 @@ public final class LocationNameCacheService {
             return cached.get();
         }
 
+        if (locationId == ASSET_SAFETY_ID) {
+            locationCacheDao.upsert(locationId, "Asset Safety", "other", null);
+            return "Asset Safety";
+        }
         if (locationId >= STRUCTURE_ID_THRESHOLD) {
             return resolveStructure(locationId, ownerAccessToken);
+        }
+        if (locationId >= FIRST_SOLAR_SYSTEM_ID && locationId < END_SOLAR_SYSTEM_IDS) {
+            return resolveSolarSystem(locationId);
         }
         return resolveStation(locationId, ownerAccessToken);
     }
@@ -69,8 +81,11 @@ public final class LocationNameCacheService {
             locationCacheDao.upsert(locationId, station.name(), "station", station.systemId());
             return station.name();
         } catch (EsiException e) {
-            if (e.statusCode() == 404) {
+            if (e.statusCode() == 404 && locationId >= MIN_POTENTIAL_STRUCTURE_ID) {
                 return resolveStructure(locationId, ownerAccessToken);
+            }
+            if (e.statusCode() == 400 || e.statusCode() == 404) {
+                return cacheUnknown(locationId, "Unknown Location #" + locationId);
             }
             LOG.log(Level.WARNING, "Transient failure resolving station " + locationId
                     + " (HTTP " + e.statusCode() + ") - not caching, will retry later", e);
@@ -88,10 +103,8 @@ public final class LocationNameCacheService {
             locationCacheDao.upsert(locationId, structure.name(), "structure", structure.solarSystemId());
             return structure.name();
         } catch (EsiException e) {
-            if (e.statusCode() == 403 || e.statusCode() == 404) {
-                String name = "Unknown Structure #" + locationId;
-                locationCacheDao.upsert(locationId, name, "unknown", null);
-                return name;
+            if (e.statusCode() == 400 || e.statusCode() == 403 || e.statusCode() == 404) {
+                return cacheUnknown(locationId, "Unknown Structure #" + locationId);
             }
             LOG.log(Level.WARNING, "Transient failure resolving structure " + locationId
                     + " (HTTP " + e.statusCode() + ") - not caching, will retry later", e);
@@ -101,5 +114,33 @@ public final class LocationNameCacheService {
                     + " - not caching, will retry later", e);
             return "Location #" + locationId;
         }
+    }
+
+    private String resolveSolarSystem(long systemId) {
+        try {
+            for (UniverseNameDto resolved : universeApi.resolveNames(List.of(systemId))) {
+                if (resolved.id() == systemId) {
+                    locationCacheDao.upsert(systemId, resolved.name(), "solar_system", systemId);
+                    return resolved.name();
+                }
+            }
+            return cacheUnknown(systemId, "Unknown System #" + systemId);
+        } catch (EsiException e) {
+            if (e.statusCode() == 400 || e.statusCode() == 404) {
+                return cacheUnknown(systemId, "Unknown System #" + systemId);
+            }
+            LOG.log(Level.WARNING, "Transient failure resolving solar system " + systemId
+                    + " (HTTP " + e.statusCode() + ") - not caching, will retry later", e);
+            return "Location #" + systemId;
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Transient failure resolving solar system " + systemId
+                    + " - not caching, will retry later", e);
+            return "Location #" + systemId;
+        }
+    }
+
+    private String cacheUnknown(long locationId, String name) {
+        locationCacheDao.upsert(locationId, name, "unknown", null);
+        return name;
     }
 }

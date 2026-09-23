@@ -18,6 +18,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BackupRestoreServiceTest {
@@ -68,5 +69,19 @@ class BackupRestoreServiceTest {
 
         assertEquals(1, listed.size());
         assertEquals(LocalDateTime.of(2026, 9, 23, 12, 0), listed.get(0).takenAt());
+    }
+
+    @Test
+    void workingDatabaseFilesCannotBeUsedAsBackupDestinations(@TempDir Path directory) throws Exception {
+        Path live = directory.resolve("evefarm.db");
+        Path pending = directory.resolve("pending-restore.db");
+
+        assertThrows(java.io.IOException.class,
+                () -> BackupRestoreService.ensureSafeBackupTarget(live, live, pending));
+        assertThrows(java.io.IOException.class,
+                () -> BackupRestoreService.ensureSafeBackupTarget(
+                        directory.resolve("evefarm.db-wal"), live, pending));
+        assertThrows(java.io.IOException.class,
+                () -> BackupRestoreService.ensureSafeBackupTarget(pending, live, pending));
     }
 }

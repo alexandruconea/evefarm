@@ -74,6 +74,10 @@ public final class TokenDao {
     }
 
     public void migrateLegacyPlaintextTokens() {
+        if (!TokenCipher.isProtectionAvailable()) {
+            LOG.warning("Windows DPAPI is unavailable; legacy plaintext tokens will not be loaded or migrated");
+            return;
+        }
         String selectSql = "SELECT character_id, refresh_token, access_token, access_token_expires_at FROM tokens";
         record LegacyRow(long characterId, String refreshToken, String accessToken, String expiresAt) {
         }

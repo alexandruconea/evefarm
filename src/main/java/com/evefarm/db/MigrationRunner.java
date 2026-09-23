@@ -3,12 +3,15 @@ package com.evefarm.db;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -53,36 +56,54 @@ public final class MigrationRunner {
             statement.execute("""
                     CREATE TABLE IF NOT EXISTS schema_version (
                       version    INTEGER PRIMARY KEY,
-                      applied_at TEXT NOT NULL
+                      applied_at TEXT NOT NULL,
+                      checksum   TEXT
                     )
                     """);
         } catch (SQLException e) {
             throw new IllegalStateException("Failed to create schema_version table", e);
         }
 
+        ensureChecksumColumn(connection);
+        validateMigrationList();
+
         for (String resourcePath : MIGRATIONS) {
             int version = parseVersion(resourcePath);
-            if (alreadyApplied(connection, version)) {
+            String sql = readResource(resourcePath);
+            String checksum = checksum(sql);
+            AppliedMigration applied = findApplied(connection, version);
+            if (applied.exists()) {
+                if (applied.checksum() == null || applied.checksum().isBlank()) {
+                    storeChecksum(connection, version, checksum);
+                } else if (!applied.checksum().equals(checksum)) {
+                    LOG.severe("Migration checksum mismatch for " + resourcePath
+                            + ": it was edited after it was applied to this database. Applied migrations must "
+                            + "never be edited; put schema changes in a new migration.");
+                }
                 continue;
             }
-            applyMigration(connection, resourcePath, version);
+            applyMigration(connection, resourcePath, version, sql, checksum);
         }
     }
 
-    private static boolean alreadyApplied(Connection connection, int version) {
-        String sql = "SELECT 1 FROM schema_version WHERE version = ?";
+    private record AppliedMigration(boolean exists, String checksum) {
+    }
+
+    private static AppliedMigration findApplied(Connection connection, int version) {
+        String sql = "SELECT checksum FROM schema_version WHERE version = ?";
         try (var ps = connection.prepareStatement(sql)) {
             ps.setInt(1, version);
             try (ResultSet rs = ps.executeQuery()) {
-                return rs.next();
+                return rs.next() ? new AppliedMigration(true, rs.getString("checksum"))
+                        : new AppliedMigration(false, null);
             }
         } catch (SQLException e) {
             throw new IllegalStateException("Failed to check schema_version", e);
         }
     }
 
-    private static void applyMigration(Connection connection, String resourcePath, int version) {
-        String sql = readResource(resourcePath);
+    private static void applyMigration(Connection connection, String resourcePath, int version,
+                                       String sql, String checksum) {
         LOG.info("Applying migration " + resourcePath);
         try {
             connection.setAutoCommit(false);
@@ -94,9 +115,10 @@ public final class MigrationRunner {
                     }
                 }
                 try (var ps = connection.prepareStatement(
-                        "INSERT INTO schema_version(version, applied_at) VALUES (?, ?)")) {
+                        "INSERT INTO schema_version(version, applied_at, checksum) VALUES (?, ?, ?)")) {
                     ps.setInt(1, version);
                     ps.setString(2, Instant.now().toString());
+                    ps.setString(3, checksum);
                     ps.executeUpdate();
                 }
             }
@@ -110,6 +132,64 @@ public final class MigrationRunner {
             } catch (SQLException ignored) {
             }
         }
+    }
+
+    private static void ensureChecksumColumn(Connection connection) {
+        boolean found = false;
+        try (Statement statement = connection.createStatement();
+             ResultSet rs = statement.executeQuery("PRAGMA table_info(schema_version)")) {
+            while (rs.next()) {
+                if ("checksum".equalsIgnoreCase(rs.getString("name"))) {
+                    found = true;
+                    break;
+                }
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to inspect schema_version", e);
+        }
+        if (!found) {
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("ALTER TABLE schema_version ADD COLUMN checksum TEXT");
+            } catch (SQLException e) {
+                throw new IllegalStateException("Failed to add migration checksums", e);
+            }
+        }
+    }
+
+    private static void storeChecksum(Connection connection, int version, String checksum) {
+        try (var ps = connection.prepareStatement(
+                "UPDATE schema_version SET checksum = ? WHERE version = ?")) {
+            ps.setString(1, checksum);
+            ps.setInt(2, version);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to baseline checksum for migration V" + version, e);
+        }
+    }
+
+    static String checksum(String sql) {
+        String normalized = sql.replace("﻿", "").replace("\r\n", "\n").replace('\r', '\n');
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(normalized.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is not available", e);
+        }
+    }
+
+    private static void validateMigrationList() {
+        for (int index = 0; index < MIGRATIONS.size(); index++) {
+            String path = MIGRATIONS.get(index);
+            int expectedVersion = index + 1;
+            if (parseVersion(path) != expectedVersion) {
+                throw new IllegalStateException("Migration list must be contiguous and ordered; expected V"
+                        + expectedVersion + " but found " + path);
+            }
+        }
+    }
+
+    static List<String> migrationPaths() {
+        return MIGRATIONS;
     }
 
     static List<String> splitStatements(String sql) {

@@ -7,6 +7,8 @@ import com.evefarm.model.TokenRecord;
 import java.awt.Desktop;
 import java.net.URI;
 import java.time.Instant;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -17,12 +19,20 @@ public final class AuthService {
 
     private final CharacterDao characterDao;
     private final TokenDao tokenDao;
-    private final EveSsoClient ssoClient = new EveSsoClient();
-    private final JwtValidator jwtValidator = new JwtValidator();
+    private final EveSsoClient ssoClient;
+    private final JwtValidator jwtValidator;
+    private final Map<Long, Object> refreshLocks = new ConcurrentHashMap<>();
 
     public AuthService(CharacterDao characterDao, TokenDao tokenDao) {
+        this(characterDao, tokenDao, new EveSsoClient(), new JwtValidator());
+    }
+
+    AuthService(CharacterDao characterDao, TokenDao tokenDao, EveSsoClient ssoClient,
+                JwtValidator jwtValidator) {
         this.characterDao = characterDao;
         this.tokenDao = tokenDao;
+        this.ssoClient = ssoClient;
+        this.jwtValidator = jwtValidator;
     }
 
     public CharacterIdentity startLoginFlow() throws Exception {
@@ -65,7 +75,6 @@ public final class AuthService {
     }
 
     public String getValidAccessToken(long characterId) {
-        OAuthConfig config = OAuthConfig.DEFAULT;
         TokenRecord record = tokenDao.find(characterId)
                 .orElseThrow(() -> new IllegalStateException("No stored token for character " + characterId));
 
@@ -73,11 +82,20 @@ public final class AuthService {
             return record.accessToken();
         }
 
-        LOG.info("Refreshing access token for character " + characterId);
-        TokenResponse refreshed = ssoClient.refreshAccessToken(config, record.refreshToken());
-        Instant expiresAt = Instant.now().plusSeconds(refreshed.expiresIn());
-        tokenDao.upsert(characterId, refreshed.refreshToken(), refreshed.accessToken(), expiresAt);
-        return refreshed.accessToken();
+        Object refreshLock = refreshLocks.computeIfAbsent(characterId, ignored -> new Object());
+        synchronized (refreshLock) {
+            record = tokenDao.find(characterId)
+                    .orElseThrow(() -> new IllegalStateException("No stored token for character " + characterId));
+            if (record.isAccessTokenValid()) {
+                return record.accessToken();
+            }
+
+            LOG.info("Refreshing access token for character " + characterId);
+            TokenResponse refreshed = ssoClient.refreshAccessToken(OAuthConfig.DEFAULT, record.refreshToken());
+            Instant expiresAt = Instant.now().plusSeconds(refreshed.expiresIn());
+            tokenDao.upsert(characterId, refreshed.refreshToken(), refreshed.accessToken(), expiresAt);
+            return refreshed.accessToken();
+        }
     }
 
     private void openBrowser(URI uri) throws Exception {

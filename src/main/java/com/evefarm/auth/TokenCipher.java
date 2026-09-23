@@ -6,29 +6,20 @@ import com.sun.jna.platform.win32.WinCrypt;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Locale;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public final class TokenCipher {
 
-    private static final Logger LOG = Logger.getLogger(TokenCipher.class.getName());
     private static final String PREFIX = "dpapi:";
     private static final boolean WINDOWS =
             System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("windows");
     private static final byte[] ENTROPY = "EVEFarm.TokenCipher.v1".getBytes(StandardCharsets.UTF_8);
-    private static final AtomicBoolean WARNED_NON_WINDOWS = new AtomicBoolean(false);
 
     public static String encrypt(String plaintext) {
         if (plaintext == null) {
             return null;
         }
         if (!WINDOWS) {
-            if (WARNED_NON_WINDOWS.compareAndSet(false, true)) {
-                LOG.warning("Not running on Windows - DPAPI is unavailable, so tokens are stored "
-                        + "UNENCRYPTED on disk for the rest of this session.");
-            }
-            return plaintext;
+            throw new IllegalStateException("Windows DPAPI is unavailable - refusing to store a secret unencrypted");
         }
         try {
             byte[] protectedBytes = Crypt32Util.cryptProtectData(
@@ -42,8 +33,14 @@ public final class TokenCipher {
     }
 
     public static String decrypt(String stored) {
-        if (stored == null || !stored.startsWith(PREFIX)) {
+        if (stored == null || stored.isEmpty()) {
             return stored;
+        }
+        if (!stored.startsWith(PREFIX)) {
+            if (WINDOWS) {
+                return stored;
+            }
+            throw new IllegalStateException("Windows DPAPI is unavailable - refusing to read an unencrypted secret");
         }
         byte[] protectedBytes = Base64.getDecoder().decode(stored.substring(PREFIX.length()));
         try {

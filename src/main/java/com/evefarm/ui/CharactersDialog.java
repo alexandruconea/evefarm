@@ -20,8 +20,12 @@ import java.awt.FlowLayout;
 import java.awt.Window;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public final class CharactersDialog extends JDialog {
+
+    private static final Logger LOG = Logger.getLogger(CharactersDialog.class.getName());
 
     private final AppContext appContext;
     private final Runnable onChanged;
@@ -102,6 +106,7 @@ public final class CharactersDialog extends JDialog {
                     onChanged.run();
                 } catch (Exception e) {
                     Throwable cause = e.getCause() != null ? e.getCause() : e;
+                    LOG.log(Level.WARNING, "Adding a character failed", cause);
                     JOptionPane.showMessageDialog(CharactersDialog.this,
                             "Login failed: " + cause.getMessage(),
                             "Login failed", JOptionPane.ERROR_MESSAGE);

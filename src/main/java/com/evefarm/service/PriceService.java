@@ -77,13 +77,7 @@ public final class PriceService {
             return;
         }
         LOG.info("Refreshing market price cache (Fuzzwork) for " + typeIds.size() + " known types");
-        Map<Integer, FuzzworkAggregateDto> aggregates;
-        try {
-            aggregates = fuzzworkApi.fetchAggregates(typeIds);
-        } catch (Exception e) {
-            LOG.log(Level.WARNING, "Failed to refresh Fuzzwork prices", e);
-            return;
-        }
+        Map<Integer, FuzzworkAggregateDto> aggregates = fuzzworkApi.fetchAggregates(typeIds);
         Map<Integer, PriceBreakdown> byType = new HashMap<>();
         for (Map.Entry<Integer, FuzzworkAggregateDto> entry : aggregates.entrySet()) {
             FuzzworkAggregateDto aggregate = entry.getValue();
@@ -114,21 +108,14 @@ public final class PriceService {
     private void refreshJanicePrices(List<Integer> typeIds) {
         String apiKey = TokenCipher.decrypt(settingsDao.getOrDefault(SettingsDao.JANICE_API_KEY, ""));
         if (apiKey.isBlank()) {
-            LOG.warning("Skipping Janice price refresh - no API key configured in Settings");
-            return;
+            throw new IllegalStateException("Janice is selected as price provider, but no API key is configured");
         }
         if (typeIds.isEmpty()) {
             LOG.info("Skipping Janice price refresh - no known item types yet");
             return;
         }
         LOG.info("Refreshing market price cache (Janice) for " + typeIds.size() + " known types");
-        Map<Integer, JaniceItemDto> items;
-        try {
-            items = janiceApi.fetchPrices(typeIds, apiKey);
-        } catch (Exception e) {
-            LOG.log(Level.WARNING, "Failed to refresh Janice prices", e);
-            return;
-        }
+        Map<Integer, JaniceItemDto> items = janiceApi.fetchPrices(typeIds, apiKey);
         Map<Integer, PriceBreakdown> byType = new HashMap<>();
         for (Map.Entry<Integer, JaniceItemDto> entry : items.entrySet()) {
             JaniceItemDto.Prices immediate = entry.getValue().immediatePrices();
@@ -191,10 +178,15 @@ public final class PriceService {
         if (missing.isEmpty()) {
             return;
         }
-        if (PROVIDER_FUZZWORK.equals(provider)) {
-            refreshFuzzworkPrices(List.copyOf(missing));
-        } else {
-            refreshJanicePrices(List.copyOf(missing));
+        try {
+            if (PROVIDER_FUZZWORK.equals(provider)) {
+                refreshFuzzworkPrices(List.copyOf(missing));
+            } else {
+                refreshJanicePrices(List.copyOf(missing));
+            }
+        } catch (RuntimeException e) {
+            LOG.log(Level.WARNING, "Couldn't fetch prices for " + missing.size()
+                    + " item types; continuing with the prices already saved", e);
         }
     }
 

@@ -10,10 +10,14 @@ permissions:
 jobs:
   release:
     runs-on: windows-latest
+    env:
+      TAG: ${{ github.ref_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6
         with:
           distribution: temurin
           java-version: '25'
@@ -22,8 +26,8 @@ jobs:
         shell: pwsh
         run: |
           $version = ([xml](Get-Content -Raw pom.xml)).project.version
-          if ("v$version" -ne "${{ github.ref_name }}") {
-            throw "Tag ${{ github.ref_name }} doesn't match the version in pom.xml ($version). Tag it v$version."
+          if ("v$version" -ne $env:TAG) {
+            throw "Tag $env:TAG doesn't match the version in pom.xml ($version). Tag it v$version."
           }
           "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
@@ -43,6 +47,7 @@ jobs:
           Copy-Item packaging/README.txt dist/EVEFarm/
           & "$env:SystemRoot\System32\tar.exe" -a -c -f "dist/EVEFarm-$env:VERSION-win64.zip" -C dist EVEFarm
           if ($LASTEXITCODE -ne 0) { throw "zip failed" }
+          Copy-Item target/bom.json "dist/EVEFarm-$env:VERSION-sbom.cdx.json"
 
       - name: Sign the zip
         shell: pwsh
@@ -56,5 +61,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $zip = "dist/EVEFarm-$env:VERSION-win64.zip"
-          gh release create "${{ github.ref_name }}" $zip "$zip.sig" "$zip.sha256" `
+          gh release create $env:TAG $zip "$zip.sig" "$zip.sha256" "dist/EVEFarm-$env:VERSION-sbom.cdx.json" `
             --draft --title "EVE Farm $env:VERSION" --generate-notes

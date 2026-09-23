@@ -326,9 +326,9 @@ public final class LpStorePanel extends javax.swing.JPanel {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JComboBox characterCombo;
+    private javax.swing.JComboBox<String> characterCombo;
     private javax.swing.JLabel characterLabel;
-    private javax.swing.JComboBox corporationCombo;
+    private javax.swing.JComboBox<String> corporationCombo;
     private javax.swing.JLabel corporationLabel;
     private javax.swing.JCheckBox favoriteCheckBox;
     private javax.swing.JPanel filterBarContainer;
@@ -345,9 +345,9 @@ public final class LpStorePanel extends javax.swing.JPanel {
     private void initComponents() {
 
         characterLabel = new javax.swing.JLabel();
-        characterCombo = new javax.swing.JComboBox();
+        characterCombo = new javax.swing.JComboBox<>();
         corporationLabel = new javax.swing.JLabel();
-        corporationCombo = new javax.swing.JComboBox();
+        corporationCombo = new javax.swing.JComboBox<>();
         favoriteCheckBox = new javax.swing.JCheckBox();
         yourLpLabel = new javax.swing.JLabel();
         wealthLabel = new javax.swing.JLabel();

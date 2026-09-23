@@ -16,19 +16,14 @@ import com.evefarm.esi.dto.ContractDto;
 import com.evefarm.esi.dto.IndustryJobDto;
 import com.evefarm.esi.dto.LoyaltyPointDto;
 import com.evefarm.esi.dto.MarketOrderDto;
-import com.evefarm.model.LpOfferRow;
 import com.evefarm.model.SkillPointFilter;
 import com.evefarm.model.TrackerSnapshot;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public final class TrackerSnapshotService {
-
-    private static final Logger LOG = Logger.getLogger(TrackerSnapshotService.class.getName());
 
     private static final int ACTIVITY_MANUFACTURING = 1;
     private static final int ACTIVITY_REACTIONS = 9;
@@ -78,11 +73,11 @@ public final class TrackerSnapshotService {
     public TrackerSnapshot captureSnapshot(long characterId) {
         String accessToken = authService.getValidAccessToken(characterId);
 
-        double walletBalance = safe(() -> walletApi.getBalance(characterId, accessToken), 0.0);
-        double assetsValue = safe(() -> assetDao.sumTotalValue(characterId), 0.0);
-        double implantsValue = safe(() -> implantsValue(characterId, accessToken), 0.0);
+        double walletBalance = walletApi.getBalance(characterId, accessToken);
+        double assetsValue = assetDao.sumTotalValue(characterId);
+        double implantsValue = implantsValue(characterId, accessToken);
 
-        List<MarketOrderDto> orders = safe(() -> marketsApi.listCharacterOrders(characterId, accessToken), List.of());
+        List<MarketOrderDto> orders = marketsApi.listCharacterOrders(characterId, accessToken);
         double sellOrdersValue = orders.stream()
                 .filter(o -> !o.isBuyOrder())
                 .mapToDouble(o -> o.price() * o.volumeRemain())
@@ -96,7 +91,7 @@ public final class TrackerSnapshotService {
                 .mapToDouble(o -> Math.max(0, o.price() * o.volumeRemain() - (o.escrow() == null ? 0 : o.escrow())))
                 .sum();
 
-        List<ContractDto> contracts = safe(() -> contractsApi.listContracts(characterId, accessToken), List.of());
+        List<ContractDto> contracts = contractsApi.listContracts(characterId, accessToken);
         double contractCollateralValue = contracts.stream()
                 .filter(c -> "outstanding".equalsIgnoreCase(c.status()))
                 .mapToDouble(c -> c.collateral() == null ? 0 : c.collateral())
@@ -106,19 +101,18 @@ public final class TrackerSnapshotService {
                 .mapToDouble(c -> (c.price() == null ? 0 : c.price()) + (c.reward() == null ? 0 : c.reward()))
                 .sum();
 
-        List<IndustryJobDto> jobs = safe(() -> industryApi.listActiveJobs(characterId, accessToken), List.of());
+        List<IndustryJobDto> jobs = industryApi.listActiveJobs(characterId, accessToken);
         double manufacturingValue = jobs.stream()
                 .filter(j -> (j.activityId() == ACTIVITY_MANUFACTURING || j.activityId() == ACTIVITY_REACTIONS)
                         && j.productTypeId() != null)
                 .mapToDouble(j -> (j.runs() == null ? 1 : j.runs()) * priceService.getUnitPrice(j.productTypeId()).orElse(0))
                 .sum();
 
-        long skillPoints = safe(() -> skillsApi.getSkills(characterId, accessToken).totalSp(), 0L);
-        SkillPointFilter filter = safe(() -> skillPointFilterDao.find(characterId),
-                new SkillPointFilter(characterId, true, 0));
+        long skillPoints = skillsApi.getSkills(characterId, accessToken).totalSp();
+        SkillPointFilter filter = skillPointFilterDao.find(characterId);
         double skillPointValue = filter.enabled() ? skillPointValue(skillPoints, filter.minimumSp()) : 0;
 
-        double lpValue = safe(() -> lpValue(characterId, accessToken), 0.0);
+        double lpValue = lpValue(characterId, accessToken);
 
         TrackerSnapshot snapshot = TrackerSnapshot.of(characterId, Instant.now(), walletBalance, assetsValue,
                 implantsValue, sellOrdersValue, escrowValue, escrowToCoverValue, manufacturingValue,
@@ -188,16 +182,4 @@ public final class TrackerSnapshotService {
         return total;
     }
 
-    private interface ThrowingSupplier<T> {
-        T get() throws Exception;
-    }
-
-    private <T> T safe(ThrowingSupplier<T> supplier, T fallback) {
-        try {
-            return supplier.get();
-        } catch (Exception e) {
-            LOG.log(Level.WARNING, "Tracker snapshot: a data source failed, using fallback", e);
-            return fallback;
-        }
-    }
 }
