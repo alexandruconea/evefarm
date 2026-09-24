@@ -30,3 +30,8 @@ You need JDK 25.
 
 - `mvnw.cmd verify` builds the app and runs the tests.
 - `packaging\build-exe.cmd` creates `EVEFarm.exe` and the release zip in `packaging\dist`.
+
+## Examples:
+<img width="1491" height="986" alt="Values" src="https://github.com/user-attachments/assets/c77adace-76bc-46c6-96aa-fb21ad5d79fb" />
+<img width="1491" height="986" alt="LP Store" src="https://github.com/user-attachments/assets/a7412728-e5b3-42ec-b572-ee0cb52dfdb2" />
+<img width="1488" height="981" alt="NPC Hunt" src="https://github.com/user-attachments/assets/2bdd4d0f-3410-4b67-b39a-7e0005c89267" />
