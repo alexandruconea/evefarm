@@ -16,10 +16,8 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
-import javax.swing.JSpinner;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import javax.swing.SpinnerNumberModel;
 import javax.swing.border.EmptyBorder;
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -47,7 +45,6 @@ public final class SettingsDialog extends JDialog {
     private final JPasswordField janiceApiKeyField = new JPasswordField();
     private final JButton janiceGetApiKeyButton = new JButton("How do I get one?");
     private final JComboBox<PriceMode> defaultPriceCombo = new JComboBox<>(PriceMode.values());
-    private final JSpinner snapshotIntervalSpinner = new JSpinner(new SpinnerNumberModel(60, 5, 1440, 5));
     private final JTextField gameLogDirectoryField = new JTextField();
     private final JButton gameLogDirectoryBrowseButton = new JButton("Browse...");
     private final JTextField backupCopyDirectoryField = new JTextField();
@@ -71,7 +68,6 @@ public final class SettingsDialog extends JDialog {
         fixWidth(themeCombo, FIELD_WIDTH);
         fixWidth(priceProviderCombo, FIELD_WIDTH);
         fixWidth(defaultPriceCombo, FIELD_WIDTH);
-        fixWidth(snapshotIntervalSpinner, FIELD_WIDTH);
 
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBorder(new EmptyBorder(12, 12, 12, 12));
@@ -91,7 +87,6 @@ public final class SettingsDialog extends JDialog {
         addRow(panel, c, row++, "Janice API key:", janiceKeyPanel);
 
         addRow(panel, c, row++, "Default price:", defaultPriceCombo);
-        addRow(panel, c, row++, "Snapshot interval (minutes):", snapshotIntervalSpinner);
 
         JPanel gameLogPanel = new JPanel(new BorderLayout(4, 0));
         gameLogPanel.setPreferredSize(new Dimension(FIELD_WIDTH, FIELD_HEIGHT));
@@ -217,22 +212,10 @@ public final class SettingsDialog extends JDialog {
         } catch (IllegalArgumentException e) {
             defaultPriceCombo.setSelectedItem(PriceMode.SELL_AVG);
         }
-        Integer snapshotInterval = parseIntSetting(SettingsDao.SNAPSHOT_INTERVAL_MINUTES);
-        if (snapshotInterval != null) {
-            snapshotIntervalSpinner.setValue(snapshotInterval);
-        }
         gameLogDirectoryField.setText(settingsDao.getOrDefault(
                 SettingsDao.GAMELOG_DIRECTORY, AppPaths.defaultGameLogDirectory().toString()));
         backupCopyDirectoryField.setText(settingsDao.getOrDefault(SettingsDao.BACKUP_COPY_DIRECTORY, ""));
         updateCheckBox.setSelected(!"false".equals(settingsDao.getOrDefault(SettingsDao.UPDATE_AUTO_CHECK, "true")));
-    }
-
-    private Integer parseIntSetting(String key) {
-        try {
-            return settingsDao.get(key).map(Integer::parseInt).orElse(null);
-        } catch (NumberFormatException e) {
-            return null;
-        }
     }
 
     private int providerIndex(String provider) {
@@ -257,7 +240,6 @@ public final class SettingsDialog extends JDialog {
         settingsDao.set(SettingsDao.JANICE_API_KEY, janiceKey.isEmpty() ? "" : TokenCipher.encrypt(janiceKey));
         PriceMode priceMode = (PriceMode) defaultPriceCombo.getSelectedItem();
         settingsDao.set(SettingsDao.DEFAULT_PRICE_MODE, priceMode.name());
-        settingsDao.set(SettingsDao.SNAPSHOT_INTERVAL_MINUTES, String.valueOf(snapshotIntervalSpinner.getValue()));
         settingsDao.set(SettingsDao.GAMELOG_DIRECTORY, gameLogDirectoryField.getText().trim());
         settingsDao.set(SettingsDao.BACKUP_COPY_DIRECTORY, backupCopyDirectoryField.getText().trim());
         settingsDao.set(SettingsDao.UPDATE_AUTO_CHECK, String.valueOf(updateCheckBox.isSelected()));

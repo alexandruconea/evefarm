@@ -84,6 +84,13 @@ public final class TrackerChartFactory {
         return SERIES_DASHED.contains(seriesName);
     }
 
+    public static List<TrackerSnapshot> snapshotsAtPoint(List<TrackerSnapshot> snapshots, Instant point) {
+        Instant minute = point.truncatedTo(ChronoUnit.MINUTES);
+        return snapshots.stream()
+                .filter(snapshot -> snapshot.capturedAt().truncatedTo(ChronoUnit.MINUTES).equals(minute))
+                .toList();
+    }
+
     public TimeSeriesCollection buildDataset(List<TrackerSnapshot> snapshots, Set<String> visibleSeriesNames) {
         Map<Instant, Map<Long, TrackerSnapshot>> latestPerCharacterPerMinute = new TreeMap<>();
         for (TrackerSnapshot snapshot : snapshots) {

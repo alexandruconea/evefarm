@@ -67,4 +67,18 @@ class TrackerChartFactoryTest {
         double total = dataset.getSeries("Total").getValue(new Minute(Date.from(MINUTE))).doubleValue();
         assertEquals(999.0, total, "the later snapshot within the same minute must win, not be summed with the earlier one");
     }
+
+    @Test
+    void aPointCoversEverySnapshotTakenInItsMinuteForEveryCharacter() {
+        TrackerSnapshot first = TrackerSnapshot.of(1L, MINUTE.plusSeconds(10), 100.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        TrackerSnapshot retake = TrackerSnapshot.of(1L, MINUTE.plusSeconds(40), 120.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        TrackerSnapshot otherCharacter = TrackerSnapshot.of(2L, MINUTE.plusSeconds(20), 50.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        TrackerSnapshot nextMinute = TrackerSnapshot.of(1L, MINUTE.plusSeconds(60), 130.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+        List<TrackerSnapshot> atPoint = TrackerChartFactory.snapshotsAtPoint(
+                List.of(first, retake, otherCharacter, nextMinute), MINUTE);
+
+        assertEquals(List.of(first, retake, otherCharacter), atPoint,
+                "deleting a point must also remove the earlier retake, or it would take the deleted one's place");
+    }
 }

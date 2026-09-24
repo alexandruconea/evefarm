@@ -165,6 +165,7 @@ public final class MainFrame extends javax.swing.JFrame {
 
         setupUpdates();
         setupBeltKillAlerts();
+        appContext.schedulerService.addSnapshotListener(() -> SwingUtilities.invokeLater(this::onDataUpdated));
     }
 
     private void setupBeltKillAlerts() {

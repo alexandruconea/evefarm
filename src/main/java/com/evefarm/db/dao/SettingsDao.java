@@ -12,7 +12,6 @@ public final class SettingsDao {
 
     public static final String LAF_THEME = "laf_theme";
     public static final String DEFAULT_LAF_THEME = "system";
-    public static final String SNAPSHOT_INTERVAL_MINUTES = "snapshot_interval_minutes";
     public static final String PRICE_PROVIDER = "price_provider";
     public static final String JANICE_API_KEY = "janice_api_key";
     public static final String DEFAULT_PRICE_MODE = "default_price_mode";

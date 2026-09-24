@@ -12,6 +12,7 @@ import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.labels.StandardXYToolTipGenerator;
 import org.jfree.chart.plot.CrosshairState;
 import org.jfree.chart.plot.PlotRenderingInfo;
+import org.jfree.chart.plot.ValueMarker;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYAreaRenderer;
 import org.jfree.chart.renderer.xy.XYItemRendererState;
@@ -26,12 +27,17 @@ import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListModel;
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
+import javax.swing.JPopupMenu;
 import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerDateModel;
 import javax.swing.JSpinner;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.event.ListSelectionListener;
+import javax.swing.event.PopupMenuEvent;
+import javax.swing.event.PopupMenuListener;
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -40,7 +46,10 @@ import java.awt.Font;
 import java.awt.GradientPaint;
 import java.awt.Graphics2D;
 import java.awt.Stroke;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.geom.Ellipse2D;
+import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -50,6 +59,7 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -59,6 +69,8 @@ import java.util.stream.Collectors;
 public final class TrackerPanel extends javax.swing.JPanel {
 
     private static final Logger LOG = Logger.getLogger(TrackerPanel.class.getName());
+    private static final int POINT_PICK_RADIUS_PX = 8;
+    private static final Color DELETE_MARKER_COLOR = new Color(0xE8, 0x11, 0x23);
 
     private final AppContext appContext;
     private final TrackerChartFactory chartFactory = new TrackerChartFactory();
@@ -67,6 +79,7 @@ public final class TrackerPanel extends javax.swing.JPanel {
     private final AtomicInteger reloadGeneration = new AtomicInteger(0);
 
     private ChartPanel chartPanel;
+    private List<TrackerSnapshot> shownSnapshots = List.of();
 
     public TrackerPanel(AppContext appContext) {
         initComponents();
@@ -193,6 +206,22 @@ public final class TrackerPanel extends javax.swing.JPanel {
         chartPanel = new ChartPanel(chart);
         chartPanel.setBackground(background);
         chartPanel.setPreferredSize(new Dimension(700, 500));
+        chartPanel.setPopupMenu(null);
+        chartPanel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    showPointMenu(e);
+                }
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    showPointMenu(e);
+                }
+            }
+        });
 
         chartContainerPanel.setLayout(new BorderLayout());
         chartContainerPanel.add(chartPanel, BorderLayout.CENTER);
@@ -316,6 +345,7 @@ public final class TrackerPanel extends javax.swing.JPanel {
             0f, new float[]{7f, 5f}, 0f);
 
     private void applyDataset(List<TrackerSnapshot> snapshots, Set<String> visibleSeries) {
+        shownSnapshots = snapshots;
         TimeSeriesCollection dataset = chartFactory.buildDataset(snapshots, visibleSeries);
         boolean dark = com.formdev.flatlaf.FlatLaf.isLafDark();
         XYPlot plot = (XYPlot) chartPanel.getChart().getPlot();
@@ -353,6 +383,97 @@ public final class TrackerPanel extends javax.swing.JPanel {
         } else {
             plot.setDataset(0, null);
         }
+    }
+
+    private void showPointMenu(MouseEvent e) {
+        XYPlot plot = chartPanel.getChart().getXYPlot();
+        if (!(plot.getDataset(1) instanceof TimeSeriesCollection dataset) || dataset.getSeriesCount() == 0) {
+            return;
+        }
+        OptionalInt item = nearestItem(plot, dataset, e.getPoint());
+        if (item.isEmpty()) {
+            return;
+        }
+        Instant point = Instant.ofEpochMilli(dataset.getSeries(0).getTimePeriod(item.getAsInt()).getFirstMillisecond());
+        List<TrackerSnapshot> snapshots = TrackerChartFactory.snapshotsAtPoint(shownSnapshots, point);
+        if (snapshots.isEmpty()) {
+            return;
+        }
+
+        ValueMarker marker = new ValueMarker(dataset.getXValue(0, item.getAsInt()), DELETE_MARKER_COLOR,
+                new BasicStroke(1.5f));
+        plot.addDomainMarker(marker);
+        JPopupMenu menu = new JPopupMenu();
+        JMenuItem deleteItem = new JMenuItem("Delete Snapshot (" + DateUtil.format(point) + ")", Icons.REMOVE);
+        deleteItem.addActionListener(a -> deleteSnapshot(point, snapshots));
+        menu.add(deleteItem);
+        menu.addPopupMenuListener(new PopupMenuListener() {
+            @Override
+            public void popupMenuWillBecomeVisible(PopupMenuEvent event) {
+            }
+
+            @Override
+            public void popupMenuWillBecomeInvisible(PopupMenuEvent event) {
+                plot.removeDomainMarker(marker);
+            }
+
+            @Override
+            public void popupMenuCanceled(PopupMenuEvent event) {
+            }
+        });
+        menu.show(chartPanel, e.getX(), e.getY());
+    }
+
+    private OptionalInt nearestItem(XYPlot plot, TimeSeriesCollection dataset, Point2D mouse) {
+        Rectangle2D dataArea = chartPanel.getScreenDataArea();
+        if (!dataArea.contains(mouse)) {
+            return OptionalInt.empty();
+        }
+        int nearest = -1;
+        double nearestDistance = POINT_PICK_RADIUS_PX;
+        for (int i = 0; i < dataset.getItemCount(0); i++) {
+            double x = plot.getDomainAxis().valueToJava2D(dataset.getXValue(0, i), dataArea,
+                    plot.getDomainAxisEdge());
+            double distance = Math.abs(x - mouse.getX());
+            if (distance <= nearestDistance) {
+                nearest = i;
+                nearestDistance = distance;
+            }
+        }
+        return nearest < 0 ? OptionalInt.empty() : OptionalInt.of(nearest);
+    }
+
+    private void deleteSnapshot(Instant point, List<TrackerSnapshot> snapshots) {
+        long characters = snapshots.stream().map(TrackerSnapshot::characterId).distinct().count();
+        String message = "Permanently delete the snapshot from " + DateUtil.format(point)
+                + (characters > 1 ? " for all " + characters + " characters" : "")
+                + "? Every value at this point is removed. This cannot be undone.";
+        int result = JOptionPane.showConfirmDialog(this, message, "Delete Snapshot",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (result != JOptionPane.OK_OPTION) {
+            return;
+        }
+        new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() {
+                for (TrackerSnapshot snapshot : snapshots) {
+                    appContext.snapshotDao.delete(snapshot.characterId(), snapshot.capturedAt());
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                } catch (Exception e) {
+                    LOG.log(Level.WARNING, "Failed to delete the snapshot from " + point, e);
+                    JOptionPane.showMessageDialog(TrackerPanel.this, "Couldn't delete the snapshot. Details are in the log.",
+                            "Delete Snapshot", JOptionPane.ERROR_MESSAGE);
+                }
+                reloadChart();
+            }
+        }.execute();
     }
 
     private void openSnapshotManager() {

@@ -1,7 +1,6 @@
 package com.evefarm.service;
 
 import com.evefarm.auth.AuthService;
-import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.db.dao.UpdateCooldownDao;
 import com.evefarm.model.EveCharacter;
 import org.junit.jupiter.api.Test;
@@ -9,10 +8,13 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -77,6 +79,38 @@ class SchedulerServiceTest {
     }
 
     @Test
+    void aSnapshotIsTakenRightAwayWhenTheAppStarts() {
+        CharacterService characters = mock(CharacterService.class);
+        TrackerSnapshotService snapshots = mock(TrackerSnapshotService.class);
+        UpdateCooldownDao cooldowns = mock(UpdateCooldownDao.class);
+        when(characters.listCharacters()).thenReturn(List.of(character(42L)));
+        when(cooldowns.findLastRefreshed(UpdateCategories.MARKET_PRICES)).thenReturn(Optional.of(Instant.now()));
+        SchedulerService scheduler = scheduler(mock(PriceService.class), characters, mock(AssetService.class),
+                snapshots, cooldowns);
+
+        scheduler.start();
+        try {
+            verify(snapshots, timeout(5_000)).captureSnapshot(42L);
+        } finally {
+            scheduler.stop();
+        }
+    }
+
+    @Test
+    void theTabsAreRefreshedOnceTheSnapshotIsTaken() {
+        CharacterService characters = mock(CharacterService.class);
+        when(characters.listCharacters()).thenReturn(List.of(character(42L), character(43L)));
+        SchedulerService scheduler = scheduler(mock(PriceService.class), characters, mock(AssetService.class),
+                mock(TrackerSnapshotService.class), mock(UpdateCooldownDao.class));
+        AtomicInteger refreshes = new AtomicInteger();
+        scheduler.addSnapshotListener(refreshes::incrementAndGet);
+
+        scheduler.captureAllSnapshots();
+
+        assertEquals(1, refreshes.get(), "one refresh after all characters, not one per character");
+    }
+
+    @Test
     void gamelogsAreScannedAutomaticallyWhenTheFolderExists() {
         KillService kills = mock(KillService.class);
         when(kills.hasGameLogDirectory()).thenReturn(true);
@@ -98,15 +132,15 @@ class SchedulerServiceTest {
 
     private static SchedulerService scheduler(KillService kills) {
         return new SchedulerService(mock(AuthService.class), mock(CharacterService.class), mock(PriceService.class),
-                mock(AssetService.class), mock(TrackerSnapshotService.class), mock(SettingsDao.class),
-                mock(UpdateCooldownDao.class), mock(BackupRestoreService.class), kills);
+                mock(AssetService.class), mock(TrackerSnapshotService.class), mock(UpdateCooldownDao.class),
+                mock(BackupRestoreService.class), kills);
     }
 
     private static SchedulerService scheduler(PriceService prices, CharacterService characters,
                                                AssetService assets, TrackerSnapshotService snapshots,
                                                UpdateCooldownDao cooldowns) {
         return new SchedulerService(mock(AuthService.class), characters, prices, assets, snapshots,
-                mock(SettingsDao.class), cooldowns, mock(BackupRestoreService.class), mock(KillService.class));
+                cooldowns, mock(BackupRestoreService.class), mock(KillService.class));
     }
 
     private static EveCharacter character(long id) {

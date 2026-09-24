@@ -1,13 +1,13 @@
 package com.evefarm.service;
 
 import com.evefarm.auth.AuthService;
-import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.db.dao.UpdateCooldownDao;
 import com.evefarm.model.EveCharacter;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -17,7 +17,6 @@ import java.util.logging.Logger;
 public final class SchedulerService {
 
     private static final Logger LOG = Logger.getLogger(SchedulerService.class.getName());
-    private static final int DEFAULT_SNAPSHOT_INTERVAL_MINUTES = 60;
     private static final Duration MIN_PRICE_REFRESH_INTERVAL = Duration.ofHours(1);
     private static final int GAMELOG_SCAN_SECONDS = 600;
 
@@ -42,21 +41,20 @@ public final class SchedulerService {
     private final PriceService priceService;
     private final AssetService assetService;
     private final TrackerSnapshotService trackerSnapshotService;
-    private final SettingsDao settingsDao;
     private final UpdateCooldownDao updateCooldownDao;
     private final BackupRestoreService backupRestoreService;
     private final KillService killService;
+    private final List<Runnable> snapshotListeners = new CopyOnWriteArrayList<>();
 
     public SchedulerService(AuthService authService, CharacterService characterService, PriceService priceService,
                              AssetService assetService, TrackerSnapshotService trackerSnapshotService,
-                             SettingsDao settingsDao, UpdateCooldownDao updateCooldownDao,
-                             BackupRestoreService backupRestoreService, KillService killService) {
+                             UpdateCooldownDao updateCooldownDao, BackupRestoreService backupRestoreService,
+                             KillService killService) {
         this.authService = authService;
         this.characterService = characterService;
         this.priceService = priceService;
         this.assetService = assetService;
         this.trackerSnapshotService = trackerSnapshotService;
-        this.settingsDao = settingsDao;
         this.updateCooldownDao = updateCooldownDao;
         this.backupRestoreService = backupRestoreService;
         this.killService = killService;
@@ -66,12 +64,12 @@ public final class SchedulerService {
         executor.scheduleWithFixedDelay(this::refreshTokens, 0, 5, TimeUnit.MINUTES);
         executor.scheduleWithFixedDelay(this::refreshPrices, 0, 24, TimeUnit.HOURS);
         backupExecutor.scheduleWithFixedDelay(backupRestoreService::autoBackupIfDue, 10, 6 * 60 * 60, TimeUnit.SECONDS);
-
-        int intervalMinutes = settingsDao.get(SettingsDao.SNAPSHOT_INTERVAL_MINUTES)
-                .map(Integer::parseInt)
-                .orElse(DEFAULT_SNAPSHOT_INTERVAL_MINUTES);
-        executor.scheduleWithFixedDelay(this::captureAllSnapshots, 1, intervalMinutes, TimeUnit.MINUTES);
+        executor.schedule(this::captureAllSnapshots, 0, TimeUnit.SECONDS);
         gamelogExecutor.scheduleWithFixedDelay(this::scanGamelogs, 15, GAMELOG_SCAN_SECONDS, TimeUnit.SECONDS);
+    }
+
+    public void addSnapshotListener(Runnable listener) {
+        snapshotListeners.add(listener);
     }
 
     public void stop() {
@@ -135,6 +133,9 @@ public final class SchedulerService {
         if (allSucceeded) {
             updateCooldownDao.markRefreshed(UpdateCategories.ASSETS);
             updateCooldownDao.markRefreshed(UpdateCategories.TRACKER);
+        }
+        for (Runnable listener : snapshotListeners) {
+            listener.run();
         }
     }
 

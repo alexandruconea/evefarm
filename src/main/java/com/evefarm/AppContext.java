@@ -196,6 +196,6 @@ public final class AppContext {
         this.updateService = new UpdateService(settingsDao);
         this.updateInstaller = new UpdateInstaller(backupRestoreService);
         this.schedulerService = new SchedulerService(authService, characterService, priceService, assetService,
-                trackerSnapshotService, settingsDao, updateCooldownDao, backupRestoreService, killService);
+                trackerSnapshotService, updateCooldownDao, backupRestoreService, killService);
     }
 }
