@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -21,3 +24,5 @@ jobs:
           java-version: '25'
       - name: Build and test
         run: ./mvnw -B verify
+      - name: Check libraries for known vulnerabilities
+        run: python3 .github/scripts/check-vulnerabilities.py target/bom.json

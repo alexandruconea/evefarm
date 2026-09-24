@@ -36,6 +36,10 @@ You need JDK 25.
 <img width="1491" height="986" alt="LP Store" src="https://github.com/user-attachments/assets/a7412728-e5b3-42ec-b572-ee0cb52dfdb2" />
 <img width="1488" height="981" alt="NPC Hunt" src="https://github.com/user-attachments/assets/2bdd4d0f-3410-4b67-b39a-7e0005c89267" />
 
+## License
+
+EVE Farm's own code is released under the [MIT License](LICENSE). The license doesn't cover EVE Online's names, images or game data, which belong to their owners (see Trademarks below).
+
 ## Trademarks
 
 © 2014 CCP hf. All rights reserved. "EVE", "EVE Online", "CCP", and all related logos and images are trademarks or registered trademarks of CCP hf.
