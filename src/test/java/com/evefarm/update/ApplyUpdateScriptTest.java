@@ -64,6 +64,7 @@ class ApplyUpdateScriptTest {
         assertEquals("old", Files.readString(temp.resolve("EVEFarm.old").resolve("version.txt")));
         assertFalse(Files.exists(staged));
         assertTrue(Files.readString(log).contains("installed the new version"));
+        assertFalse(Files.exists(temp.resolve("update-failed.txt")));
     }
 
     @Test
@@ -91,5 +92,8 @@ class ApplyUpdateScriptTest {
 
         assertEquals("old", Files.readString(install.resolve("version.txt")));
         assertTrue(Files.readString(log).contains("restored the previous version"));
+        String reason = UpdateInstaller.takeUpdateFailure(temp.resolve("update-failed.txt")).orElseThrow();
+        assertTrue(reason.contains("missing-staged-folder"), "the app is told why: " + reason);
+        assertFalse(Files.exists(temp.resolve("update-failed.txt")), "the reason is shown only once");
     }
 }

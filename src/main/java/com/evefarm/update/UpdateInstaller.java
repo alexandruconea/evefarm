@@ -147,6 +147,26 @@ public final class UpdateInstaller {
                 .redirectOutput(ProcessBuilder.Redirect.DISCARD);
     }
 
+    public static Optional<String> takeUpdateFailure() {
+        return takeUpdateFailure(AppPaths.appDataDir().resolve("logs").resolve("update-failed.txt"));
+    }
+
+    static Optional<String> takeUpdateFailure(Path failureFile) {
+        try {
+            if (!Files.isRegularFile(failureFile)) {
+                return Optional.empty();
+            }
+            String reason = Files.readString(failureFile, StandardCharsets.UTF_8).replace("﻿", "").strip();
+            Files.deleteIfExists(failureFile);
+            if (reason.length() > 300) {
+                reason = reason.substring(0, 300) + "...";
+            }
+            return Optional.of(reason.isEmpty() ? "unknown" : reason);
+        } catch (IOException e) {
+            return Optional.empty();
+        }
+    }
+
     public static void cleanUpAfterUpdate() {
         installDirectory().ifPresent(installDir -> {
             deleteQuietly(installDir.resolveSibling(installDir.getFileName() + ".old"));

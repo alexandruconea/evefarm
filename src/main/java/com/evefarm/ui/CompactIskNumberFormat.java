@@ -7,6 +7,16 @@ import java.util.Locale;
 
 final class CompactIskNumberFormat extends NumberFormat {
 
+    private final int decimals;
+
+    CompactIskNumberFormat() {
+        this(1);
+    }
+
+    CompactIskNumberFormat(int decimals) {
+        this.decimals = decimals;
+    }
+
     @Override
     public StringBuffer format(double number, StringBuffer toAppendTo, FieldPosition pos) {
         return toAppendTo.append(compactFormat(number));
@@ -42,9 +52,9 @@ final class CompactIskNumberFormat extends NumberFormat {
             divisor = 1d;
             suffix = "";
         }
-        String number = String.format(Locale.US, "%,.1f", value / divisor);
-        if (number.endsWith(".0")) {
-            number = number.substring(0, number.length() - 2);
+        String number = String.format(Locale.US, "%,." + decimals + "f", value / divisor);
+        if (number.contains(".")) {
+            number = number.replaceAll("0+$", "").replaceAll("\\.$", "");
         }
         return number + suffix;
     }

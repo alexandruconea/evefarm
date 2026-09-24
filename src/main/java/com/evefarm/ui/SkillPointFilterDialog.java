@@ -39,7 +39,8 @@ public final class SkillPointFilterDialog extends JDialog {
     }
 
     private void buildUi() {
-        List<EveCharacter> characters = appContext.characterService.listCharacters();
+        List<EveCharacter> characters = appContext.characterService.listCharactersMainFirst();
+        Long mainCharacterId = appContext.characterService.mainCharacterId().orElse(null);
 
         JPanel rows = new JPanel();
         rows.setLayout(new BoxLayout(rows, BoxLayout.Y_AXIS));
@@ -55,7 +56,9 @@ public final class SkillPointFilterDialog extends JDialog {
             SkillPointFilter filter = appContext.skillPointFilterDao.find(character.characterId());
 
             JPanel row = new JPanel(new GridLayout(1, 3));
-            row.add(new JLabel(character.characterName()));
+            JLabel name = new JLabel(character.characterName());
+            name.setIcon(MainCharacterMarks.iconFor(mainCharacterId, character.characterId()));
+            row.add(name);
 
             JCheckBox enabledBox = new JCheckBox("", filter.enabled());
             row.add(enabledBox);

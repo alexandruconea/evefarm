@@ -192,6 +192,10 @@ public final class MigrationRunner {
         return MIGRATIONS;
     }
 
+    public static int latestVersion() {
+        return MIGRATIONS.size();
+    }
+
     static List<String> splitStatements(String sql) {
         List<String> statements = new ArrayList<>();
         StringBuilder current = new StringBuilder();

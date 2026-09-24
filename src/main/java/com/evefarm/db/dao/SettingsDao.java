@@ -27,6 +27,7 @@ public final class SettingsDao {
     public static final String NPC_CATALOG_IMPORTED_AT = "npc_catalog_imported_at";
     public static final String BACKUP_COPY_DIRECTORY = "backup_copy_directory";
     public static final String BELT_KILL_MILESTONE = "belt_kill_milestone";
+    public static final String MAIN_CHARACTER_ID = "main_character_id";
     public static final String UPDATE_AUTO_CHECK = "update_auto_check";
     public static final String UPDATE_SKIPPED_VERSION = "update_skipped_version";
     public static final String LAST_RUN_VERSION = "last_run_version";

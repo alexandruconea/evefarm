@@ -40,6 +40,7 @@ public final class LpStorePanel extends javax.swing.JPanel {
     private int offerCount = 0;
     private double targetIskPerLp;
     private long yourLp = 0;
+    private String mainCharacterName;
 
     public LpStorePanel(AppContext appContext) {
         initComponents();
@@ -69,13 +70,14 @@ public final class LpStorePanel extends javax.swing.JPanel {
         ColumnCopySupport.install(table, tableModel, this::copyLpColumn);
 
         characterCombo.addActionListener(e -> updateYourLpLabel());
+        characterCombo.setRenderer(MainCharacterMarks.comboRenderer(() -> mainCharacterName));
         corporationCombo.addActionListener(e -> onCorporationSelected());
         favoriteCheckBox.addActionListener(e -> onFavoriteToggled());
         refreshOffersButton.addActionListener(e -> fetchOffers());
         setTargetButton.addActionListener(e -> openTargetDialog());
 
         loadTargetIskPerLp();
-        reloadCharacters();
+        reloadCharacters(true);
         loadAllCorporations();
     }
 
@@ -130,15 +132,20 @@ public final class LpStorePanel extends javax.swing.JPanel {
     }
 
     public void onShown() {
-        reloadCharacters();
+        reloadCharacters(false);
     }
 
     public void refreshCharacterFilter() {
-        reloadCharacters();
+        reloadCharacters(true);
     }
 
-    private void reloadCharacters() {
-        characters = appContext.characterService.listCharacters();
+    private void reloadCharacters(boolean selectMain) {
+        characters = appContext.characterService.listCharactersMainFirst();
+        Long mainId = appContext.characterService.mainCharacterId().orElse(null);
+        mainCharacterName = characters.stream()
+                .filter(character -> mainId != null && character.characterId() == mainId)
+                .map(EveCharacter::characterName)
+                .findFirst().orElse(null);
         String previouslySelected = (String) characterCombo.getSelectedItem();
 
         DefaultComboBoxModel<String> model = new DefaultComboBoxModel<>();
@@ -146,7 +153,7 @@ public final class LpStorePanel extends javax.swing.JPanel {
             model.addElement(character.characterName());
         }
         characterCombo.setModel(model);
-        if (previouslySelected != null && model.getIndexOf(previouslySelected) >= 0) {
+        if (!selectMain && previouslySelected != null && model.getIndexOf(previouslySelected) >= 0) {
             characterCombo.setSelectedItem(previouslySelected);
         } else if (model.getSize() > 0) {
             characterCombo.setSelectedIndex(0);

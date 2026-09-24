@@ -69,16 +69,49 @@ class TrackerChartFactoryTest {
     }
 
     @Test
-    void aPointCoversEverySnapshotTakenInItsMinuteForEveryCharacter() {
-        TrackerSnapshot first = TrackerSnapshot.of(1L, MINUTE.plusSeconds(10), 100.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-        TrackerSnapshot retake = TrackerSnapshot.of(1L, MINUTE.plusSeconds(40), 120.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-        TrackerSnapshot otherCharacter = TrackerSnapshot.of(2L, MINUTE.plusSeconds(20), 50.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-        TrackerSnapshot nextMinute = TrackerSnapshot.of(1L, MINUTE.plusSeconds(60), 130.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    void aPointCoversEverySnapshotOfItsRoundForEveryCharacter() {
+        TrackerSnapshot first = wallet(1L, MINUTE.plusSeconds(10), 100.0);
+        TrackerSnapshot otherCharacter = wallet(2L, MINUTE.plusSeconds(20), 50.0);
+        TrackerSnapshot retake = wallet(1L, MINUTE.plusSeconds(40), 120.0);
+        TrackerSnapshot laterRound = wallet(1L, MINUTE.plusSeconds(3 * 3600), 130.0);
 
         List<TrackerSnapshot> atPoint = TrackerChartFactory.snapshotsAtPoint(
-                List.of(first, retake, otherCharacter, nextMinute), MINUTE);
+                List.of(first, retake, otherCharacter, laterRound), MINUTE);
 
-        assertEquals(List.of(first, retake, otherCharacter), atPoint,
+        assertEquals(List.of(first, otherCharacter, retake), atPoint,
                 "deleting a point must also remove the earlier retake, or it would take the deleted one's place");
+    }
+
+    @Test
+    void aRoundThatCrossesAMinuteIsOnePointWithEveryCharacter() {
+        Instant round = Instant.parse("2026-09-24T17:12:57Z");
+        TrackerSnapshot barset = wallet(1L, round, 87.0);
+        TrackerSnapshot castan = wallet(2L, round.plusSeconds(2), 2.0);
+        TrackerSnapshot malpais = wallet(3L, round.plusSeconds(6), 146.0);
+
+        TimeSeriesCollection dataset = factory.buildDataset(List.of(barset, castan, malpais),
+                Set.of("Total", "Wallet Balance"));
+
+        assertEquals(1, dataset.getSeries("Total").getItemCount(), "17:12 and 17:13 are the same snapshot round");
+        assertEquals(235.0, dataset.getSeries("Total").getValue(0).doubleValue());
+        assertEquals(List.of(barset, castan, malpais), TrackerChartFactory.snapshotsAtPoint(
+                List.of(barset, castan, malpais), round));
+    }
+
+    @Test
+    void aCharacterMissingFromARoundKeepsItsLastKnownValue() {
+        TrackerSnapshot main = wallet(1L, MINUTE, 100.0);
+        TrackerSnapshot alt = wallet(2L, MINUTE.plusSeconds(5), 50.0);
+        TrackerSnapshot mainLater = wallet(1L, MINUTE.plusSeconds(3 * 3600), 120.0);
+
+        TimeSeriesCollection dataset = factory.buildDataset(List.of(main, alt, mainLater),
+                Set.of("Total", "Wallet Balance"));
+
+        double later = dataset.getSeries("Total").getValue(new Minute(Date.from(mainLater.capturedAt()))).doubleValue();
+        assertEquals(170.0, later, "a character that failed to update must not look like a drop to zero");
+    }
+
+    private static TrackerSnapshot wallet(long characterId, Instant capturedAt, double wallet) {
+        return TrackerSnapshot.of(characterId, capturedAt, wallet, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     }
 }

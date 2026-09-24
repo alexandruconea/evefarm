@@ -7,6 +7,7 @@ import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.service.BackupRestoreService;
 import com.evefarm.ui.CompactMenuItemUI;
 import com.evefarm.ui.MainFrame;
+import com.evefarm.ui.UnderlineTabbedPaneUI;
 import com.evefarm.util.AppLogging;
 import com.evefarm.util.AppPaths;
 import com.evefarm.util.SingleInstance;
@@ -20,6 +21,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import java.awt.GraphicsEnvironment;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -72,13 +74,41 @@ public final class Main {
         return root == error || root.getMessage() == null ? top : top + "\n(" + root.getMessage() + ")";
     }
 
-    private static void startApp(SingleInstance instance) {
-        BackupRestoreService.applyPendingRestoreIfAny();
+    private record OpenedData(Database database, AppContext appContext) {
+    }
 
+    private static OpenedData openData() {
         Database database = new Database();
-        MigrationRunner.run(database);
-        AppContext appContext = new AppContext(database);
-        appContext.tokenDao.migrateLegacyPlaintextTokens();
+        try {
+            MigrationRunner.run(database);
+            AppContext appContext = new AppContext(database);
+            appContext.tokenDao.migrateLegacyPlaintextTokens();
+            return new OpenedData(database, appContext);
+        } catch (RuntimeException e) {
+            database.close();
+            throw e;
+        }
+    }
+
+    private static void startApp(SingleInstance instance) throws IOException {
+        Optional<Path> databaseBeforeRestore = BackupRestoreService.applyPendingRestoreIfAny();
+
+        OpenedData data;
+        boolean restoreUndone = false;
+        try {
+            data = openData();
+        } catch (RuntimeException e) {
+            if (databaseBeforeRestore.isEmpty()) {
+                throw e;
+            }
+            LOG.log(Level.SEVERE, "The restored database couldn't be opened", e);
+            BackupRestoreService.undoRestore(databaseBeforeRestore.get());
+            data = openData();
+            restoreUndone = true;
+        }
+        Database database = data.database();
+        AppContext appContext = data.appContext();
+        boolean showRestoreUndone = restoreUndone;
 
         installLookAndFeel(appContext.settingsDao.getOrDefault(SettingsDao.LAF_THEME, SettingsDao.DEFAULT_LAF_THEME));
         appContext.schedulerService.start();
@@ -92,6 +122,12 @@ public final class Main {
             warnIfTokensUnprotected();
             MainFrame frame = new MainFrame(appContext);
             frame.setVisible(true);
+            if (showRestoreUndone) {
+                JOptionPane.showMessageDialog(frame,
+                        "The backup you restored couldn't be opened, so EVE Farm put your previous data back.\n\n"
+                                + "Details are in the log folder:\n" + AppPaths.appDataDir().resolve("logs"),
+                        "Restore Data", JOptionPane.WARNING_MESSAGE);
+            }
             if (instance != null) {
                 instance.onShowRequested(() -> SwingUtilities.invokeLater(frame::bringToFront));
             }
@@ -116,6 +152,7 @@ public final class Main {
             } else {
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
                 CompactMenuItemUI.install();
+                UnderlineTabbedPaneUI.install();
             }
             boolean flat = UIManager.getLookAndFeel() instanceof FlatLaf;
             JFrame.setDefaultLookAndFeelDecorated(flat);

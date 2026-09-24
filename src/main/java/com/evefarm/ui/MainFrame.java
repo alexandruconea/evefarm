@@ -257,6 +257,13 @@ public final class MainFrame extends javax.swing.JFrame {
                     AppInfo.NAME + " was updated from " + previous + " to " + current + ".",
                     "Updated", JOptionPane.INFORMATION_MESSAGE));
         }
+        UpdateInstaller.takeUpdateFailure().ifPresent(reason -> SwingUtilities.invokeLater(() ->
+                JOptionPane.showMessageDialog(this,
+                        "The last update couldn't be installed, so " + AppInfo.NAME + " is still on version "
+                                + current + ".\n\nReason: " + reason
+                                + "\n\nYou can try again from Help > Check for Updates. Details are in\n"
+                                + com.evefarm.util.AppPaths.appDataDir().resolve("logs").resolve("updater.log"),
+                        "Update Failed", JOptionPane.WARNING_MESSAGE)));
     }
 
     private void checkForUpdates(boolean userAsked) {

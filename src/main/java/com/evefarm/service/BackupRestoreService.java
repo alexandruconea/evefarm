@@ -1,6 +1,7 @@
 package com.evefarm.service;
 
 import com.evefarm.db.Database;
+import com.evefarm.db.MigrationRunner;
 import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.util.AppPaths;
 
@@ -76,13 +77,17 @@ public final class BackupRestoreService {
                     throw new IOException("Failed to write the backup to " + target, e);
                 }
             }
-            try {
-                Files.move(partial, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            } catch (AtomicMoveNotSupportedException e) {
-                Files.move(partial, target, StandardCopyOption.REPLACE_EXISTING);
-            }
+            moveReplacing(partial, target);
         } finally {
             Files.deleteIfExists(partial);
+        }
+    }
+
+    static void moveReplacing(Path from, Path to) throws IOException {
+        try {
+            Files.move(from, to, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (AtomicMoveNotSupportedException e) {
+            Files.move(from, to, StandardCopyOption.REPLACE_EXISTING);
         }
     }
 
@@ -117,9 +122,7 @@ public final class BackupRestoreService {
                 return Optional.empty();
             }
             Path file = directory.resolve(AUTO_BACKUP_PREFIX + now.format(AUTO_BACKUP_STAMP) + ".db");
-            Path partial = directory.resolve(file.getFileName() + ".partial");
-            writeSnapshot(partial);
-            Files.move(partial, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            writeSnapshot(file);
             prune(directory);
             copyToExtraFolder(file);
             LOG.info("Automatic backup written to " + file);
@@ -140,8 +143,7 @@ public final class BackupRestoreService {
             Files.createDirectories(directory);
             Path partial = directory.resolve(file.getFileName() + ".partial");
             Files.copy(file, partial, StandardCopyOption.REPLACE_EXISTING);
-            Files.move(partial, directory.resolve(file.getFileName()), StandardCopyOption.REPLACE_EXISTING,
-                    StandardCopyOption.ATOMIC_MOVE);
+            moveReplacing(partial, directory.resolve(file.getFileName()));
             prune(directory);
         } catch (Exception e) {
             LOG.log(Level.WARNING, "Couldn't copy the automatic backup to " + extra, e);
@@ -208,28 +210,99 @@ public final class BackupRestoreService {
                     return "This doesn't look like an EVE Farm database (no schema_version table).";
                 }
             }
+            try (ResultSet rs = statement.executeQuery("SELECT COALESCE(MAX(version), 0) FROM schema_version")) {
+                if (rs.next() && rs.getInt(1) > MigrationRunner.latestVersion()) {
+                    return "This backup was made by a newer version of EVE Farm. Update EVE Farm first, "
+                            + "then restore it.";
+                }
+            }
         } catch (SQLException e) {
             return "Failed to open the file as a SQLite database: " + e.getMessage();
         }
+        return checkUpgradedCopy(file);
+    }
+
+    static String checkUpgradedCopy(Path file) {
+        Path copy = null;
+        try {
+            copy = Files.createTempFile("evefarm-restore-check-", ".db");
+            Files.copy(file, copy, StandardCopyOption.REPLACE_EXISTING);
+            Database restored = new Database(copy.toString());
+            Database reference = new Database(":memory:");
+            try {
+                MigrationRunner.run(restored);
+                MigrationRunner.run(reference);
+                String missing = missingSchema(reference.connection(), restored.connection());
+                return missing == null ? null : "The backup is incomplete: " + missing + ".";
+            } finally {
+                restored.close();
+                reference.close();
+            }
+        } catch (Exception e) {
+            return "The backup can't be upgraded to this version of EVE Farm: " + e.getMessage();
+        } finally {
+            if (copy != null) {
+                deleteIfExists(copy);
+                deleteIfExists(copy.resolveSibling(copy.getFileName() + "-wal"));
+                deleteIfExists(copy.resolveSibling(copy.getFileName() + "-shm"));
+            }
+        }
+    }
+
+    static String missingSchema(Connection expected, Connection actual) throws SQLException {
+        Map<String, Set<String>> actualTables = tables(actual);
+        for (Map.Entry<String, Set<String>> table : tables(expected).entrySet()) {
+            Set<String> columns = actualTables.get(table.getKey());
+            if (columns == null) {
+                return "table " + table.getKey() + " is missing";
+            }
+            for (String column : table.getValue()) {
+                if (!columns.contains(column)) {
+                    return "column " + table.getKey() + "." + column + " is missing";
+                }
+            }
+        }
         return null;
+    }
+
+    private static Map<String, Set<String>> tables(Connection connection) throws SQLException {
+        Map<String, Set<String>> tables = new LinkedHashMap<>();
+        try (Statement statement = connection.createStatement();
+             ResultSet rs = statement.executeQuery(
+                     "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")) {
+            while (rs.next()) {
+                tables.put(rs.getString(1), new HashSet<>());
+            }
+        }
+        for (Map.Entry<String, Set<String>> table : tables.entrySet()) {
+            try (Statement statement = connection.createStatement();
+                 ResultSet rs = statement.executeQuery(
+                         "PRAGMA table_info('" + table.getKey().replace("'", "''") + "')")) {
+                while (rs.next()) {
+                    table.getValue().add(rs.getString("name"));
+                }
+            }
+        }
+        return tables;
     }
 
     public void stageRestore(Path sourceBackupFile) throws IOException {
         Files.copy(sourceBackupFile, AppPaths.pendingRestoreFile(), StandardCopyOption.REPLACE_EXISTING);
     }
 
-    public static void applyPendingRestoreIfAny() {
+    public static Optional<Path> applyPendingRestoreIfAny() {
         Path pending = AppPaths.pendingRestoreFile();
         if (!Files.exists(pending)) {
-            return;
+            return Optional.empty();
         }
         Path live = AppPaths.databaseFile();
         Path liveWal = live.resolveSibling(live.getFileName() + "-wal");
         Path liveShm = live.resolveSibling(live.getFileName() + "-shm");
         try {
+            Path safetyBackup = null;
             if (Files.exists(live)) {
                 String suffix = LocalDateTime.now().format(TIMESTAMP);
-                Path safetyBackup = live.resolveSibling("evefarm-before-restore-" + suffix + ".db");
+                safetyBackup = live.resolveSibling("evefarm-before-restore-" + suffix + ".db");
                 Files.copy(live, safetyBackup, StandardCopyOption.REPLACE_EXISTING);
                 copyIfExists(liveWal, live.resolveSibling("evefarm-before-restore-" + suffix + ".db-wal"));
                 copyIfExists(liveShm, live.resolveSibling("evefarm-before-restore-" + suffix + ".db-shm"));
@@ -239,9 +312,29 @@ public final class BackupRestoreService {
             deleteIfExists(liveWal);
             deleteIfExists(liveShm);
             LOG.info("Applied staged database restore from " + pending);
+            return Optional.ofNullable(safetyBackup);
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "Failed to apply staged database restore - keeping the previous database", e);
             deleteIfExists(pending);
+            return Optional.empty();
+        }
+    }
+
+    public static void undoRestore(Path databaseBeforeRestore) throws IOException {
+        putBack(databaseBeforeRestore, AppPaths.databaseFile());
+        LOG.warning("The restored database couldn't be opened - put back " + databaseBeforeRestore);
+    }
+
+    static void putBack(Path previous, Path live) throws IOException {
+        Files.copy(previous, live, StandardCopyOption.REPLACE_EXISTING);
+        for (String suffix : List.of("-wal", "-shm")) {
+            Path saved = previous.resolveSibling(previous.getFileName() + suffix);
+            Path current = live.resolveSibling(live.getFileName() + suffix);
+            if (Files.exists(saved)) {
+                Files.copy(saved, current, StandardCopyOption.REPLACE_EXISTING);
+            } else {
+                Files.deleteIfExists(current);
+            }
         }
     }
 

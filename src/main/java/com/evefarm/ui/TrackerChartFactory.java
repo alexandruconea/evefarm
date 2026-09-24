@@ -6,15 +6,16 @@ import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesCollection;
 
 import java.awt.Color;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.function.ToDoubleFunction;
 
 import static java.util.Map.entry;
@@ -26,6 +27,9 @@ public final class TrackerChartFactory {
             "Escrows", "Escrows To Cover", "Manufacturing", "Contract Collateral",
             "Contracts", "Skill Points", "LP Value"
     );
+
+    static final Duration RUN_GAP = Duration.ofMinutes(2);
+    static final Duration RUN_MAX_LENGTH = Duration.ofMinutes(15);
 
     private static final Map<String, ToDoubleFunction<TrackerSnapshot>> TOTAL_COMPONENTS = new LinkedHashMap<>();
 
@@ -86,23 +90,33 @@ public final class TrackerChartFactory {
 
     public static List<TrackerSnapshot> snapshotsAtPoint(List<TrackerSnapshot> snapshots, Instant point) {
         Instant minute = point.truncatedTo(ChronoUnit.MINUTES);
-        return snapshots.stream()
-                .filter(snapshot -> snapshot.capturedAt().truncatedTo(ChronoUnit.MINUTES).equals(minute))
+        return captureRuns(snapshots).stream()
+                .filter(run -> run.getFirst().capturedAt().truncatedTo(ChronoUnit.MINUTES).equals(minute))
+                .findFirst()
+                .orElse(List.of());
+    }
+
+    static List<List<TrackerSnapshot>> captureRuns(List<TrackerSnapshot> snapshots) {
+        List<TrackerSnapshot> sorted = snapshots.stream()
+                .sorted(Comparator.comparing(TrackerSnapshot::capturedAt))
                 .toList();
+        List<List<TrackerSnapshot>> runs = new ArrayList<>();
+        List<TrackerSnapshot> run = new ArrayList<>();
+        for (TrackerSnapshot snapshot : sorted) {
+            if (!run.isEmpty() && (snapshot.capturedAt().isAfter(run.getLast().capturedAt().plus(RUN_GAP))
+                    || snapshot.capturedAt().isAfter(run.getFirst().capturedAt().plus(RUN_MAX_LENGTH)))) {
+                runs.add(run);
+                run = new ArrayList<>();
+            }
+            run.add(snapshot);
+        }
+        if (!run.isEmpty()) {
+            runs.add(run);
+        }
+        return runs;
     }
 
     public TimeSeriesCollection buildDataset(List<TrackerSnapshot> snapshots, Set<String> visibleSeriesNames) {
-        Map<Instant, Map<Long, TrackerSnapshot>> latestPerCharacterPerMinute = new TreeMap<>();
-        for (TrackerSnapshot snapshot : snapshots) {
-            Instant minute = snapshot.capturedAt().truncatedTo(ChronoUnit.MINUTES);
-            Map<Long, TrackerSnapshot> perCharacter =
-                    latestPerCharacterPerMinute.computeIfAbsent(minute, m -> new LinkedHashMap<>());
-            TrackerSnapshot existing = perCharacter.get(snapshot.characterId());
-            if (existing == null || snapshot.capturedAt().isAfter(existing.capturedAt())) {
-                perCharacter.put(snapshot.characterId(), snapshot);
-            }
-        }
-
         Map<String, TimeSeries> series = new LinkedHashMap<>();
         for (String name : SERIES_NAMES) {
             if (visibleSeriesNames.contains(name)) {
@@ -110,9 +124,13 @@ public final class TrackerChartFactory {
             }
         }
 
-        for (Map.Entry<Instant, Map<Long, TrackerSnapshot>> minuteEntry : latestPerCharacterPerMinute.entrySet()) {
-            Minute minute = new Minute(Date.from(minuteEntry.getKey()));
-            List<TrackerSnapshot> pointSnapshots = new ArrayList<>(minuteEntry.getValue().values());
+        Map<Long, TrackerSnapshot> latestPerCharacter = new LinkedHashMap<>();
+        for (List<TrackerSnapshot> run : captureRuns(snapshots)) {
+            for (TrackerSnapshot snapshot : run) {
+                latestPerCharacter.put(snapshot.characterId(), snapshot);
+            }
+            Minute minute = new Minute(Date.from(run.getFirst().capturedAt()));
+            List<TrackerSnapshot> pointSnapshots = new ArrayList<>(latestPerCharacter.values());
 
             addIfVisible(series, "Wallet Balance", minute, pointSnapshots, TrackerSnapshot::walletBalance);
             addIfVisible(series, "Assets", minute, pointSnapshots, TrackerSnapshot::assetsValue);

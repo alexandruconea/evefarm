@@ -14,7 +14,9 @@ import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingWorker;
 import javax.swing.table.AbstractTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Window;
@@ -32,6 +34,7 @@ public final class CharactersDialog extends JDialog {
     private final CharacterTableModel tableModel = new CharacterTableModel();
 
     private JButton addButton;
+    private JButton mainButton;
     private JTable table;
     private SwingWorker<CharacterIdentity, Void> loginWorker;
 
@@ -49,6 +52,21 @@ public final class CharactersDialog extends JDialog {
         table = new JTable(tableModel);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         TableStyler.style(table);
+        DefaultTableCellRenderer nameRenderer = new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable t, Object value, boolean isSelected,
+                                                           boolean hasFocus, int row, int column) {
+                super.getTableCellRendererComponent(t, value, isSelected, hasFocus, row, column);
+                EveCharacter character = tableModel.rowAt(t.convertRowIndexToModel(row));
+                setIcon(MainCharacterMarks.iconFor(tableModel.mainCharacterId, character.characterId()));
+                if (!isSelected) {
+                    setBackground(row % 2 == 0 ? t.getBackground() : TableStyler.stripeColor(t));
+                }
+                return this;
+            }
+        };
+        nameRenderer.putClientProperty("html.disable", Boolean.TRUE);
+        table.getColumnModel().getColumn(0).setCellRenderer(nameRenderer);
 
         JScrollPane scrollPane = new JScrollPane(table);
         scrollPane.setPreferredSize(new Dimension(480, 220));
@@ -57,9 +75,14 @@ public final class CharactersDialog extends JDialog {
         addButton.addActionListener(e -> onAddCharacter());
         JButton removeButton = new JButton("Remove", Icons.REMOVE);
         removeButton.addActionListener(e -> onRemoveCharacter());
+        mainButton = new JButton("Set as Main", Icons.MAIN);
+        mainButton.setToolTipText("The main character is listed first and selected first in Values and LP Store");
+        mainButton.setEnabled(false);
+        mainButton.addActionListener(e -> onSetMain());
+        table.getSelectionModel().addListSelectionListener(e -> updateMainButton());
 
         JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        toolbar.add(ButtonSizing.row(4, addButton, removeButton));
+        toolbar.add(ButtonSizing.row(4, addButton, removeButton, mainButton));
 
         JButton closeButton = new JButton("Close", Icons.CANCEL);
         closeButton.addActionListener(e -> {
@@ -141,17 +164,43 @@ public final class CharactersDialog extends JDialog {
         }
     }
 
+    private void onSetMain() {
+        int selectedRow = table.getSelectedRow();
+        if (selectedRow < 0) {
+            return;
+        }
+        EveCharacter selected = tableModel.rowAt(table.convertRowIndexToModel(selectedRow));
+        appContext.characterService.setMainCharacter(selected.characterId());
+        reloadCharacters();
+        table.setRowSelectionInterval(0, 0);
+        onChanged.run();
+    }
+
+    private void updateMainButton() {
+        int selectedRow = table.getSelectedRow();
+        boolean selectable = selectedRow >= 0;
+        if (selectable) {
+            EveCharacter selected = tableModel.rowAt(table.convertRowIndexToModel(selectedRow));
+            selectable = tableModel.mainCharacterId == null || tableModel.mainCharacterId != selected.characterId();
+        }
+        mainButton.setEnabled(selectable);
+    }
+
     private void reloadCharacters() {
-        tableModel.setRows(appContext.characterService.listCharacters());
+        tableModel.setRows(appContext.characterService.listCharactersMainFirst(),
+                appContext.characterService.mainCharacterId().orElse(null));
         TableStyler.packColumns(table);
+        updateMainButton();
     }
 
     private static final class CharacterTableModel extends AbstractTableModel {
         private final String[] columns = {"Character", "Character ID", "Added"};
         private List<EveCharacter> rows = new ArrayList<>();
+        private Long mainCharacterId;
 
-        void setRows(List<EveCharacter> rows) {
+        void setRows(List<EveCharacter> rows, Long mainCharacterId) {
             this.rows = rows;
+            this.mainCharacterId = mainCharacterId;
             fireTableDataChanged();
         }
 

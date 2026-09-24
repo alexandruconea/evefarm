@@ -13,6 +13,7 @@ public final class ValuesPanel extends javax.swing.JPanel {
     private final ValueColumnPanel grandTotalColumn = new ValueColumnPanel();
     private final ValueColumnPanel characterColumn = new ValueColumnPanel();
     private List<EveCharacter> characters = List.of();
+    private String mainCharacterName;
 
     public ValuesPanel(AppContext appContext) {
         initComponents();
@@ -28,20 +29,26 @@ public final class ValuesPanel extends javax.swing.JPanel {
         columnsContainer.add(characterColumn);
 
         characterCombo.addActionListener(e -> refreshCharacterColumn());
+        characterCombo.setRenderer(MainCharacterMarks.comboRenderer(() -> mainCharacterName));
 
-        reloadCharacters();
+        reloadCharacters(true);
     }
 
     public void onShown() {
-        reloadCharacters();
+        reloadCharacters(false);
     }
 
     public void refreshCharacterFilter() {
-        reloadCharacters();
+        reloadCharacters(true);
     }
 
-    private void reloadCharacters() {
-        characters = appContext.characterService.listCharacters();
+    private void reloadCharacters(boolean selectMain) {
+        characters = appContext.characterService.listCharactersMainFirst();
+        Long mainId = appContext.characterService.mainCharacterId().orElse(null);
+        mainCharacterName = characters.stream()
+                .filter(character -> mainId != null && character.characterId() == mainId)
+                .map(EveCharacter::characterName)
+                .findFirst().orElse(null);
         String previouslySelected = (String) characterCombo.getSelectedItem();
 
         javax.swing.DefaultComboBoxModel<String> model = new javax.swing.DefaultComboBoxModel<>();
@@ -49,7 +56,7 @@ public final class ValuesPanel extends javax.swing.JPanel {
             model.addElement(character.characterName());
         }
         characterCombo.setModel(model);
-        if (previouslySelected != null && model.getIndexOf(previouslySelected) >= 0) {
+        if (!selectMain && previouslySelected != null && model.getIndexOf(previouslySelected) >= 0) {
             characterCombo.setSelectedItem(previouslySelected);
         } else if (model.getSize() > 0) {
             characterCombo.setSelectedIndex(0);

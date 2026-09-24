@@ -7,9 +7,12 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 final class TabVisibility {
 
+    private static final Logger LOG = Logger.getLogger(TabVisibility.class.getName());
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     static Set<String> readHidden(SettingsDao settingsDao) {
@@ -29,6 +32,7 @@ final class TabVisibility {
         try {
             settingsDao.set(SettingsDao.HIDDEN_TABS, MAPPER.writeValueAsString(hiddenKeys));
         } catch (Exception e) {
+            LOG.log(Level.WARNING, "Couldn't save the tab layout", e);
         }
     }
 
@@ -49,6 +53,7 @@ final class TabVisibility {
         try {
             settingsDao.set(SettingsDao.TAB_ORDER, MAPPER.writeValueAsString(orderedKeys));
         } catch (Exception e) {
+            LOG.log(Level.WARNING, "Couldn't save the tab layout", e);
         }
     }
 

@@ -25,7 +25,8 @@ public final class Icons {
         NEUTRAL("Actions.Grey", new Color(0x6E6E6E)),
         ACCENT("Component.accentColor", new Color(0x2D6FD6)),
         SUCCESS("Actions.Green", new Color(0x59A869)),
-        DANGER("Actions.Red", new Color(0xDB5860));
+        DANGER("Actions.Red", new Color(0xDB5860)),
+        FAVORITE("Actions.Yellow", new Color(0xE0A800));
 
         private final String key;
         private final Color fallback;
@@ -186,21 +187,16 @@ public final class Icons {
         g.draw(new RoundRectangle2D.Double(10.75, 6, 3, 7.75, 1.5, 1.5));
     });
 
-    public static final Icon LP = icon(Tone.NEUTRAL, g -> {
-        Path2D star = new Path2D.Double();
-        for (int i = 0; i < 10; i++) {
-            double angle = Math.toRadians(-90 + i * 36);
-            double radius = i % 2 == 0 ? 6.5 : 2.9;
-            double x = 8 + Math.cos(angle) * radius;
-            double y = 8.6 + Math.sin(angle) * radius;
-            if (i == 0) {
-                star.moveTo(x, y);
-            } else {
-                star.lineTo(x, y);
-            }
-        }
-        star.closePath();
+    public static final Icon LP = icon(Tone.NEUTRAL, g -> g.draw(star(6.5, 2.9)));
+
+    public static final Icon MAIN = icon(Tone.FAVORITE, g -> {
+        Path2D star = star(4.8, 2.1);
+        g.setStroke(new BasicStroke(1f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.fill(star);
         g.draw(star);
+    });
+
+    public static final Icon BLANK = icon(Tone.NEUTRAL, g -> {
     });
 
     public static final Icon CROSSHAIR = icon(Tone.NEUTRAL, g -> {
@@ -284,6 +280,23 @@ public final class Icons {
         Path2D path = path(points);
         path.closePath();
         return path;
+    }
+
+    private static Path2D star(double outerRadius, double innerRadius) {
+        Path2D star = new Path2D.Double();
+        for (int i = 0; i < 10; i++) {
+            double angle = Math.toRadians(-90 + i * 36);
+            double radius = i % 2 == 0 ? outerRadius : innerRadius;
+            double x = 8 + Math.cos(angle) * radius;
+            double y = 8.6 + Math.sin(angle) * radius;
+            if (i == 0) {
+                star.moveTo(x, y);
+            } else {
+                star.lineTo(x, y);
+            }
+        }
+        star.closePath();
+        return star;
     }
 
     private static void point(Path2D path, boolean first, double angle, double radius) {

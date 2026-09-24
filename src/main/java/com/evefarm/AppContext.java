@@ -143,7 +143,7 @@ public final class AppContext {
         this.officerDao = new OfficerDao(database);
 
         this.authService = new AuthService(characterDao, tokenDao);
-        this.characterService = new CharacterService(authService, characterDao);
+        this.characterService = new CharacterService(authService, characterDao, settingsDao);
 
         EsiHttpClient esiHttpClient = new EsiHttpClient();
         AssetsApi assetsApi = new AssetsApi(esiHttpClient);

@@ -51,7 +51,7 @@ public final class JaniceApi {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             if (response.statusCode() / 100 != 2) {
                 throw new IllegalStateException(
-                        "Janice request failed: HTTP " + response.statusCode() + " - " + response.body());
+                        "Janice request failed: HTTP " + response.statusCode() + " - " + snippet(response.body()));
             }
             List<JaniceItemDto> items = objectMapper.readValue(response.body(),
                     new TypeReference<List<JaniceItemDto>>() {
@@ -68,5 +68,10 @@ public final class JaniceApi {
         } catch (Exception e) {
             throw new IllegalStateException("Failed to reach Janice", e);
         }
+    }
+
+    static String snippet(String body) {
+        String oneLine = body == null ? "" : body.replaceAll("\\s+", " ").strip();
+        return oneLine.length() <= 200 ? oneLine : oneLine.substring(0, 200) + "...";
     }
 }

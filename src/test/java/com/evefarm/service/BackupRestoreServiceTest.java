@@ -8,6 +8,9 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -56,6 +59,58 @@ class BackupRestoreServiceTest {
         service.backupTo(file);
 
         assertNull(service.validateBackupFile(file), "the copy passes the same check Restore Data uses");
+    }
+
+    @Test
+    void aBackupFromANewerVersionOfTheAppIsRefused(@TempDir Path directory) throws Exception {
+        Database database = new Database(":memory:");
+        MigrationRunner.run(database);
+        try (Statement statement = database.connection().createStatement()) {
+            statement.execute("INSERT INTO schema_version(version, applied_at) VALUES ("
+                    + (MigrationRunner.latestVersion() + 1) + ", '2027-01-01')");
+        }
+        BackupRestoreService service = new BackupRestoreService(database, new SettingsDao(database));
+        Path file = directory.resolve("from-the-future.db");
+        service.backupTo(file);
+
+        String error = service.validateBackupFile(file);
+
+        assertTrue(error != null && error.contains("newer version"), error);
+    }
+
+    @Test
+    void aDatabaseThatClaimsToBeUpToDateButLacksTablesIsRefused(@TempDir Path directory) throws Exception {
+        Path file = directory.resolve("hollow.db");
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
+             Statement statement = connection.createStatement()) {
+            statement.execute("CREATE TABLE schema_version(version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL, "
+                    + "checksum TEXT)");
+            for (int version = 1; version <= MigrationRunner.latestVersion(); version++) {
+                statement.execute("INSERT INTO schema_version(version, applied_at) VALUES (" + version + ", 'x')");
+            }
+        }
+        Database database = new Database(":memory:");
+        MigrationRunner.run(database);
+
+        String error = new BackupRestoreService(database, new SettingsDao(database)).validateBackupFile(file);
+
+        assertTrue(error != null && error.contains("is missing"), error);
+    }
+
+    @Test
+    void puttingThePreviousDatabaseBackAlsoRestoresItsJournal(@TempDir Path directory) throws Exception {
+        Path previous = directory.resolve("evefarm-before-restore.db");
+        Path live = directory.resolve("evefarm.db");
+        Files.writeString(previous, "previous");
+        Files.writeString(directory.resolve("evefarm-before-restore.db-wal"), "previous wal");
+        Files.writeString(live, "broken restore");
+        Files.writeString(directory.resolve("evefarm.db-shm"), "stale shm");
+
+        BackupRestoreService.putBack(previous, live);
+
+        assertEquals("previous", Files.readString(live));
+        assertEquals("previous wal", Files.readString(directory.resolve("evefarm.db-wal")));
+        assertFalse(Files.exists(directory.resolve("evefarm.db-shm")));
     }
 
     @Test

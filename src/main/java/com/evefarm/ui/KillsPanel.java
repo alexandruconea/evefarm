@@ -53,6 +53,7 @@ public final class KillsPanel extends JPanel {
 
     private final AppContext appContext;
     private final DefaultListModel<EveCharacter> characterListModel = new DefaultListModel<>();
+    private Long mainCharacterId;
     private final DefaultComboBoxModel<String> factionComboModel = new DefaultComboBoxModel<>();
     private final DefaultComboBoxModel<String> systemComboModel = new DefaultComboBoxModel<>();
     private final Map<String, JCheckBox> shipTypeCheckBoxes = new LinkedHashMap<>();
@@ -134,6 +135,7 @@ public final class KillsPanel extends JPanel {
         characterList.setEnabled(false);
         characterList.setCellRenderer((list, value, index, isSelected, cellHasFocus) -> {
             JLabel label = new JLabel(value.characterName());
+            label.setIcon(MainCharacterMarks.iconFor(mainCharacterId, value.characterId()));
             label.setOpaque(true);
             label.setBackground(isSelected ? list.getSelectionBackground() : list.getBackground());
             label.setForeground(isSelected ? list.getSelectionForeground() : list.getForeground());
@@ -212,7 +214,8 @@ public final class KillsPanel extends JPanel {
 
     public void refreshCharacterFilter() {
         characterListModel.clear();
-        for (EveCharacter character : appContext.characterService.listCharacters()) {
+        mainCharacterId = appContext.characterService.mainCharacterId().orElse(null);
+        for (EveCharacter character : appContext.characterService.listCharactersMainFirst()) {
             characterListModel.addElement(character);
         }
         if (!characterListModel.isEmpty()) {

@@ -8,6 +8,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $previousDir = "$InstallDir.old"
+$failureFile = Join-Path (Split-Path -Parent $LogFile) 'update-failed.txt'
 Set-Location -LiteralPath $PSScriptRoot
 [System.IO.Directory]::SetCurrentDirectory($PSScriptRoot)
 
@@ -46,8 +47,15 @@ try {
     }
     Move-Item -LiteralPath $StagedDir -Destination $InstallDir
     Write-Log "installed the new version in $InstallDir"
+    Remove-Item -LiteralPath $failureFile -ErrorAction SilentlyContinue
 } catch {
-    Write-Log "update failed: $_"
+    $reason = $_.Exception.Message
+    Write-Log "update failed: $reason"
+    try {
+        Set-Content -LiteralPath $failureFile -Value $reason -Encoding UTF8
+    } catch {
+        Write-Log "could not record the failure for EVE Farm"
+    }
     if (-not (Test-Path -LiteralPath $InstallDir) -and (Test-Path -LiteralPath $previousDir)) {
         Move-Item -LiteralPath $previousDir -Destination $InstallDir
         Write-Log "restored the previous version"

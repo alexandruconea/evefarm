@@ -5,18 +5,22 @@ import com.evefarm.model.EveCharacter;
 import com.evefarm.model.TrackerSnapshot;
 import com.evefarm.util.DateUtil;
 import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartMouseEvent;
+import org.jfree.chart.ChartMouseListener;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
+import org.jfree.chart.LegendItem;
+import org.jfree.chart.LegendItemCollection;
 import org.jfree.chart.axis.DateAxis;
 import org.jfree.chart.axis.NumberAxis;
-import org.jfree.chart.labels.StandardXYToolTipGenerator;
+import org.jfree.chart.entity.LegendItemEntity;
 import org.jfree.chart.plot.CrosshairState;
 import org.jfree.chart.plot.PlotRenderingInfo;
 import org.jfree.chart.plot.ValueMarker;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYAreaRenderer;
 import org.jfree.chart.renderer.xy.XYItemRendererState;
-import org.jfree.chart.renderer.xy.XYSplineRenderer;
+import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.chart.axis.ValueAxis;
 import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesCollection;
@@ -41,6 +45,7 @@ import javax.swing.event.PopupMenuListener;
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GradientPaint;
@@ -49,10 +54,9 @@ import java.awt.Stroke;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Ellipse2D;
+import java.awt.geom.Line2D;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
-import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Date;
@@ -71,14 +75,20 @@ public final class TrackerPanel extends javax.swing.JPanel {
     private static final Logger LOG = Logger.getLogger(TrackerPanel.class.getName());
     private static final int POINT_PICK_RADIUS_PX = 8;
     private static final Color DELETE_MARKER_COLOR = new Color(0xE8, 0x11, 0x23);
+    private static final Color HIDDEN_SERIES_COLOR = new Color(0x89, 0x87, 0x81, 120);
+    private static final Ellipse2D LEGEND_DOT = new Ellipse2D.Double(-3.5, -3.5, 7, 7);
+    private static final Line2D LEGEND_LINE = new Line2D.Double(-9, 0, 9, 0);
 
     private final AppContext appContext;
     private final TrackerChartFactory chartFactory = new TrackerChartFactory();
+    private final TrackerHoverOverlay hoverOverlay = new TrackerHoverOverlay();
     private final DefaultListModel<EveCharacter> characterListModel = new DefaultListModel<>();
+    private Long mainCharacterId;
     private final Map<String, JCheckBox> seriesCheckBoxes = new LinkedHashMap<>();
     private final AtomicInteger reloadGeneration = new AtomicInteger(0);
 
     private ChartPanel chartPanel;
+    private ChartTimeNavigator timeNavigator;
     private List<TrackerSnapshot> shownSnapshots = List.of();
 
     public TrackerPanel(AppContext appContext) {
@@ -125,6 +135,7 @@ public final class TrackerPanel extends javax.swing.JPanel {
         characterList.setEnabled(false);
         characterList.setCellRenderer((list, value, index, isSelected, cellHasFocus) -> {
             JLabel label = new JLabel(value.characterName());
+            label.setIcon(MainCharacterMarks.iconFor(mainCharacterId, value.characterId()));
             label.setOpaque(true);
             if (isSelected) {
                 label.setBackground(list.getSelectionBackground());
@@ -150,7 +161,7 @@ public final class TrackerPanel extends javax.swing.JPanel {
         JFreeChart chart = ChartFactory.createTimeSeriesChart(
                 null, "Date", null, new TimeSeriesCollection(), true, true, false);
         XYPlot plot = chart.getXYPlot();
-        plot.setDomainAxis(new DateAxis("Date"));
+        plot.setDomainAxis(new DateAxis("Scroll to zoom, drag to move, double-click to show everything"));
         NumberAxis rangeAxis = new SparseNumberAxis();
         plot.setRangeAxis(rangeAxis);
         rangeAxis.setAutoRangeIncludesZero(false);
@@ -178,7 +189,9 @@ public final class TrackerPanel extends javax.swing.JPanel {
         plot.setRangeGridlinePaint(gridlineColor);
         plot.setDomainGridlineStroke(gridlineStroke);
         plot.setRangeGridlineStroke(gridlineStroke);
-        plot.setRenderer(1, new XYSplineRenderer(3));
+        XYLineAndShapeRenderer lines = new XYLineAndShapeRenderer(true, false);
+        lines.setDrawSeriesLineAsPath(true);
+        plot.setRenderer(1, lines);
 
         Color secondaryInk = dark ? new Color(0xc3, 0xc2, 0xb7) : new Color(0x52, 0x51, 0x4e);
         Color mutedInk = new Color(0x89, 0x87, 0x81);
@@ -207,7 +220,11 @@ public final class TrackerPanel extends javax.swing.JPanel {
         chartPanel.setBackground(background);
         chartPanel.setPreferredSize(new Dimension(700, 500));
         chartPanel.setPopupMenu(null);
-        chartPanel.addMouseListener(new MouseAdapter() {
+        chartPanel.setDisplayToolTips(false);
+        chartPanel.addOverlay(hoverOverlay);
+        timeNavigator = new ChartTimeNavigator(chartPanel, hoverOverlay::clearHover);
+        timeNavigator.install();
+        MouseAdapter pointer = new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
                 if (e.isPopupTrigger()) {
@@ -220,6 +237,34 @@ public final class TrackerPanel extends javax.swing.JPanel {
                 if (e.isPopupTrigger()) {
                     showPointMenu(e);
                 }
+            }
+
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                updateHover(e);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                hoverOverlay.clearHover();
+            }
+        };
+        chartPanel.addMouseListener(pointer);
+        chartPanel.addMouseMotionListener(pointer);
+        chartPanel.addChartMouseListener(new ChartMouseListener() {
+            @Override
+            public void chartMouseClicked(ChartMouseEvent event) {
+                if (SwingUtilities.isLeftMouseButton(event.getTrigger())
+                        && event.getEntity() instanceof LegendItemEntity legend
+                        && legend.getSeriesKey() instanceof String seriesName) {
+                    toggleSeries(seriesName);
+                }
+            }
+
+            @Override
+            public void chartMouseMoved(ChartMouseEvent event) {
+                chartPanel.setCursor(event.getEntity() instanceof LegendItemEntity
+                        ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR) : null);
             }
         });
 
@@ -264,7 +309,8 @@ public final class TrackerPanel extends javax.swing.JPanel {
 
     public void refreshCharacterFilter() {
         characterListModel.clear();
-        for (EveCharacter character : appContext.characterService.listCharacters()) {
+        mainCharacterId = appContext.characterService.mainCharacterId().orElse(null);
+        for (EveCharacter character : appContext.characterService.listCharactersMainFirst()) {
             characterListModel.addElement(character);
         }
         if (!characterListModel.isEmpty()) {
@@ -345,27 +391,25 @@ public final class TrackerPanel extends javax.swing.JPanel {
             0f, new float[]{7f, 5f}, 0f);
 
     private void applyDataset(List<TrackerSnapshot> snapshots, Set<String> visibleSeries) {
+        boolean newData = !snapshots.equals(shownSnapshots);
         shownSnapshots = snapshots;
         TimeSeriesCollection dataset = chartFactory.buildDataset(snapshots, visibleSeries);
         boolean dark = com.formdev.flatlaf.FlatLaf.isLafDark();
         XYPlot plot = (XYPlot) chartPanel.getChart().getPlot();
 
+        hoverOverlay.clearHover();
         plot.setDataset(1, dataset);
-        if (plot.getRenderer(1) instanceof XYSplineRenderer renderer) {
-            renderer.setDefaultToolTipGenerator(new StandardXYToolTipGenerator(
-                    "<html><b>{0}</b><br>{1}: {2} ISK</html>",
-                    new SimpleDateFormat("MMM d, yyyy"), new DecimalFormat("#,##0")));
+        if (plot.getRenderer(1) instanceof XYLineAndShapeRenderer renderer) {
             for (int i = 0; i < dataset.getSeriesCount(); i++) {
                 String name = String.valueOf(dataset.getSeriesKey(i));
-                boolean isTotal = "Total".equals(name);
                 renderer.setSeriesPaint(i, TrackerChartFactory.colorFor(name, dark));
-                renderer.setSeriesStroke(i, isTotal ? TOTAL_STROKE
-                        : TrackerChartFactory.isDashed(name) ? DASHED_STROKE : SOLID_STROKE);
-                renderer.setSeriesShapesVisible(i, true);
+                renderer.setSeriesStroke(i, strokeFor(name));
+                renderer.setSeriesShapesVisible(i, dataset.getItemCount(i) == 1);
                 renderer.setSeriesShapesFilled(i, true);
                 renderer.setSeriesShape(i, POINT_MARKER);
             }
         }
+        plot.setFixedLegendItems(legendItems(dark));
 
         TimeSeries totalSeries = null;
         for (int i = 0; i < dataset.getSeriesCount(); i++) {
@@ -383,6 +427,56 @@ public final class TrackerPanel extends javax.swing.JPanel {
         } else {
             plot.setDataset(0, null);
         }
+        if (newData) {
+            plot.getDomainAxis().setAutoRange(true);
+            plot.getRangeAxis().setAutoRange(true);
+            if (!snapshots.isEmpty()) {
+                hoverOverlay.startReveal();
+            }
+        } else {
+            timeNavigator.fitValues();
+        }
+    }
+
+    private static Stroke strokeFor(String seriesName) {
+        if ("Total".equals(seriesName)) {
+            return TOTAL_STROKE;
+        }
+        return TrackerChartFactory.isDashed(seriesName) ? DASHED_STROKE : SOLID_STROKE;
+    }
+
+    private LegendItemCollection legendItems(boolean dark) {
+        Color labelColor = javax.swing.UIManager.getColor("Label.foreground");
+        LegendItemCollection items = new LegendItemCollection();
+        for (String name : TrackerChartFactory.SERIES_NAMES) {
+            boolean shown = seriesCheckBoxes.get(name).isSelected();
+            Color color = shown ? TrackerChartFactory.colorFor(name, dark) : HIDDEN_SERIES_COLOR;
+            LegendItem item = new LegendItem(name, null, shown ? "Click to hide" : "Click to show", null,
+                    true, LEGEND_DOT, true, color, false, color, SOLID_STROKE,
+                    true, LEGEND_LINE, strokeFor(name), color);
+            item.setLabelPaint(shown ? labelColor : HIDDEN_SERIES_COLOR);
+            item.setSeriesKey(name);
+            items.add(item);
+        }
+        return items;
+    }
+
+    private void toggleSeries(String seriesName) {
+        JCheckBox checkBox = seriesCheckBoxes.get(seriesName);
+        if (checkBox != null) {
+            checkBox.setSelected(!checkBox.isSelected());
+            reloadChart();
+        }
+    }
+
+    private void updateHover(MouseEvent e) {
+        XYPlot plot = chartPanel.getChart().getXYPlot();
+        if (!(plot.getDataset(1) instanceof TimeSeriesCollection dataset) || dataset.getSeriesCount() == 0) {
+            hoverOverlay.clearHover();
+            return;
+        }
+        nearestItem(plot, dataset, e.getPoint(), Double.MAX_VALUE).ifPresentOrElse(
+                item -> hoverOverlay.hover(item, e.getY()), hoverOverlay::clearHover);
     }
 
     private void showPointMenu(MouseEvent e) {
@@ -390,10 +484,11 @@ public final class TrackerPanel extends javax.swing.JPanel {
         if (!(plot.getDataset(1) instanceof TimeSeriesCollection dataset) || dataset.getSeriesCount() == 0) {
             return;
         }
-        OptionalInt item = nearestItem(plot, dataset, e.getPoint());
+        OptionalInt item = nearestItem(plot, dataset, e.getPoint(), POINT_PICK_RADIUS_PX);
         if (item.isEmpty()) {
             return;
         }
+        hoverOverlay.clearHover();
         Instant point = Instant.ofEpochMilli(dataset.getSeries(0).getTimePeriod(item.getAsInt()).getFirstMillisecond());
         List<TrackerSnapshot> snapshots = TrackerChartFactory.snapshotsAtPoint(shownSnapshots, point);
         if (snapshots.isEmpty()) {
@@ -424,13 +519,13 @@ public final class TrackerPanel extends javax.swing.JPanel {
         menu.show(chartPanel, e.getX(), e.getY());
     }
 
-    private OptionalInt nearestItem(XYPlot plot, TimeSeriesCollection dataset, Point2D mouse) {
+    private OptionalInt nearestItem(XYPlot plot, TimeSeriesCollection dataset, Point2D mouse, double maxDistance) {
         Rectangle2D dataArea = chartPanel.getScreenDataArea();
         if (!dataArea.contains(mouse)) {
             return OptionalInt.empty();
         }
         int nearest = -1;
-        double nearestDistance = POINT_PICK_RADIUS_PX;
+        double nearestDistance = maxDistance;
         for (int i = 0; i < dataset.getItemCount(0); i++) {
             double x = plot.getDomainAxis().valueToJava2D(dataset.getXValue(0, i), dataArea,
                     plot.getDomainAxisEdge());
