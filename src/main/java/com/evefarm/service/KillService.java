@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -32,6 +33,7 @@ public final class KillService {
     private final KillDao killDao;
     private final EncounterDao encounterDao;
     private final NpcCatalogService npcCatalogService;
+    private final List<Runnable> logChangeListeners = new CopyOnWriteArrayList<>();
 
     public KillService(SettingsDao settingsDao, CharacterDao characterDao, KillDao killDao,
                        EncounterDao encounterDao, NpcCatalogService npcCatalogService) {
@@ -48,12 +50,20 @@ public final class KillService {
                 ? AppPaths.defaultGameLogDirectory() : Paths.get(configured);
     }
 
-    public void refreshKillsFromLogs() {
+    public void addLogChangeListener(Runnable listener) {
+        logChangeListeners.add(listener);
+    }
+
+    public boolean hasGameLogDirectory() {
+        return Files.isDirectory(gameLogDirectory());
+    }
+
+    public synchronized boolean refreshKillsFromLogs() {
         Path directory = gameLogDirectory();
         if (!Files.isDirectory(directory)) {
             LOG.warning("Gamelog directory not found: " + directory
                     + " - check the path in Settings if this looks wrong");
-            return;
+            return false;
         }
 
         Set<Long> knownCharacterIds = new HashSet<>();
@@ -61,26 +71,33 @@ public final class KillService {
             knownCharacterIds.add(character.characterId());
         }
         if (knownCharacterIds.isEmpty()) {
-            return;
+            return false;
         }
 
         npcCatalogService.refreshIfStale();
         NpcCatalog catalog = npcCatalogService.catalog();
 
+        boolean changed = false;
         try (DirectoryStream<Path> files = Files.newDirectoryStream(directory, "*.txt")) {
             for (Path file : files) {
-                scanFile(file, knownCharacterIds, catalog);
+                changed |= scanFile(file, knownCharacterIds, catalog);
             }
         } catch (IOException e) {
             LOG.log(Level.WARNING, "Failed to list Gamelog directory " + directory, e);
         }
+        if (changed) {
+            for (Runnable listener : logChangeListeners) {
+                listener.run();
+            }
+        }
+        return changed;
     }
 
-    private void scanFile(Path file, Set<Long> knownCharacterIds, NpcCatalog catalog) {
+    private boolean scanFile(Path file, Set<Long> knownCharacterIds, NpcCatalog catalog) {
         String fileName = file.getFileName().toString();
         Optional<Long> characterId = GameLogKillParser.extractCharacterId(fileName);
         if (characterId.isEmpty() || !knownCharacterIds.contains(characterId.get())) {
-            return;
+            return false;
         }
 
         try {
@@ -88,7 +105,7 @@ public final class KillService {
             Optional<KillDao.LogFileProgress> progress = killDao.findProgress(fileName);
             if (progress.isPresent() && progress.get().size() == currentSize
                     && progress.get().parserVersion() >= GameLogKillParser.PARSER_VERSION) {
-                return;
+                return false;
             }
 
             List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
@@ -99,8 +116,10 @@ public final class KillService {
             }
             encounterDao.replaceForLogFile(characterId.get(), fileName, parsed.encounters());
             killDao.saveProgress(fileName, currentSize, GameLogKillParser.PARSER_VERSION);
+            return true;
         } catch (IOException e) {
             LOG.log(Level.WARNING, "Failed to read Gamelog file " + file, e);
+            return false;
         }
     }
 

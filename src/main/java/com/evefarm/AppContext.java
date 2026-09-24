@@ -48,6 +48,7 @@ import com.evefarm.service.EntityNameCacheService;
 import com.evefarm.service.IndustryJobService;
 import com.evefarm.service.ItemIconService;
 import com.evefarm.service.JournalService;
+import com.evefarm.service.BeltKillMilestoneService;
 import com.evefarm.service.KillService;
 import com.evefarm.service.NpcCatalogService;
 import com.evefarm.service.OfficerService;
@@ -104,6 +105,7 @@ public final class AppContext {
     public final LoyaltyPointService loyaltyPointService;
     public final NpcCatalogService npcCatalogService;
     public final KillService killService;
+    public final BeltKillMilestoneService beltKillMilestoneService;
     public final OfficerService officerService;
     public final KillsReportService killsReportService;
     public final AgentImportService agentImportService;
@@ -169,6 +171,7 @@ public final class AppContext {
         this.npcCatalogService = new NpcCatalogService(fuzzworkApi, new NpcTypeDao(database), itemTypeDao,
                 settingsDao, killDao);
         this.killService = new KillService(settingsDao, characterDao, killDao, encounterDao, npcCatalogService);
+        this.beltKillMilestoneService = new BeltKillMilestoneService(killDao, settingsDao, npcCatalogService);
         this.officerService = new OfficerService(encounterDao, officerDao, walletJournalDao, itemTypeDao,
                 npcCatalogService, priceService, universeApi);
         this.killsReportService = new KillsReportService();
@@ -193,6 +196,6 @@ public final class AppContext {
         this.updateService = new UpdateService(settingsDao);
         this.updateInstaller = new UpdateInstaller(backupRestoreService);
         this.schedulerService = new SchedulerService(authService, characterService, priceService, assetService,
-                trackerSnapshotService, settingsDao, updateCooldownDao, backupRestoreService);
+                trackerSnapshotService, settingsDao, updateCooldownDao, backupRestoreService, killService);
     }
 }

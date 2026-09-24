@@ -15,7 +15,6 @@ public record OfficerSighting(
         Instant fightStartedAt,
         Instant fightEndedAt,
         int escortKills,
-        int escortTypes,
         double dropValue,
         String belt,
         String notes,
@@ -31,13 +30,13 @@ public record OfficerSighting(
 
     public OfficerSighting withOfficerGroup(String group) {
         return new OfficerSighting(encounterId, characterId, characterName, officerName, group, firstSeenAt,
-                killedAt, officerBounty, solarSystem, fightStartedAt, fightEndedAt, escortKills, escortTypes,
+                killedAt, officerBounty, solarSystem, fightStartedAt, fightEndedAt, escortKills,
                 dropValue, belt, notes, payout);
     }
 
     public OfficerSighting withPayout(JournalPayout newPayout) {
         return new OfficerSighting(encounterId, characterId, characterName, officerName, officerGroup, firstSeenAt,
-                killedAt, officerBounty, solarSystem, fightStartedAt, fightEndedAt, escortKills, escortTypes,
+                killedAt, officerBounty, solarSystem, fightStartedAt, fightEndedAt, escortKills,
                 dropValue, belt, notes, newPayout);
     }
 }

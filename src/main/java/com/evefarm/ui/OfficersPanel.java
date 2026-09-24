@@ -258,8 +258,8 @@ public final class OfficersPanel extends JPanel {
             return;
         }
         if (sightings.isEmpty()) {
-            summaryLabel.setText("No officers in your Gamelogs yet. After a hunt, click Scan Gamelogs "
-                    + "(Update > NPC Kills does the same).");
+            summaryLabel.setText("No officers in your Gamelogs yet. New kills show up here within 10 minutes; "
+                    + "Scan Gamelogs checks right away.");
             return;
         }
         long killed = sightings.stream().filter(OfficerSighting::killed).count();

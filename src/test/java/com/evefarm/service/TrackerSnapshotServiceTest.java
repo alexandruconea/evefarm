@@ -102,7 +102,7 @@ class TrackerSnapshotServiceTest {
         when(markets.listCharacterOrders(42L, "token")).thenReturn(List.of());
         when(contracts.listContracts(42L, "token")).thenReturn(List.of());
         when(industry.listActiveJobs(42L, "token")).thenReturn(List.of());
-        when(skills.getSkills(42L, "token")).thenReturn(new SkillsDto(0, List.of()));
+        when(skills.getSkills(42L, "token")).thenReturn(new SkillsDto(0));
         when(filters.find(42L)).thenReturn(new SkillPointFilter(42L, false, 0));
         when(settings.getOrDefault(SettingsDao.LP_STORE_FAVORITE_CORPORATION_ID, "")).thenReturn("");
         return new TrackerSnapshotService(auth, wallet, clones, markets, contracts, industry, skills,

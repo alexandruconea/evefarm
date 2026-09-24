@@ -48,7 +48,7 @@ class AuthServiceTest {
             return Optional.of(stored.get());
         });
         when(sso.refreshAccessToken(any(), eq("old-refresh")))
-                .thenReturn(new TokenResponse("new-access", "new-refresh", 3600, "Bearer"));
+                .thenReturn(new TokenResponse("new-access", "new-refresh", 3600));
         doAnswer(invocation -> {
             stored.set(new TokenRecord(characterId, invocation.getArgument(1), invocation.getArgument(2),
                     invocation.getArgument(3)));

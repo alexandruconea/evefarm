@@ -61,7 +61,7 @@ public final class SkillPointFilterDialog extends JDialog {
             row.add(enabledBox);
 
             JSpinner minimumSpinner = new JSpinner(
-                    new SpinnerNumberModel((long) filter.minimumSp(), 0L, 2_000_000_000L, 500_000L));
+                    new SpinnerNumberModel(filter.minimumSp(), 0L, 2_000_000_000L, 500_000L));
             row.add(minimumSpinner);
 
             enabledBoxes.put(character.characterId(), enabledBox);

@@ -15,6 +15,8 @@ public final class DateUtil {
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
     private static final DateTimeFormatter EVE_TIME_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneOffset.UTC);
+    private static final DateTimeFormatter EVE_MINUTE_FORMAT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneOffset.UTC);
     private static final DateTimeFormatter EVE_CLOCK_FORMAT =
             DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneOffset.UTC);
 
@@ -28,6 +30,10 @@ public final class DateUtil {
 
     public static String formatEveTime(Instant instant) {
         return instant == null ? "" : EVE_TIME_FORMAT.format(instant);
+    }
+
+    public static String formatEveMinute(Instant instant) {
+        return instant == null ? "" : EVE_MINUTE_FORMAT.format(instant);
     }
 
     public static String formatEveClock(Instant instant) {

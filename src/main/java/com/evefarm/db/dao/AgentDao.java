@@ -112,17 +112,4 @@ public final class AgentDao {
             return result;
         }
     }
-
-    public int count() {
-        String sql = "SELECT COUNT(*) AS total FROM sde_agent";
-        synchronized (database) {
-            Connection connection = database.connection();
-            try (PreparedStatement ps = connection.prepareStatement(sql);
-                 ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? rs.getInt("total") : 0;
-            } catch (SQLException e) {
-                throw new IllegalStateException("Failed to count agents", e);
-            }
-        }
-    }
 }

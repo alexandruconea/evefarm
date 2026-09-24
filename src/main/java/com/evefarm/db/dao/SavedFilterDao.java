@@ -74,18 +74,4 @@ public final class SavedFilterDao {
             }
         }
     }
-
-    public void delete(String panelKey, String name) {
-        String sql = "DELETE FROM saved_table_filter WHERE panel_key = ? AND name = ?";
-        synchronized (database) {
-            Connection connection = database.connection();
-            try (PreparedStatement ps = connection.prepareStatement(sql)) {
-                ps.setString(1, panelKey);
-                ps.setString(2, name);
-                ps.executeUpdate();
-            } catch (SQLException e) {
-                throw new IllegalStateException("Failed to delete saved filter '" + name + "' for " + panelKey, e);
-            }
-        }
-    }
 }

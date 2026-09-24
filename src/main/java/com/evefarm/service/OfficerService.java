@@ -5,6 +5,7 @@ import com.evefarm.db.dao.ItemTypeDao;
 import com.evefarm.db.dao.OfficerDao;
 import com.evefarm.db.dao.WalletJournalDao;
 import com.evefarm.esi.UniverseApi;
+import com.evefarm.model.EncounterSummary;
 import com.evefarm.model.ItemType;
 import com.evefarm.model.JournalPayout;
 import com.evefarm.model.OfficerDrop;
@@ -12,6 +13,7 @@ import com.evefarm.model.OfficerSighting;
 import com.evefarm.model.ParsedEncounter;
 import com.evefarm.model.SpawnClass;
 import com.evefarm.model.SpawnMember;
+import com.evefarm.model.SpawnRow;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -27,6 +29,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public final class OfficerService {
 
@@ -112,6 +115,45 @@ public final class OfficerService {
             parts.add(entry.getValue() + "× " + name);
         }
         return String.join(", ", parts);
+    }
+
+    public List<SpawnRow> listAllSpawns() {
+        NpcCatalog catalog = npcCatalogService.catalog();
+        List<SpawnRow> rows = new ArrayList<>();
+        for (EncounterSummary encounter : encounterDao.listEncounterSummaries()) {
+            int killed = 0;
+            double bounty = 0;
+            SpawnClass strongest = SpawnClass.OTHER;
+            boolean missions = false;
+            List<ParsedEncounter.Npc> killedNpcs = new ArrayList<>();
+            for (ParsedEncounter.Npc npc : encounter.npcs()) {
+                killed += npc.kills();
+                bounty += npc.bounty();
+                SpawnClass spawnClass = catalog.spawnClassOf(npc.name());
+                if (spawnClass.ordinal() > strongest.ordinal()) {
+                    strongest = spawnClass;
+                }
+                if (catalog.factionLabelFor(npc.name()).filter(NpcCatalog.MISSIONS_LABEL::equals).isPresent()) {
+                    missions = true;
+                }
+                if (npc.kills() > 0) {
+                    killedNpcs.add(npc);
+                }
+            }
+            if (killed == 0) {
+                continue;
+            }
+            killedNpcs.sort(Comparator.comparingInt(ParsedEncounter.Npc::kills).reversed()
+                    .thenComparing(ParsedEncounter.Npc::name));
+            String composition = killedNpcs.stream()
+                    .map(npc -> npc.kills() + "× " + npc.name())
+                    .collect(Collectors.joining(", "));
+            String kind = strongest != SpawnClass.OTHER ? strongest.toString()
+                    : missions ? NpcCatalog.MISSIONS_LABEL : "Other";
+            rows.add(new SpawnRow(encounter.encounterId(), encounter.characterName(), encounter.startedAt(),
+                    encounter.endedAt(), encounter.solarSystem(), kind, killed, bounty, composition));
+        }
+        return rows;
     }
 
     public List<SpawnMember> listSpawn(long encounterId) {

@@ -15,7 +15,6 @@ public record FuzzworkAggregateDto(
             @JsonProperty("min") String min,
             @JsonProperty("median") String median,
             @JsonProperty("volume") String volume,
-            @JsonProperty("orderCount") String orderCount,
             @JsonProperty("percentile") String percentile
     ) {
     }

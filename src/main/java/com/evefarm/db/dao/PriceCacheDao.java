@@ -27,29 +27,6 @@ public final class PriceCacheDao {
         this.database = database;
     }
 
-    public OptionalDouble findUnitPrice(int typeId) {
-        String sql = "SELECT average_price, adjusted_price FROM price_cache WHERE type_id = ?";
-        synchronized (database) {
-            Connection connection = database.connection();
-            try (PreparedStatement ps = connection.prepareStatement(sql)) {
-                ps.setInt(1, typeId);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (!rs.next()) {
-                        return OptionalDouble.empty();
-                    }
-                    double average = rs.getDouble("average_price");
-                    if (!rs.wasNull() && average > 0) {
-                        return OptionalDouble.of(average);
-                    }
-                    double adjusted = rs.getDouble("adjusted_price");
-                    return rs.wasNull() ? OptionalDouble.empty() : OptionalDouble.of(adjusted);
-                }
-            } catch (SQLException e) {
-                throw new IllegalStateException("Failed to read price_cache for " + typeId, e);
-            }
-        }
-    }
-
     public OptionalDouble findUnitPrice(int typeId, PriceMode mode) {
         String sql = """
                 SELECT average_price, adjusted_price, sell_max, sell_avg, sell_median,
@@ -259,25 +236,6 @@ public final class PriceCacheDao {
             }
         }
         return 0;
-    }
-
-    public Map<Integer, Double> findAll() {
-        synchronized (database) {
-            Map<Integer, Double> result = new HashMap<>();
-            Connection connection = database.connection();
-            try (PreparedStatement ps = connection.prepareStatement(
-                    "SELECT type_id, average_price, adjusted_price FROM price_cache");
-                 ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    double average = rs.getDouble("average_price");
-                    double value = average > 0 ? average : rs.getDouble("adjusted_price");
-                    result.put(rs.getInt("type_id"), value);
-                }
-            } catch (SQLException e) {
-                throw new IllegalStateException("Failed to read price_cache", e);
-            }
-            return result;
-        }
     }
 
     public Map<Integer, Double> findAllSellVolumes() {

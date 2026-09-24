@@ -54,7 +54,7 @@ public final class TypeNameCacheService {
         List<CompletableFuture<Void>> futures = missing.stream()
                 .map(id -> CompletableFuture.runAsync(() -> fetchAndCache(id), executor))
                 .toList();
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture<?>[0])).join();
     }
 
     private TypeInfo fetchAndCache(int typeId) {

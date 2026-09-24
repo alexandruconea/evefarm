@@ -33,7 +33,7 @@ class GameLogKillParserTest {
                 "[ 2026.09.22 07:53:00 ] (notify) Mjolnir Rage Rocket deactivates as the item it was targeted at is no longer present."
         );
 
-        List<ParsedKill> kills = GameLogKillParser.parseKills(lines);
+        List<ParsedKill> kills = GameLogKillParser.parse(lines).kills();
 
         assertEquals(1, kills.size());
         assertEquals("Burner Hawk", kills.get(0).npcName());
@@ -48,7 +48,7 @@ class GameLogKillParserTest {
                 "[ 2026.09.22 06:44:48 ] (bounty) <font size=12><b><color=0xff00aa00>250,000 ISK</b><color=0x77ffffff> added to next bounty payout"
         );
 
-        List<ParsedKill> kills = GameLogKillParser.parseKills(lines);
+        List<ParsedKill> kills = GameLogKillParser.parse(lines).kills();
 
         assertEquals(1, kills.size());
         assertEquals("Mercenary Overlord", kills.get(0).npcName());
@@ -63,7 +63,7 @@ class GameLogKillParserTest {
                 "[ 2026.09.22 05:12:04 ] (bounty) <font size=12><b><color=0xff00aa00>5,000,000 ISK</b><color=0x77ffffff> added to next bounty payout"
         );
 
-        List<ParsedKill> kills = GameLogKillParser.parseKills(lines);
+        List<ParsedKill> kills = GameLogKillParser.parse(lines).kills();
 
         assertEquals(1, kills.size());
         assertEquals("Burner Worm", kills.get(0).npcName());
@@ -76,7 +76,7 @@ class GameLogKillParserTest {
                 "[ 2026.09.22 05:20:15 ] (bounty) <font size=12><b><color=0xff00aa00>1,000,000 ISK</b><color=0x77ffffff> added to next bounty payout"
         );
 
-        List<ParsedKill> kills = GameLogKillParser.parseKills(lines);
+        List<ParsedKill> kills = GameLogKillParser.parse(lines).kills();
 
         assertEquals(1, kills.size());
         assertEquals("Sansha's Demon", kills.get(0).npcName());
@@ -89,7 +89,7 @@ class GameLogKillParserTest {
                 "[ 2026.09.22 05:12:04 ] (bounty) <font size=12><b><color=0xff00aa00>5,000,000 ISK</b><color=0x77ffffff> added to next bounty payout"
         );
 
-        assertTrue(GameLogKillParser.parseKills(lines).isEmpty());
+        assertTrue(GameLogKillParser.parse(lines).kills().isEmpty());
     }
 
     @Test
@@ -100,7 +100,7 @@ class GameLogKillParserTest {
                 "[ 2026.09.22 07:52:59 ] (bounty) <font size=12><b><color=0xff00aa00>5,000,000 ISK</b><color=0x77ffffff> added to next bounty payout"
         );
 
-        List<ParsedKill> kills = GameLogKillParser.parseKills(lines);
+        List<ParsedKill> kills = GameLogKillParser.parse(lines).kills();
 
         assertEquals(1, kills.size());
         assertEquals("TXW-EI", kills.get(0).solarSystem());
@@ -114,7 +114,7 @@ class GameLogKillParserTest {
                 "[ 2026.09.22 07:52:59 ] (bounty) <font size=12><b><color=0xff00aa00>5,000,000 ISK</b><color=0x77ffffff> added to next bounty payout"
         );
 
-        List<ParsedKill> kills = GameLogKillParser.parseKills(lines);
+        List<ParsedKill> kills = GameLogKillParser.parse(lines).kills();
 
         assertEquals(1, kills.size());
         assertEquals("Thashkarai", kills.get(0).solarSystem());
@@ -127,7 +127,7 @@ class GameLogKillParserTest {
                 "[ 2026.09.22 07:52:59 ] (bounty) <font size=12><b><color=0xff00aa00>5,000,000 ISK</b><color=0x77ffffff> added to next bounty payout"
         );
 
-        List<ParsedKill> kills = GameLogKillParser.parseKills(lines);
+        List<ParsedKill> kills = GameLogKillParser.parse(lines).kills();
 
         assertEquals(1, kills.size());
         assertEquals(null, kills.get(0).solarSystem());
@@ -162,7 +162,7 @@ class GameLogKillParserTest {
                 "[ 2026.09.22 07:52:59 ] (bounty) <font size=12><b><color=0xff00aa00>5,000,000 ISK</b><color=0x77ffffff> added to next bounty payout"
         );
 
-        assertEquals(5_000_000d, GameLogKillParser.parseKills(lines).get(0).bounty());
+        assertEquals(5_000_000d, GameLogKillParser.parse(lines).kills().get(0).bounty());
     }
 
     @Test
@@ -253,7 +253,7 @@ class GameLogKillParserTest {
                 "[ 2026.09.22 07:52:59 ] (bounty) <font size=12><b><color=0xff00aa00>5,000,000 ISK</b><color=0x77ffffff> added to next bounty payout"
         );
 
-        List<ParsedKill> kills = GameLogKillParser.parseKills(lines);
+        List<ParsedKill> kills = GameLogKillParser.parse(lines).kills();
 
         assertEquals(1, kills.size());
         assertEquals("Asteroid Sansha's Nation Officer", kills.get(0).npcName());

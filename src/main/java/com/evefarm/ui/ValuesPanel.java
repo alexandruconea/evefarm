@@ -21,7 +21,9 @@ public final class ValuesPanel extends javax.swing.JPanel {
     }
 
     private void postInit() {
-        columnsContainer.setLayout(new GridLayout(1, 2, 12, 0));
+        columnsContainer.setLayout(new GridLayout(1, 2, 20, 0));
+        columnsContainer.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        columnsScrollPane.setBorder(javax.swing.BorderFactory.createEmptyBorder());
         columnsContainer.add(grandTotalColumn);
         columnsContainer.add(characterColumn);
 

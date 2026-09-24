@@ -11,6 +11,7 @@ import java.util.Optional;
 public final class SettingsDao {
 
     public static final String LAF_THEME = "laf_theme";
+    public static final String DEFAULT_LAF_THEME = "system";
     public static final String SNAPSHOT_INTERVAL_MINUTES = "snapshot_interval_minutes";
     public static final String PRICE_PROVIDER = "price_provider";
     public static final String JANICE_API_KEY = "janice_api_key";
@@ -26,6 +27,7 @@ public final class SettingsDao {
     public static final String AGENTS_LAST_IMPORTED_AT = "agents_last_imported_at";
     public static final String NPC_CATALOG_IMPORTED_AT = "npc_catalog_imported_at";
     public static final String BACKUP_COPY_DIRECTORY = "backup_copy_directory";
+    public static final String BELT_KILL_MILESTONE = "belt_kill_milestone";
     public static final String UPDATE_AUTO_CHECK = "update_auto_check";
     public static final String UPDATE_SKIPPED_VERSION = "update_skipped_version";
     public static final String LAST_RUN_VERSION = "last_run_version";

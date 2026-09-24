@@ -31,6 +31,7 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.io.File;
 import java.net.URI;
+import java.util.List;
 
 public final class SettingsDialog extends JDialog {
 
@@ -39,8 +40,8 @@ public final class SettingsDialog extends JDialog {
     private static final int BACKUP_NOTE_WIDTH = 520;
 
     private final SettingsDao settingsDao;
-    private final JComboBox<String> themeCombo = new JComboBox<>(new String[]{
-            "flatlaf-light", "flatlaf-dark", "system"});
+    private static final List<String> THEME_KEYS = List.of("system", "flatlaf-dark");
+    private final JComboBox<String> themeCombo = new JComboBox<>(new String[]{"Windows", "Dark"});
     private final JComboBox<String> priceProviderCombo = new JComboBox<>(new String[]{
             "CCP (ESI, global average)", "Fuzzwork (Jita 4-4 sell price)", "Janice (Jita 4-4, requires API key)"});
     private final JPasswordField janiceApiKeyField = new JPasswordField();
@@ -204,7 +205,8 @@ public final class SettingsDialog extends JDialog {
     }
 
     private void loadCurrentValues() {
-        themeCombo.setSelectedItem(settingsDao.getOrDefault(SettingsDao.LAF_THEME, "flatlaf-light"));
+        themeCombo.setSelectedIndex(Math.max(0,
+                THEME_KEYS.indexOf(settingsDao.getOrDefault(SettingsDao.LAF_THEME, SettingsDao.DEFAULT_LAF_THEME))));
         String provider = settingsDao.getOrDefault(SettingsDao.PRICE_PROVIDER, PriceService.PROVIDER_CCP);
         priceProviderCombo.setSelectedIndex(providerIndex(provider));
         janiceApiKeyField.setText(TokenCipher.decrypt(settingsDao.getOrDefault(SettingsDao.JANICE_API_KEY, "")));
@@ -244,7 +246,7 @@ public final class SettingsDialog extends JDialog {
     }
 
     private void save() {
-        settingsDao.set(SettingsDao.LAF_THEME, (String) themeCombo.getSelectedItem());
+        settingsDao.set(SettingsDao.LAF_THEME, THEME_KEYS.get(themeCombo.getSelectedIndex()));
         String provider = switch (priceProviderCombo.getSelectedIndex()) {
             case 1 -> PriceService.PROVIDER_FUZZWORK;
             case 2 -> PriceService.PROVIDER_JANICE;

@@ -1,6 +1,7 @@
 package com.evefarm.db.dao;
 
 import com.evefarm.db.Database;
+import com.evefarm.model.EncounterSummary;
 import com.evefarm.model.JournalPayout;
 import com.evefarm.model.OfficerSighting;
 import com.evefarm.model.ParsedEncounter;
@@ -12,7 +13,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -99,8 +102,6 @@ public final class EncounterDao {
                        n.npc_name, n.first_seen_at, n.bounty, n.last_kill_at,
                        (SELECT COALESCE(SUM(o.kills), 0) FROM combat_encounter_npc o
                          WHERE o.encounter_id = e.id AND o.npc_name <> n.npc_name) AS escort_kills,
-                       (SELECT COUNT(*) FROM combat_encounter_npc o
-                         WHERE o.encounter_id = e.id AND o.npc_name <> n.npc_name) AS escort_types,
                        (SELECT COALESCE(SUM(d.quantity * d.unit_price), 0) FROM officer_drop d
                          WHERE d.character_id = e.character_id AND d.officer_name = n.npc_name
                            AND d.first_seen_at = n.first_seen_at) AS drop_value,
@@ -140,7 +141,6 @@ public final class EncounterDao {
                                 Instant.parse(rs.getString("started_at")),
                                 Instant.parse(rs.getString("ended_at")),
                                 rs.getInt("escort_kills"),
-                                rs.getInt("escort_types"),
                                 rs.getDouble("drop_value"),
                                 rs.getString("belt"),
                                 rs.getString("notes"),
@@ -151,6 +151,50 @@ public final class EncounterDao {
                 throw new IllegalStateException("Failed to list officer sightings", e);
             }
             return result;
+        }
+    }
+
+    public List<EncounterSummary> listEncounterSummaries() {
+        String sql = """
+                SELECT e.id, e.character_id, c.character_name, e.started_at, e.ended_at, e.solar_system,
+                       n.npc_name, n.first_seen_at, n.last_seen_at, n.kills, n.bounty, n.last_kill_at,
+                       n.damage_dealt, n.damage_taken
+                FROM combat_encounter e
+                JOIN characters c ON c.character_id = e.character_id
+                LEFT JOIN combat_encounter_npc n ON n.encounter_id = e.id
+                WHERE c.removed_at IS NULL
+                ORDER BY e.started_at DESC, e.id DESC, n.first_seen_at, n.npc_name
+                """;
+        synchronized (database) {
+            Map<Long, EncounterSummary> byId = new LinkedHashMap<>();
+            try (Statement statement = database.connection().createStatement();
+                 ResultSet rs = statement.executeQuery(sql)) {
+                while (rs.next()) {
+                    long id = rs.getLong("id");
+                    EncounterSummary summary = byId.get(id);
+                    if (summary == null) {
+                        summary = new EncounterSummary(id, rs.getLong("character_id"), rs.getString("character_name"),
+                                Instant.parse(rs.getString("started_at")), Instant.parse(rs.getString("ended_at")),
+                                rs.getString("solar_system"), new ArrayList<>());
+                        byId.put(id, summary);
+                    }
+                    String npcName = rs.getString("npc_name");
+                    if (npcName != null) {
+                        summary.npcs().add(new ParsedEncounter.Npc(
+                                npcName,
+                                Instant.parse(rs.getString("first_seen_at")),
+                                Instant.parse(rs.getString("last_seen_at")),
+                                rs.getInt("kills"),
+                                rs.getDouble("bounty"),
+                                parseInstant(rs.getString("last_kill_at")),
+                                rs.getLong("damage_dealt"),
+                                rs.getLong("damage_taken")));
+                    }
+                }
+            } catch (SQLException e) {
+                throw new IllegalStateException("Failed to list fights", e);
+            }
+            return new ArrayList<>(byId.values());
         }
     }
 

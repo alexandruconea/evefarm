@@ -59,7 +59,7 @@ class LocationNameCacheServiceTest {
     @Test
     void structuresUseTheAuthenticatedStructureEndpoint() {
         when(universe.getStructure(1_035_466_617_946L, "token"))
-                .thenReturn(new StructureDto("Keepstar", 1L, 30000142L, 35834));
+                .thenReturn(new StructureDto("Keepstar", 30000142L));
 
         assertEquals("Keepstar", service.resolveLocation(1_035_466_617_946L, "token"));
 

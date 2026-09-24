@@ -44,6 +44,7 @@ public final class MainFrame extends javax.swing.JFrame {
 
     private static final int FIRST_UPDATE_CHECK_DELAY_MILLIS = 30_000;
     private static final int UPDATE_CHECK_INTERVAL_MILLIS = 24 * 60 * 60 * 1000;
+    private static final int NOTIFICATION_TRAY_MILLIS = 20_000;
 
     private final AppContext appContext;
     private final Map<String, TabSpec> tabSpecs = new LinkedHashMap<>();
@@ -163,6 +164,50 @@ public final class MainFrame extends javax.swing.JFrame {
         }
 
         setupUpdates();
+        setupBeltKillAlerts();
+    }
+
+    private void setupBeltKillAlerts() {
+        Runnable check = () -> {
+            try {
+                appContext.beltKillMilestoneService.checkForNewMilestone().ifPresent(milestone ->
+                        SwingUtilities.invokeLater(() -> showTrayNotification("Belt hunting milestone",
+                                String.format("Your characters have killed %,d NPCs in asteroid belts.", milestone))));
+            } catch (Exception e) {
+                LOG.log(Level.WARNING, "Failed to check the belt kill milestone", e);
+            }
+        };
+        appContext.killService.addLogChangeListener(check);
+        Thread baseline = new Thread(check, "belt-kill-milestone");
+        baseline.setDaemon(true);
+        baseline.start();
+    }
+
+    private void showTrayNotification(String caption, String text) {
+        if (trayIcon == null) {
+            LOG.info(caption + ": " + text);
+            return;
+        }
+        SystemTray tray = SystemTray.getSystemTray();
+        boolean addedHere = !List.of(tray.getTrayIcons()).contains(trayIcon);
+        try {
+            if (addedHere) {
+                tray.add(trayIcon);
+            }
+            trayIcon.displayMessage(caption, text, TrayIcon.MessageType.INFO);
+        } catch (AWTException e) {
+            LOG.log(Level.WARNING, "Could not show the notification: " + text, e);
+            return;
+        }
+        if (addedHere) {
+            Timer removal = new Timer(NOTIFICATION_TRAY_MILLIS, e -> {
+                if (isVisible()) {
+                    tray.remove(trayIcon);
+                }
+            });
+            removal.setRepeats(false);
+            removal.start();
+        }
     }
 
     private void setupUpdates() {
@@ -186,6 +231,9 @@ public final class MainFrame extends javax.swing.JFrame {
         });
         jMenuBar1.add(Box.createHorizontalGlue());
         jMenuBar1.add(updateAvailableButton);
+        if (!(javax.swing.UIManager.getLookAndFeel() instanceof com.formdev.flatlaf.FlatLaf)) {
+            WindowChrome.install(this, jMenuBar1);
+        }
 
         announceIfJustUpdated();
         Thread cleanup = new Thread(UpdateInstaller::cleanUpAfterUpdate, "update-cleanup");
@@ -330,7 +378,9 @@ public final class MainFrame extends javax.swing.JFrame {
     }
 
     private void restoreFromTray() {
-        SystemTray.getSystemTray().remove(trayIcon);
+        if (trayIcon != null) {
+            SystemTray.getSystemTray().remove(trayIcon);
+        }
         setVisible(true);
         setExtendedState(getExtendedState() & ~JFrame.ICONIFIED);
         toFront();

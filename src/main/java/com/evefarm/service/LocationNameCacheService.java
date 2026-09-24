@@ -72,7 +72,7 @@ public final class LocationNameCacheService {
         List<CompletableFuture<Void>> futures = missing.stream()
                 .map(id -> CompletableFuture.runAsync(() -> resolveLocation(id, ownerAccessToken), executor))
                 .toList();
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture<?>[0])).join();
     }
 
     private String resolveStation(long locationId, String ownerAccessToken) {

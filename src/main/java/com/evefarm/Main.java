@@ -5,12 +5,16 @@ import com.evefarm.db.Database;
 import com.evefarm.db.MigrationRunner;
 import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.service.BackupRestoreService;
+import com.evefarm.ui.CompactMenuItemUI;
 import com.evefarm.ui.MainFrame;
 import com.evefarm.util.AppLogging;
 import com.evefarm.util.AppPaths;
 import com.evefarm.util.SingleInstance;
-import com.formdev.flatlaf.FlatLightLaf;
+import com.formdev.flatlaf.FlatLaf;
+import com.formdev.flatlaf.FlatDarkLaf;
 
+import javax.swing.JDialog;
+import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
@@ -76,7 +80,7 @@ public final class Main {
         AppContext appContext = new AppContext(database);
         appContext.tokenDao.migrateLegacyPlaintextTokens();
 
-        installLookAndFeel(appContext.settingsDao.getOrDefault(SettingsDao.LAF_THEME, "flatlaf-light"));
+        installLookAndFeel(appContext.settingsDao.getOrDefault(SettingsDao.LAF_THEME, SettingsDao.DEFAULT_LAF_THEME));
         appContext.schedulerService.start();
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -106,11 +110,16 @@ public final class Main {
 
     private static void installLookAndFeel(String theme) {
         try {
-            switch (theme) {
-                case "system" -> UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-                case "flatlaf-dark" -> UIManager.setLookAndFeel(new com.formdev.flatlaf.FlatDarkLaf());
-                default -> UIManager.setLookAndFeel(new FlatLightLaf());
+            FlatLaf.registerCustomDefaultsSource("com.evefarm.ui.theme");
+            if ("flatlaf-dark".equals(theme)) {
+                UIManager.setLookAndFeel(new FlatDarkLaf());
+            } else {
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+                CompactMenuItemUI.install();
             }
+            boolean flat = UIManager.getLookAndFeel() instanceof FlatLaf;
+            JFrame.setDefaultLookAndFeelDecorated(flat);
+            JDialog.setDefaultLookAndFeelDecorated(flat);
         } catch (Exception e) {
             LOG.log(Level.WARNING, "Failed to install look and feel '" + theme + "', falling back to default", e);
         }

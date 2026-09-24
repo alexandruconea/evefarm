@@ -15,7 +15,6 @@ import java.net.URI;
 import java.security.PublicKey;
 import java.security.interfaces.ECPublicKey;
 import java.security.interfaces.RSAPublicKey;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -80,8 +79,7 @@ public final class JwtValidator {
                 scopes.add(s);
             }
 
-            Instant expiresAt = decoded.getExpiresAtAsInstant();
-            return new CharacterIdentity(characterId, characterName, scopes, expiresAt, ownerHash);
+            return new CharacterIdentity(characterId, characterName, scopes, ownerHash);
         } catch (Exception e) {
             throw new IllegalStateException(describeFailure(e), e);
         }

@@ -396,6 +396,10 @@ public final class KillsPanel extends JPanel {
         reloadTable(reloadGeneration.incrementAndGet());
     }
 
+    void refreshKills() {
+        reloadTable();
+    }
+
     private void reloadTable(int generation) {
         Set<Long> characterIds = selectedCharacterIds();
         Set<String> factionLabels = selectedFactionLabels();

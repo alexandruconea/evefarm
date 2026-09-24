@@ -78,10 +78,6 @@ public final class GameLogKillParser {
     public record ParseResult(List<ParsedKill> kills, List<ParsedEncounter> encounters) {
     }
 
-    public static List<ParsedKill> parseKills(List<String> lines) {
-        return parse(lines).kills();
-    }
-
     public static ParseResult parse(List<String> lines) {
         List<ParsedKill> kills = new ArrayList<>();
         List<ParsedEncounter> encounters = new ArrayList<>();

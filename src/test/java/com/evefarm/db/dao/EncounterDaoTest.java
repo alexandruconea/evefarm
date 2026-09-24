@@ -57,7 +57,6 @@ class EncounterDaoTest {
         assertEquals(Instant.parse("2026-10-02T21:14:37Z"), sighting.killedAt());
         assertEquals(12_500_000d, sighting.officerBounty());
         assertEquals(3, sighting.escortKills());
-        assertEquals(2, sighting.escortTypes());
         assertEquals(3, encounterDao.listEncounterNpcs(sighting.encounterId()).size());
     }
 

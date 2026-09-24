@@ -57,10 +57,6 @@ public final class NpcCatalog {
         return byName.isEmpty();
     }
 
-    public int size() {
-        return nameByTypeId.size();
-    }
-
     public Optional<Entry> find(String npcName) {
         return Optional.ofNullable(byName.get(npcName));
     }

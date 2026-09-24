@@ -48,12 +48,22 @@ public final class FilterBarPanel extends JPanel {
         JButton loadButton = new JButton("Load...", Icons.LOAD);
         loadButton.addActionListener(e -> loadSavedFilter());
 
-        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
-        toolbar.add(com.evefarm.ui.ButtonSizing.row(4, addButton, clearButton, saveButton, loadButton));
+        for (JButton button : List.of(addButton, clearButton, saveButton, loadButton)) {
+            button.putClientProperty("JButton.buttonType", "toolBarButton");
+            button.setFocusable(false);
+        }
+        countLabel.putClientProperty("FlatLaf.styleClass", "small");
+        countLabel.setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 0));
+
+        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 2));
+        toolbar.add(addButton);
+        toolbar.add(clearButton);
+        toolbar.add(saveButton);
+        toolbar.add(loadButton);
         toolbar.add(countLabel);
 
         rowsPanel.setLayout(new BoxLayout(rowsPanel, BoxLayout.Y_AXIS));
-        setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+        setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
         add(toolbar, BorderLayout.NORTH);
         add(rowsPanel, BorderLayout.CENTER);
 

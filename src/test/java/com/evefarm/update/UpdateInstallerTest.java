@@ -202,7 +202,8 @@ class UpdateInstallerTest {
         UpdateInstaller.PreparedUpdate update = new UpdateInstaller.PreparedUpdate(VERSION, install,
                 install.resolveSibling("EVEFarm.update"));
 
-        ProcessBuilder swap = UpdateInstaller.swapProcess(script, update, temp.resolve("updater.log"), 42);
+        ProcessBuilder swap = UpdateInstaller.swapProcess(script, script.getParent(), update,
+                temp.resolve("updater.log"), 42);
 
         assertEquals(script.getParent().toFile(), swap.directory());
         assertFalse(swap.directory().toPath().startsWith(install));

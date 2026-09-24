@@ -19,6 +19,7 @@ public final class SchedulerService {
     private static final Logger LOG = Logger.getLogger(SchedulerService.class.getName());
     private static final int DEFAULT_SNAPSHOT_INTERVAL_MINUTES = 60;
     private static final Duration MIN_PRICE_REFRESH_INTERVAL = Duration.ofHours(1);
+    private static final int GAMELOG_SCAN_SECONDS = 600;
 
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "evefarm-scheduler");
@@ -27,6 +28,11 @@ public final class SchedulerService {
     });
     private final ScheduledExecutorService backupExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "evefarm-backup");
+        t.setDaemon(true);
+        return t;
+    });
+    private final ScheduledExecutorService gamelogExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "evefarm-gamelogs");
         t.setDaemon(true);
         return t;
     });
@@ -39,11 +45,12 @@ public final class SchedulerService {
     private final SettingsDao settingsDao;
     private final UpdateCooldownDao updateCooldownDao;
     private final BackupRestoreService backupRestoreService;
+    private final KillService killService;
 
     public SchedulerService(AuthService authService, CharacterService characterService, PriceService priceService,
                              AssetService assetService, TrackerSnapshotService trackerSnapshotService,
                              SettingsDao settingsDao, UpdateCooldownDao updateCooldownDao,
-                             BackupRestoreService backupRestoreService) {
+                             BackupRestoreService backupRestoreService, KillService killService) {
         this.authService = authService;
         this.characterService = characterService;
         this.priceService = priceService;
@@ -52,6 +59,7 @@ public final class SchedulerService {
         this.settingsDao = settingsDao;
         this.updateCooldownDao = updateCooldownDao;
         this.backupRestoreService = backupRestoreService;
+        this.killService = killService;
     }
 
     public void start() {
@@ -63,11 +71,13 @@ public final class SchedulerService {
                 .map(Integer::parseInt)
                 .orElse(DEFAULT_SNAPSHOT_INTERVAL_MINUTES);
         executor.scheduleWithFixedDelay(this::captureAllSnapshots, 1, intervalMinutes, TimeUnit.MINUTES);
+        gamelogExecutor.scheduleWithFixedDelay(this::scanGamelogs, 15, GAMELOG_SCAN_SECONDS, TimeUnit.SECONDS);
     }
 
     public void stop() {
         executor.shutdownNow();
         backupExecutor.shutdownNow();
+        gamelogExecutor.shutdownNow();
         try {
             if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
                 LOG.warning("Scheduler did not stop within 2s of shutdown - proceeding anyway");
@@ -75,13 +85,23 @@ public final class SchedulerService {
             if (!backupExecutor.awaitTermination(2, TimeUnit.SECONDS)) {
                 LOG.warning("Backup did not finish within 2s of shutdown - proceeding anyway");
             }
+            if (!gamelogExecutor.awaitTermination(2, TimeUnit.SECONDS)) {
+                LOG.warning("Gamelog scan did not finish within 2s of shutdown - proceeding anyway");
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
     }
 
-    public void triggerSnapshotNow() {
-        executor.execute(this::captureAllSnapshots);
+    void scanGamelogs() {
+        if (!killService.hasGameLogDirectory()) {
+            return;
+        }
+        try {
+            killService.refreshKillsFromLogs();
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Automatic Gamelog scan failed", e);
+        }
     }
 
     private void refreshTokens() {

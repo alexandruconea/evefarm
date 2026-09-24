@@ -76,11 +76,37 @@ class SchedulerServiceTest {
         verify(cooldowns).markRefreshed(UpdateCategories.TRACKER);
     }
 
+    @Test
+    void gamelogsAreScannedAutomaticallyWhenTheFolderExists() {
+        KillService kills = mock(KillService.class);
+        when(kills.hasGameLogDirectory()).thenReturn(true);
+
+        scheduler(kills).scanGamelogs();
+
+        verify(kills).refreshKillsFromLogs();
+    }
+
+    @Test
+    void theAutomaticScanStaysQuietWithoutAGamelogFolder() {
+        KillService kills = mock(KillService.class);
+        when(kills.hasGameLogDirectory()).thenReturn(false);
+
+        scheduler(kills).scanGamelogs();
+
+        verify(kills, never()).refreshKillsFromLogs();
+    }
+
+    private static SchedulerService scheduler(KillService kills) {
+        return new SchedulerService(mock(AuthService.class), mock(CharacterService.class), mock(PriceService.class),
+                mock(AssetService.class), mock(TrackerSnapshotService.class), mock(SettingsDao.class),
+                mock(UpdateCooldownDao.class), mock(BackupRestoreService.class), kills);
+    }
+
     private static SchedulerService scheduler(PriceService prices, CharacterService characters,
                                                AssetService assets, TrackerSnapshotService snapshots,
                                                UpdateCooldownDao cooldowns) {
         return new SchedulerService(mock(AuthService.class), characters, prices, assets, snapshots,
-                mock(SettingsDao.class), cooldowns, mock(BackupRestoreService.class));
+                mock(SettingsDao.class), cooldowns, mock(BackupRestoreService.class), mock(KillService.class));
     }
 
     private static EveCharacter character(long id) {

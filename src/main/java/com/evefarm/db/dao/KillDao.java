@@ -14,7 +14,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -101,6 +103,28 @@ public final class KillDao {
             } catch (SQLException e) {
                 throw new IllegalStateException("Failed to reset log progress", e);
             }
+        }
+    }
+
+    public Map<String, Long> countKillsByNpcName() {
+        String sql = """
+                SELECT k.npc_name, COUNT(*) AS kills
+                FROM character_kills k
+                JOIN characters c ON c.character_id = k.character_id
+                WHERE c.removed_at IS NULL
+                GROUP BY k.npc_name
+                """;
+        synchronized (database) {
+            Map<String, Long> result = new HashMap<>();
+            try (PreparedStatement ps = database.connection().prepareStatement(sql);
+                 ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    result.put(rs.getString("npc_name"), rs.getLong("kills"));
+                }
+            } catch (SQLException e) {
+                throw new IllegalStateException("Failed to count kills per NPC", e);
+            }
+            return result;
         }
     }
 

@@ -8,7 +8,6 @@ import java.util.Map;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record FuzzworkBlueprintDto(
-        @JsonProperty("requestedid") long requestedId,
         @JsonProperty("blueprintDetails") BlueprintDetails blueprintDetails,
         @JsonProperty("activityMaterials") Map<String, List<MaterialEntry>> activityMaterials
 ) {
@@ -18,7 +17,6 @@ public record FuzzworkBlueprintDto(
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record BlueprintDetails(
             @JsonProperty("productTypeID") Integer productTypeId,
-            @JsonProperty("productTypeName") String productTypeName,
             @JsonProperty("productQuantity") Integer productQuantity
     ) {
     }

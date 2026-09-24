@@ -62,7 +62,7 @@ public final class UpdateDialog extends JDialog {
         }
     }
 
-    private record RunResult(List<String> refreshedKeys, List<String> failures) {
+    private record RunResult(List<String> failures) {
     }
 
     private final AppContext appContext;
@@ -288,19 +288,17 @@ public final class UpdateDialog extends JDialog {
         new SwingWorker<RunResult, Void>() {
             @Override
             protected RunResult doInBackground() {
-                List<String> refreshed = new ArrayList<>();
                 List<String> failures = new ArrayList<>();
                 for (Category category : toRun) {
                     List<String> categoryFailures = new ArrayList<>();
                     category.action().accept(categoryFailures);
                     if (categoryFailures.isEmpty()) {
                         appContext.updateCooldownDao.markRefreshed(category.key());
-                        refreshed.add(category.key());
                     } else {
                         failures.addAll(categoryFailures.stream().map(f -> category.label() + " - " + f).toList());
                     }
                 }
-                return new RunResult(refreshed, failures);
+                return new RunResult(failures);
             }
 
             @Override
@@ -310,7 +308,7 @@ public final class UpdateDialog extends JDialog {
                     result = get();
                 } catch (Exception e) {
                     LOG.log(Level.WARNING, "Update run failed", e);
-                    result = new RunResult(List.of(), List.of("Update - " + describe(e)));
+                    result = new RunResult(List.of("Update - " + describe(e)));
                 }
                 onDone.accept(result);
             }
