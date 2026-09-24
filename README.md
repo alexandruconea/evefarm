@@ -35,3 +35,7 @@ You need JDK 25.
 <img width="1491" height="986" alt="Values" src="https://github.com/user-attachments/assets/c77adace-76bc-46c6-96aa-fb21ad5d79fb" />
 <img width="1491" height="986" alt="LP Store" src="https://github.com/user-attachments/assets/a7412728-e5b3-42ec-b572-ee0cb52dfdb2" />
 <img width="1488" height="981" alt="NPC Hunt" src="https://github.com/user-attachments/assets/2bdd4d0f-3410-4b67-b39a-7e0005c89267" />
+
+## Trademarks
+
+EVE Online and the EVE logo are the registered trademarks of Fenris Creations (formerly CCP Games/CCP hf.). All rights are reserved worldwide. All other trademarks are the property of their respective owners. EVE Online, the EVE logo, EVE and all associated logos and designs are the intellectual property of Fenris Creations. All artwork, screenshots, characters, vehicles, storylines, world facts or other recognizable features of the intellectual property relating to these trademarks are likewise the intellectual property of Fenris Creations. Fenris Creations has granted permission to EVE Farm to use EVE Online and all associated logos and designs for promotional and information purposes but does not endorse, and is not in any way affiliated with, EVE Farm. Fenris Creations is in no way responsible for the content or functioning of this application, nor can it be liable for any damage arising from its use.
