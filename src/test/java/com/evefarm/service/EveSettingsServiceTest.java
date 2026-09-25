@@ -14,6 +14,8 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -155,6 +157,27 @@ class EveSettingsServiceTest {
         assertThrows(IOException.class,
                 () -> service(false).copy(new CopyRequest(root, source, outside, null, null)));
         assertFalse(Files.exists(outside));
+    }
+
+    @Test
+    void associatesAccountsAndCharactersFromLauncherLogs(@TempDir Path directory) throws Exception {
+        Path logs = Files.createDirectories(directory.resolve("logs"));
+        Files.writeString(logs.resolve("eve-online-launcher-2026.09.25-10.17.01.log"), """
+                [esi] Fetching details for 2 character(s)    { characterIds: [ 2124165849, 2124195413 ] }
+                unrelated launcher output
+                [esi] Fetched 2 character details    { userId: 30089031 }
+                [client-queue] Queued client startup    {
+                  product: 'eve-online',
+                  userId: 30491279,
+                  characterId: 2122680043,
+                }
+                """);
+
+        Map<Long, List<Long>> result = new EveSettingsService(settings, () -> false, logs)
+                .findAccountCharacters();
+
+        assertEquals(List.of(2124165849L, 2124195413L), result.get(30089031L));
+        assertEquals(List.of(2122680043L), result.get(30491279L));
     }
 
     private EveSettingsService service(boolean running) {

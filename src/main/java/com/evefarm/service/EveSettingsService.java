@@ -18,6 +18,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -33,19 +34,33 @@ public final class EveSettingsService {
 
     private static final Pattern CHARACTER_FILE = Pattern.compile("core_char_(\\d+)\\.dat");
     private static final Pattern ACCOUNT_FILE = Pattern.compile("core_user_(\\d+)\\.dat");
+    private static final Pattern LAUNCHER_START = Pattern.compile(
+            "(?s)\\[client-queue] (?:Queued client startup|Started client from group startup)\\s+\\{"
+                    + "[^}]*?\\bproduct:\\s*'eve-online',[^}]*?\\buserId:\\s*(\\d+),"
+                    + "[^}]*?\\bcharacterId:\\s*(\\d+),");
+    private static final Pattern LAUNCHER_CHARACTER_DETAILS = Pattern.compile(
+            "(?s)\\[esi] Fetching details for \\d+ character\\(s\\)\\s+\\{\\s*characterIds:\\s*"
+                    + "\\[([^]]+)]\\s*}.{0,50000}?\\[esi] Fetched \\d+ character details?\\s+"
+                    + "\\{\\s*userId:\\s*(\\d+)\\s*}");
     private static final DateTimeFormatter BACKUP_TIMESTAMP =
             DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS").withZone(ZoneOffset.UTC);
 
     private final SettingsDao settingsDao;
     private final BooleanSupplier eveRunning;
+    private final Path launcherLogsDirectory;
 
     public EveSettingsService(SettingsDao settingsDao) {
-        this(settingsDao, EveSettingsService::detectRunningClient);
+        this(settingsDao, EveSettingsService::detectRunningClient, defaultLauncherLogsDirectory());
     }
 
     EveSettingsService(SettingsDao settingsDao, BooleanSupplier eveRunning) {
+        this(settingsDao, eveRunning, defaultLauncherLogsDirectory());
+    }
+
+    EveSettingsService(SettingsDao settingsDao, BooleanSupplier eveRunning, Path launcherLogsDirectory) {
         this.settingsDao = settingsDao;
         this.eveRunning = eveRunning;
+        this.launcherLogsDirectory = launcherLogsDirectory;
     }
 
     public boolean isEveRunning() {
@@ -140,6 +155,38 @@ public final class EveSettingsService {
             throw new IOException("No settings_* profiles containing core_char or core_user files were found.");
         }
         return new ScanResult(root.toAbsolutePath().normalize(), List.copyOf(profiles));
+    }
+
+    public Map<Long, List<Long>> findAccountCharacters() {
+        if (launcherLogsDirectory == null || !Files.isDirectory(launcherLogsDirectory, LinkOption.NOFOLLOW_LINKS)) {
+            return Map.of();
+        }
+        Map<Long, Long> characterAccounts = new LinkedHashMap<>();
+        try (Stream<Path> files = Files.list(launcherLogsDirectory)) {
+            List<Path> logs = files
+                    .filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS))
+                    .filter(path -> !Files.isSymbolicLink(path))
+                    .filter(path -> path.getFileName().toString().matches("eve-online-launcher-[\\d.-]+\\.log"))
+                    .sorted(Comparator.comparingLong(EveSettingsService::lastModified))
+                    .toList();
+            int first = Math.max(0, logs.size() - 200);
+            for (Path log : logs.subList(first, logs.size())) {
+                try {
+                    if (Files.size(log) <= 10_000_000) {
+                        readAccountAssociations(Files.readString(log), characterAccounts);
+                    }
+                } catch (IOException ignored) {
+                }
+            }
+        } catch (IOException | SecurityException e) {
+            return Map.of();
+        }
+        Map<Long, LinkedHashSet<Long>> grouped = new LinkedHashMap<>();
+        characterAccounts.forEach((characterId, accountId) ->
+                grouped.computeIfAbsent(accountId, ignored -> new LinkedHashSet<>()).add(characterId));
+        Map<Long, List<Long>> result = new LinkedHashMap<>();
+        grouped.forEach((accountId, characterIds) -> result.put(accountId, List.copyOf(characterIds)));
+        return Map.copyOf(result);
     }
 
     public CopyResult copy(CopyRequest request) throws IOException {
@@ -345,6 +392,48 @@ public final class EveSettingsService {
         } catch (IOException | SecurityException e) {
             return Optional.empty();
         }
+    }
+
+    private static void readAccountAssociations(String log, Map<Long, Long> characterAccounts) {
+        Matcher startup = LAUNCHER_START.matcher(log);
+        while (startup.find()) {
+            long accountId = Long.parseLong(startup.group(1));
+            long characterId = Long.parseLong(startup.group(2));
+            characterAccounts.put(characterId, accountId);
+        }
+        Matcher details = LAUNCHER_CHARACTER_DETAILS.matcher(log);
+        while (details.find()) {
+            long accountId = Long.parseLong(details.group(2));
+            Matcher ids = Pattern.compile("\\d+").matcher(details.group(1));
+            while (ids.find()) {
+                characterAccounts.put(Long.parseLong(ids.group()), accountId);
+            }
+        }
+    }
+
+    private static long lastModified(Path path) {
+        try {
+            return Files.getLastModifiedTime(path, LinkOption.NOFOLLOW_LINKS).toMillis();
+        } catch (IOException e) {
+            return 0;
+        }
+    }
+
+    private static Path defaultLauncherLogsDirectory() {
+        String home = System.getProperty("user.home", "");
+        if (home.isBlank()) {
+            return null;
+        }
+        Path userHome = Path.of(home);
+        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        if (os.contains("win")) {
+            return userHome.resolve("AppData/Roaming/EVE Online/logs");
+        }
+        if (os.contains("mac")) {
+            return userHome.resolve("Library/Logs/EVE Online");
+        }
+        return userHome.resolve(".local/share/Steam/steamapps/compatdata/8500/pfx/drive_c/users/steamuser/"
+                + "AppData/Roaming/EVE Online/logs");
     }
 
     private static Path createBackupDirectory(Path root) throws IOException {

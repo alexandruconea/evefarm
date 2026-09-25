@@ -33,7 +33,9 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -49,6 +51,7 @@ public final class EveSettingsCopyDialog extends JDialog {
     private final AppContext appContext;
     private final Long preferredSourceId;
     private final Map<Long, String> characterNames = new HashMap<>();
+    private volatile Map<Long, List<Long>> accountCharacters = Map.of();
 
     private final JTextField directoryField = new JTextField();
     private final JComboBox<Profile> sourceProfile = new JComboBox<>();
@@ -199,7 +202,7 @@ public final class EveSettingsCopyDialog extends JDialog {
             profilesChanged();
             status.setText("Select a source and a target. EVE Farm creates a verified backup before replacing "
                     + "an existing file. Keep EVE Online closed during the operation.");
-            resolveMissingCharacterNames();
+            resolveMetadata();
         } catch (Exception e) {
             scan = null;
             directoryField.setText("");
@@ -209,22 +212,23 @@ public final class EveSettingsCopyDialog extends JDialog {
         updateControls();
     }
 
-    private void resolveMissingCharacterNames() {
+    private void resolveMetadata() {
         Set<Long> missingIds = scan.profiles().stream()
                 .flatMap(profile -> profile.characterFiles().stream())
                 .map(SettingsFile::id)
                 .filter(id -> !characterNames.containsKey(id))
                 .collect(Collectors.toSet());
-        if (missingIds.isEmpty()) {
-            return;
-        }
         if (nameWorker != null && !nameWorker.isDone()) {
             nameWorker.cancel(true);
         }
         nameWorker = new SwingWorker<>() {
             @Override
             protected Map<Long, String> doInBackground() {
-                return appContext.entityNameCacheService.resolveEntityNames(missingIds);
+                accountCharacters = appContext.eveSettingsService.findAccountCharacters();
+                Set<Long> idsToResolve = new HashSet<>(missingIds);
+                accountCharacters.values().forEach(idsToResolve::addAll);
+                idsToResolve.removeAll(characterNames.keySet());
+                return appContext.entityNameCacheService.resolveEntityNames(idsToResolve);
             }
 
             @Override
@@ -335,7 +339,7 @@ public final class EveSettingsCopyDialog extends JDialog {
             return;
         }
         profile.accountFiles().stream()
-                .map(AccountChoice::new)
+                .map(file -> new AccountChoice(file, accountCharacterNames(file.id())))
                 .sorted(Comparator.comparingLong(AccountChoice::id))
                 .forEach(combo::addItem);
         if (previous != null) {
@@ -354,6 +358,13 @@ public final class EveSettingsCopyDialog extends JDialog {
 
     private String characterName(long id) {
         return characterNames.getOrDefault(id, "Character #" + id);
+    }
+
+    private String accountCharacterNames(long accountId) {
+        return accountCharacters.getOrDefault(accountId, List.of()).stream()
+                .map(this::characterName)
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .collect(Collectors.joining(", "));
     }
 
     private static void selectCharacter(JComboBox<CharacterChoice> combo, Long id) {
@@ -481,14 +492,15 @@ public final class EveSettingsCopyDialog extends JDialog {
         }
     }
 
-    private record AccountChoice(SettingsFile file) {
+    private record AccountChoice(SettingsFile file, String characterNames) {
         long id() {
             return file.id();
         }
 
         @Override
         public String toString() {
-            return "Account " + id() + " - modified " + MODIFIED_FORMAT.format(file.modifiedAt());
+            String characters = characterNames.isBlank() ? "" : " - " + characterNames;
+            return "Account " + id() + characters + " - modified " + MODIFIED_FORMAT.format(file.modifiedAt());
         }
     }
 }
