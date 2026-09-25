@@ -45,6 +45,7 @@ import com.evefarm.service.BackupRestoreService;
 import com.evefarm.service.CharacterService;
 import com.evefarm.service.ContractService;
 import com.evefarm.service.EntityNameCacheService;
+import com.evefarm.service.EveSettingsService;
 import com.evefarm.service.IndustryJobService;
 import com.evefarm.service.ItemIconService;
 import com.evefarm.service.JournalService;
@@ -114,6 +115,7 @@ public final class AppContext {
     public final ValueSummaryService valueSummaryService;
     public final SchedulerService schedulerService;
     public final BackupRestoreService backupRestoreService;
+    public final EveSettingsService eveSettingsService;
     public final UpdateService updateService;
     public final UpdateInstaller updateInstaller;
 
@@ -193,6 +195,7 @@ public final class AppContext {
                 locationNameCacheService, industryJobDao);
         this.valueSummaryService = new ValueSummaryService(snapshotDao, assetDao, characterService);
         this.backupRestoreService = new BackupRestoreService(database, settingsDao);
+        this.eveSettingsService = new EveSettingsService(settingsDao);
         this.updateService = new UpdateService(settingsDao);
         this.updateInstaller = new UpdateInstaller(backupRestoreService);
         this.schedulerService = new SchedulerService(authService, characterService, priceService, assetService,

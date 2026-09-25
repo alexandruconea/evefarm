@@ -75,14 +75,10 @@ public final class MarketOrdersPanel extends javax.swing.JPanel {
         filterBarPanel.setRowCounts(table.getRowCount(), tableModel.getRowCount());
     }
 
-    // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel filterBarContainer;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JLabel orderCountLabel;
     private javax.swing.JTable table;
-    // End of variables declaration//GEN-END:variables
-
-    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
         filterBarContainer = new javax.swing.JPanel();
@@ -128,5 +124,5 @@ public final class MarketOrdersPanel extends javax.swing.JPanel {
                 .addComponent(orderCountLabel)
                 .addContainerGap())
         );
-    }// </editor-fold>//GEN-END:initComponents
+    }
 }

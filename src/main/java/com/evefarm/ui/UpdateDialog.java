@@ -320,9 +320,7 @@ public final class UpdateDialog extends JDialog {
             return;
         }
         JTextArea text = new JTextArea(String.join("\n", result.failures()));
-        text.setEditable(false);
-        text.setLineWrap(true);
-        text.setWrapStyleWord(true);
+        TextAreaStyler.scrollable(text);
         JScrollPane scroll = new JScrollPane(text);
         scroll.setPreferredSize(new Dimension(520, 180));
         JPanel panel = new JPanel(new BorderLayout(0, 8));

@@ -181,12 +181,7 @@ public final class OfficersPanel extends JPanel {
 
     private static JTextArea wrappingText() {
         JTextArea area = new JTextArea();
-        area.setEditable(false);
-        area.setOpaque(false);
-        area.setLineWrap(true);
-        area.setWrapStyleWord(true);
-        area.setBorder(null);
-        area.setFont(new JLabel().getFont());
+        TextAreaStyler.informational(area);
         return area;
     }
 

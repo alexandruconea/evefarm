@@ -84,14 +84,10 @@ public final class ValuesPanel extends javax.swing.JPanel {
         characterColumn.setSummary(selected.characterName(), summary);
     }
 
-    // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel characterLabel;
     private javax.swing.JComboBox<String> characterCombo;
     private javax.swing.JPanel columnsContainer;
     private javax.swing.JScrollPane columnsScrollPane;
-    // End of variables declaration//GEN-END:variables
-
-    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
         characterLabel = new javax.swing.JLabel();
@@ -139,5 +135,5 @@ public final class ValuesPanel extends javax.swing.JPanel {
                 .addComponent(columnsScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 480, Short.MAX_VALUE)
                 .addContainerGap())
         );
-    }// </editor-fold>//GEN-END:initComponents
+    }
 }

@@ -105,12 +105,7 @@ public final class SettingsDialog extends JDialog {
                 + " (last 7 days + one per month for 12 months) - always, no setup needed. The extra folder "
                 + "is optional: any folder on another drive, a USB stick or a OneDrive/Google Drive folder gets "
                 + "a second copy. Restore any of them with Options > Restore Data.");
-        backupNote.setEditable(false);
-        backupNote.setFocusable(false);
-        backupNote.setOpaque(false);
-        backupNote.setLineWrap(true);
-        backupNote.setWrapStyleWord(true);
-        backupNote.setFont(new JLabel().getFont().deriveFont(new JLabel().getFont().getSize2D() - 1f));
+        TextAreaStyler.informational(backupNote);
         backupNote.setSize(new Dimension(BACKUP_NOTE_WIDTH, Short.MAX_VALUE));
         backupNote.setPreferredSize(new Dimension(BACKUP_NOTE_WIDTH, backupNote.getPreferredSize().height));
         c.gridx = 0;

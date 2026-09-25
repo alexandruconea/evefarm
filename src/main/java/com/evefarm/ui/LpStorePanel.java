@@ -332,7 +332,6 @@ public final class LpStorePanel extends javax.swing.JPanel {
         filterBarPanel.setRowCounts(table.getRowCount(), tableModel.getRowCount());
     }
 
-    // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JComboBox<String> characterCombo;
     private javax.swing.JLabel characterLabel;
     private javax.swing.JComboBox<String> corporationCombo;
@@ -346,9 +345,6 @@ public final class LpStorePanel extends javax.swing.JPanel {
     private javax.swing.JTable table;
     private javax.swing.JLabel wealthLabel;
     private javax.swing.JLabel yourLpLabel;
-    // End of variables declaration//GEN-END:variables
-
-    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
         characterLabel = new javax.swing.JLabel();
@@ -451,5 +447,5 @@ public final class LpStorePanel extends javax.swing.JPanel {
                     .addComponent(wealthLabel))
                 .addContainerGap())
         );
-    }// </editor-fold>//GEN-END:initComponents
+    }
 }

@@ -476,7 +476,6 @@ public final class MainFrame extends javax.swing.JFrame {
         return ordered;
     }
 
-    // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JMenuItem charactersItem;
     private javax.swing.JMenuItem exitItem;
     private javax.swing.JMenu fileMenu;
@@ -491,9 +490,6 @@ public final class MainFrame extends javax.swing.JFrame {
     private javax.swing.JTabbedPane tabbedPane;
     private javax.swing.JMenu updateMenu;
     private javax.swing.JMenuItem updateItem;
-    // End of variables declaration//GEN-END:variables
-
-    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
         tabbedPane = new javax.swing.JTabbedPane();
@@ -599,28 +595,28 @@ public final class MainFrame extends javax.swing.JFrame {
         );
 
         pack();
-    }// </editor-fold>//GEN-END:initComponents
+    }
 
-    private void charactersItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_charactersItemActionPerformed
+    private void charactersItemActionPerformed(java.awt.event.ActionEvent evt) {
         CharactersDialog dialog = new CharactersDialog(this, appContext, this::onCharactersChanged);
         dialog.setVisible(true);
-    }//GEN-LAST:event_charactersItemActionPerformed
+    }
 
-    private void settingsItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_settingsItemActionPerformed
+    private void settingsItemActionPerformed(java.awt.event.ActionEvent evt) {
         SettingsDialog dialog = new SettingsDialog(this, appContext.settingsDao);
         dialog.setVisible(true);
-    }//GEN-LAST:event_settingsItemActionPerformed
+    }
 
-    private void showTabsItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_showTabsItemActionPerformed
+    private void showTabsItemActionPerformed(java.awt.event.ActionEvent evt) {
         Map<String, String> labels = new LinkedHashMap<>();
         for (Map.Entry<String, TabSpec> entry : orderedTabSpecs().entrySet()) {
             labels.put(entry.getKey(), entry.getValue().label());
         }
         TabVisibilityDialog dialog = new TabVisibilityDialog(this, appContext.settingsDao, labels, this::rebuildTabs);
         dialog.setVisible(true);
-    }//GEN-LAST:event_showTabsItemActionPerformed
+    }
 
-    private void backupItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_backupItemActionPerformed
+    private void backupItemActionPerformed(java.awt.event.ActionEvent evt) {
         javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
         chooser.setDialogTitle("Backup Data");
         chooser.setSelectedFile(new java.io.File(com.evefarm.service.BackupRestoreService.defaultBackupFileName()));
@@ -640,9 +636,9 @@ public final class MainFrame extends javax.swing.JFrame {
             javax.swing.JOptionPane.showMessageDialog(this, "Backup failed: " + e.getMessage(),
                     "Backup Data", javax.swing.JOptionPane.ERROR_MESSAGE);
         }
-    }//GEN-LAST:event_backupItemActionPerformed
+    }
 
-    private void restoreItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_restoreItemActionPerformed
+    private void restoreItemActionPerformed(java.awt.event.ActionEvent evt) {
         int confirm = javax.swing.JOptionPane.showConfirmDialog(this,
                 "Restoring will replace ALL current data with the chosen backup, and the app will "
                         + "close so the restore can be applied on next launch.\n\n"
@@ -684,16 +680,16 @@ public final class MainFrame extends javax.swing.JFrame {
                 "Restore staged. The app will now close - reopen it to finish the restore.",
                 "Restore Data", javax.swing.JOptionPane.INFORMATION_MESSAGE);
         dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
-    }//GEN-LAST:event_restoreItemActionPerformed
+    }
 
-    private void exitItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exitItemActionPerformed
+    private void exitItemActionPerformed(java.awt.event.ActionEvent evt) {
         dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
-    }//GEN-LAST:event_exitItemActionPerformed
+    }
 
-    private void updateItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_updateItemActionPerformed
+    private void updateItemActionPerformed(java.awt.event.ActionEvent evt) {
         UpdateDialog dialog = new UpdateDialog(this, appContext, this::onDataUpdated);
         dialog.setVisible(true);
-    }//GEN-LAST:event_updateItemActionPerformed
+    }
 
     private void onDataUpdated() {
         assetsPanel.onShown();

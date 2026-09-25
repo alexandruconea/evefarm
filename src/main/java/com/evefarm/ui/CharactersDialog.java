@@ -79,10 +79,13 @@ public final class CharactersDialog extends JDialog {
         mainButton.setToolTipText("The main character is listed first and selected first in Values and LP Store");
         mainButton.setEnabled(false);
         mainButton.addActionListener(e -> onSetMain());
+        JButton copySettingsButton = new JButton("Copy EVE Settings...", Icons.SWAP);
+        copySettingsButton.setToolTipText("Copy EVE window positions and UI settings between characters");
+        copySettingsButton.addActionListener(e -> onCopySettings());
         table.getSelectionModel().addListSelectionListener(e -> updateMainButton());
 
         JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        toolbar.add(ButtonSizing.row(4, addButton, removeButton, mainButton));
+        toolbar.add(ButtonSizing.row(4, addButton, removeButton, mainButton, copySettingsButton));
 
         JButton closeButton = new JButton("Close", Icons.CANCEL);
         closeButton.addActionListener(e -> {
@@ -174,6 +177,13 @@ public final class CharactersDialog extends JDialog {
         reloadCharacters();
         table.setRowSelectionInterval(0, 0);
         onChanged.run();
+    }
+
+    private void onCopySettings() {
+        int selectedRow = table.getSelectedRow();
+        Long preferredSourceId = selectedRow < 0 ? null
+                : tableModel.rowAt(table.convertRowIndexToModel(selectedRow)).characterId();
+        new EveSettingsCopyDialog(this, appContext, preferredSourceId).setVisible(true);
     }
 
     private void updateMainButton() {

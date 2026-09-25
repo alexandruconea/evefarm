@@ -64,14 +64,10 @@ public final class AssetsPanel extends javax.swing.JPanel {
         filterBarPanel.setRowCounts(table.getRowCount(), tableModel.getRowCount());
     }
 
-    // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel filterBarContainer;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JTable table;
     private javax.swing.JLabel totalLabel;
-    // End of variables declaration//GEN-END:variables
-
-    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
         filterBarContainer = new javax.swing.JPanel();
@@ -117,5 +113,5 @@ public final class AssetsPanel extends javax.swing.JPanel {
                 .addComponent(totalLabel)
                 .addContainerGap())
         );
-    }// </editor-fold>//GEN-END:initComponents
+    }
 }

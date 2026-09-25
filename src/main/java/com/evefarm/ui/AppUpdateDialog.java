@@ -65,9 +65,7 @@ final class AppUpdateDialog extends JDialog {
                 + "first anyway.</html>");
 
         JTextArea notes = new JTextArea(release.notes().isBlank() ? "No release notes." : release.notes());
-        notes.setEditable(false);
-        notes.setLineWrap(true);
-        notes.setWrapStyleWord(true);
+        TextAreaStyler.scrollable(notes);
         notes.setCaretPosition(0);
         JScrollPane notesScroll = new JScrollPane(notes);
         notesScroll.setPreferredSize(new Dimension(560, 260));

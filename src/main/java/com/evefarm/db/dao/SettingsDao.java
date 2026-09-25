@@ -23,6 +23,7 @@ public final class SettingsDao {
     public static final String LP_STORE_TARGET_ISK_PER_LP = "lp_store_target_isk_per_lp";
     public static final String LP_STORE_FAVORITE_CORPORATION_ID = "lp_store_favorite_corporation_id";
     public static final String GAMELOG_DIRECTORY = "gamelog_directory";
+    public static final String EVE_SETTINGS_DIRECTORY = "eve_settings_directory";
     public static final String AGENTS_LAST_IMPORTED_AT = "agents_last_imported_at";
     public static final String NPC_CATALOG_IMPORTED_AT = "npc_catalog_imported_at";
     public static final String BACKUP_COPY_DIRECTORY = "backup_copy_directory";

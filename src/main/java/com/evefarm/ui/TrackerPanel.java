@@ -597,7 +597,6 @@ public final class TrackerPanel extends javax.swing.JPanel {
         }.execute();
     }
 
-    // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JCheckBox allProfilesCheckBox;
     private javax.swing.JLabel charactersLabel;
     private javax.swing.JList<EveCharacter> characterList;
@@ -616,9 +615,6 @@ public final class TrackerPanel extends javax.swing.JPanel {
     private javax.swing.JPanel sidebarPanel;
     private javax.swing.JLabel toLabel;
     private javax.swing.JSpinner toSpinner;
-    // End of variables declaration//GEN-END:variables
-
-    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
         chartContainerPanel = new javax.swing.JPanel();
@@ -756,5 +752,5 @@ public final class TrackerPanel extends javax.swing.JPanel {
             .addComponent(chartContainerPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 500, Short.MAX_VALUE)
             .addComponent(sidebarPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 500, Short.MAX_VALUE)
         );
-    }// </editor-fold>//GEN-END:initComponents
+    }
 }

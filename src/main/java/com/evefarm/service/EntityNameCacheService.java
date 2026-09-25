@@ -5,7 +5,9 @@ import com.evefarm.esi.UniverseApi;
 import com.evefarm.esi.dto.UniverseNameDto;
 
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -47,5 +49,15 @@ public final class EntityNameCacheService {
         } catch (Exception e) {
             LOG.log(Level.WARNING, "Failed to resolve entity names", e);
         }
+    }
+
+    public Map<Long, String> resolveEntityNames(Collection<Long> entityIds) {
+        resolveEntities(entityIds);
+        Map<Long, String> result = new LinkedHashMap<>();
+        entityIds.stream()
+                .filter(id -> id > 0)
+                .distinct()
+                .forEach(id -> entityNameCacheDao.findName(id).ifPresent(name -> result.put(id, name)));
+        return result;
     }
 }

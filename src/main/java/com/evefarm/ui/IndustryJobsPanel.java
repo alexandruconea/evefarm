@@ -30,14 +30,10 @@ public final class IndustryJobsPanel extends javax.swing.JPanel {
         support.reload();
     }
 
-    // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel filterBarContainer;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JLabel jobCountLabel;
     private javax.swing.JTable table;
-    // End of variables declaration//GEN-END:variables
-
-    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
         filterBarContainer = new javax.swing.JPanel();
@@ -83,5 +79,5 @@ public final class IndustryJobsPanel extends javax.swing.JPanel {
                 .addComponent(jobCountLabel)
                 .addContainerGap())
         );
-    }// </editor-fold>//GEN-END:initComponents
+    }
 }
