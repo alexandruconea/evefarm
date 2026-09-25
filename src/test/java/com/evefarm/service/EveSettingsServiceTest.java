@@ -6,6 +6,7 @@ import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.service.EveSettingsService.CopyRequest;
 import com.evefarm.service.EveSettingsService.CopyResult;
 import com.evefarm.service.EveSettingsService.ScanResult;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -77,6 +78,28 @@ class EveSettingsServiceTest {
         Path backup = result.backupDirectory().orElseThrow();
         assertEquals("old character", Files.readString(backup.resolve("settings_Default/core_char_2.dat")));
         assertEquals("old account", Files.readString(backup.resolve("settings_Default/core_user_20.dat")));
+    }
+
+    @Test
+    void backsUpNextToTheRealFilesWhenTheFolderIsReachedThroughALink(@TempDir Path directory) throws Exception {
+        Path real = Files.createDirectories(directory.resolve("real"));
+        Path link;
+        try {
+            link = Files.createSymbolicLink(directory.resolve("link"), real);
+        } catch (IOException | UnsupportedOperationException e) {
+            Assumptions.abort("symbolic links are not available here: " + e.getMessage());
+            return;
+        }
+        Path root = tranquility(link);
+        Path profile = Files.createDirectories(root.resolve("settings_Default"));
+        Path source = write(profile, "core_char_1.dat", "source character");
+        Path target = write(profile, "core_char_2.dat", "old character");
+
+        CopyResult result = service(false).copy(new CopyRequest(root, source, target, null, null));
+
+        assertEquals("source character", Files.readString(target));
+        Path backup = result.backupDirectory().orElseThrow();
+        assertEquals("old character", Files.readString(backup.resolve("settings_Default/core_char_2.dat")));
     }
 
     @Test

@@ -219,17 +219,15 @@ public final class EveSettingsService {
 
     private FileCopy validatedCopy(Path root, Path source, Path target, Pattern expectedName, String kind)
             throws IOException {
-        Path normalizedSource = source.toAbsolutePath().normalize();
-        Path normalizedTarget = target.toAbsolutePath().normalize();
-        validateSettingsPath(root, normalizedSource, expectedName, kind, true);
-        validateSettingsPath(root, normalizedTarget, expectedName, kind, false);
-        if (normalizedSource.equals(normalizedTarget)) {
+        Path realSource = validateSettingsPath(root, source.toAbsolutePath().normalize(), expectedName, kind, true);
+        Path realTarget = validateSettingsPath(root, target.toAbsolutePath().normalize(), expectedName, kind, false);
+        if (realSource.equals(realTarget)) {
             throw new IOException("Source and target " + kind + " files are the same.");
         }
-        return new FileCopy(normalizedSource, normalizedTarget);
+        return new FileCopy(realSource, realTarget);
     }
 
-    private static void validateSettingsPath(Path root, Path path, Pattern expectedName, String kind,
+    private static Path validateSettingsPath(Path root, Path path, Pattern expectedName, String kind,
                                              boolean mustExist) throws IOException {
         Path filename = path.getFileName();
         if (filename == null || !expectedName.matcher(filename.toString()).matches()) {
@@ -252,6 +250,7 @@ public final class EveSettingsService {
                 && (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) || Files.isSymbolicLink(path))) {
             throw new IOException("Target EVE " + kind + " settings path is not a regular file: " + path);
         }
+        return realParent.resolve(filename);
     }
 
     private static Path requireRoot(Path root) throws IOException {
