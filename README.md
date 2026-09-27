@@ -24,6 +24,23 @@ Everything stays on your computer, in `%USERPROFILE%\.evefarm`:
 
 EVE Farm logs in through the official EVE SSO (OAuth 2.0 with PKCE), so it never sees your password. Login tokens are encrypted with Windows DPAPI and can only be read by your Windows account.
 
+## Privacy
+
+EVE Farm has no telemetry and sends nothing to its developer. It only connects to:
+
+- EVE's official login and API (`login.eveonline.com`, `esi.evetech.net`), for the characters you add;
+- Fuzzwork (`www.fuzzwork.co.uk`, `market.fuzzwork.co.uk`), for market prices and EVE's static data;
+- Janice (`janice.e-351.com`), only if you choose it as your price provider;
+- `images.evetech.net`, for item icons;
+- GitHub (`api.github.com`, `github.com`), to check for and download updates. You can turn the automatic check off in **Options → Settings...**.
+
+## Uninstalling
+
+1. Close EVE Farm.
+2. Delete the folder you unzipped it into. EVE Farm doesn't install anything else and doesn't change Windows settings.
+3. To remove your data too, delete `%USERPROFILE%\.evefarm`. This also deletes the automatic backups, so copy any you want to keep first.
+4. If you used **Copy EVE Settings...**, the EVE files it replaced are kept in a `.evefarm-backups` folder inside EVE's settings folder (`%LOCALAPPDATA%\CCP\EVE\..._tranquility`). Delete it when you no longer need them.
+
 ## Building from source
 
 You need JDK 25.
@@ -35,6 +52,15 @@ You need JDK 25.
 <img width="1491" height="986" alt="Values" src="https://github.com/user-attachments/assets/c77adace-76bc-46c6-96aa-fb21ad5d79fb" />
 <img width="1491" height="986" alt="LP Store" src="https://github.com/user-attachments/assets/a7412728-e5b3-42ec-b572-ee0cb52dfdb2" />
 <img width="1488" height="981" alt="NPC Hunt" src="https://github.com/user-attachments/assets/2bdd4d0f-3410-4b67-b39a-7e0005c89267" />
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+
+- Committers and reviewers: [Alex Conea](https://github.com/alexandruconea)
+- Approvers: [Alex Conea](https://github.com/alexandruconea)
+
+Only `EVEFarm.exe` is signed, and only when it is built from this repository by the [release workflow](.github/workflows/release.yml) for a version tag. Every signing request is approved by hand. The privacy policy is in [Privacy](#privacy).
 
 ## License
 
