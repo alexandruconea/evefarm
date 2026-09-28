@@ -10,6 +10,7 @@ class AppInfoTest {
     @Test
     void versionsCompareNumericallyNotAsText() {
         assertTrue(AppInfo.compareVersions("1.10.0", "1.9.3") > 0);
+        assertTrue(AppInfo.compareVersions("1.0.10", "1.0.9") > 0);
         assertTrue(AppInfo.compareVersions("v1.4.0", "1.3.0") > 0);
         assertEquals(0, AppInfo.compareVersions("1.4", "1.4.0"));
         assertTrue(AppInfo.compareVersions("1.4.0", "1.4.1") < 0);

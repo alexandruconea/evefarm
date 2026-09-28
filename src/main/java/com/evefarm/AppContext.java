@@ -43,6 +43,7 @@ import com.evefarm.esi.UniverseApi;
 import com.evefarm.esi.WalletApi;
 import com.evefarm.service.AbyssLootService;
 import com.evefarm.service.AbyssTrackerService;
+import com.evefarm.service.AggroWatchService;
 import com.evefarm.service.AgentImportService;
 import com.evefarm.service.AssetService;
 import com.evefarm.service.BackupRestoreService;
@@ -68,6 +69,7 @@ import com.evefarm.service.TrackerSnapshotService;
 import com.evefarm.service.TransactionService;
 import com.evefarm.service.TypeNameCacheService;
 import com.evefarm.service.ValueSummaryService;
+import com.evefarm.service.VoiceService;
 import com.evefarm.update.UpdateInstaller;
 import com.evefarm.update.UpdateService;
 
@@ -117,6 +119,8 @@ public final class AppContext {
     public final AgentImportService agentImportService;
     public final AbyssLootService abyssLootService;
     public final AbyssTrackerService abyssTrackerService;
+    public final AggroWatchService aggroWatchService;
+    public final VoiceService voiceService;
     public final LpOfferPricingService lpOfferPricingService;
     public final ItemIconService itemIconService;
     public final ValueSummaryService valueSummaryService;
@@ -190,6 +194,8 @@ public final class AppContext {
         this.abyssLootService = new AbyssLootService(itemTypeDao, priceService, abyssalRunDao);
         this.abyssTrackerService = new AbyssTrackerService(authService, locationApi, typeNameCacheService,
                 abyssLootService, abyssalRunDao);
+        this.aggroWatchService = new AggroWatchService(killService, characterDao);
+        this.voiceService = new VoiceService();
         this.lpOfferPricingService = new LpOfferPricingService(loyaltyApi, fuzzworkApi, typeNameCacheService,
                 priceService);
         this.itemIconService = new ItemIconService();
