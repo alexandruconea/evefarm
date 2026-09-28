@@ -50,7 +50,8 @@ public final class MigrationRunner {
             "db/migrations/V25__keep_removed_character_history.sql",
             "db/migrations/V26__agent_location_ids.sql",
             "db/migrations/V27__abyssal_runs.sql",
-            "db/migrations/V28__abyssal_cargo_and_ignored_items.sql"
+            "db/migrations/V28__abyssal_cargo_and_ignored_items.sql",
+            "db/migrations/V29__abyssal_fleet.sql"
     );
 
     public static void run(Database database) {

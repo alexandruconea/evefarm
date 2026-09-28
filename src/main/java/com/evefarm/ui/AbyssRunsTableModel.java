@@ -19,6 +19,7 @@ public final class AbyssRunsTableModel extends ColumnTableModel<AbyssalRun> {
             new ColumnDef<>("character", "Character", String.class, AbyssalRun::characterName),
             new ColumnDef<>("tier", "Tier", String.class, r -> r.tier() == null ? "" : r.tier().toString()),
             new ColumnDef<>("weather", "Weather", String.class, r -> r.weather() == null ? "" : r.weather().toString()),
+            new ColumnDef<>("fleet", "Fleet", String.class, r -> r.fleet() == null ? "" : r.fleet().toString()),
             new ColumnDef<>("ship", "Ship", String.class, r -> nullToEmpty(r.shipName())),
             new ColumnDef<>("time", "Time", String.class, r -> formatDuration(r.durationSeconds())),
             new ColumnDef<>(RESULT_COLUMN, "Result", String.class, r -> r.survived() ? SURVIVED : "Lost"),

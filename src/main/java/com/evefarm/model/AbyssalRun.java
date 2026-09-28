@@ -10,6 +10,7 @@ public record AbyssalRun(
         Integer durationSeconds,
         AbyssTier tier,
         AbyssWeather weather,
+        AbyssFleet fleet,
         Integer shipTypeId,
         String shipName,
         boolean survived,
@@ -27,11 +28,11 @@ public record AbyssalRun(
 
     public AbyssalRun withLootValue(double newLootValue) {
         return new AbyssalRun(id, characterId, characterName, startedAt, durationSeconds, tier, weather,
-                shipTypeId, shipName, survived, newLootValue, filamentCost, notes);
+                fleet, shipTypeId, shipName, survived, newLootValue, filamentCost, notes);
     }
 
     public AbyssalRun withId(long newId) {
         return new AbyssalRun(newId, characterId, characterName, startedAt, durationSeconds, tier, weather,
-                shipTypeId, shipName, survived, lootValue, filamentCost, notes);
+                fleet, shipTypeId, shipName, survived, lootValue, filamentCost, notes);
     }
 }

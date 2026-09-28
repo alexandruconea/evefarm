@@ -2,6 +2,7 @@ package com.evefarm.service;
 
 import com.evefarm.db.dao.AbyssalRunDao;
 import com.evefarm.db.dao.ItemTypeDao;
+import com.evefarm.model.AbyssFleet;
 import com.evefarm.model.AbyssTier;
 import com.evefarm.model.AbyssWeather;
 import com.evefarm.model.AbyssalLoot;
@@ -63,7 +64,7 @@ public final class AbyssLootService {
         return items.size();
     }
 
-    public Double filamentCost(AbyssTier tier, AbyssWeather weather) {
+    public Double filamentCost(AbyssTier tier, AbyssWeather weather, AbyssFleet fleet) {
         if (tier == null || weather == null) {
             return null;
         }
@@ -73,7 +74,8 @@ public final class AbyssLootService {
             return null;
         }
         priceService.ensureFreshPrices(List.of(filament.typeId()));
-        return price(filament.typeId());
+        Double unitPrice = price(filament.typeId());
+        return unitPrice == null ? null : unitPrice * AbyssFleet.shipsOf(fleet);
     }
 
     private Double price(int typeId) {

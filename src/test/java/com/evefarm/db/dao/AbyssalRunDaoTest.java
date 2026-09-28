@@ -2,6 +2,7 @@ package com.evefarm.db.dao;
 
 import com.evefarm.db.Database;
 import com.evefarm.db.MigrationRunner;
+import com.evefarm.model.AbyssFleet;
 import com.evefarm.model.AbyssTier;
 import com.evefarm.model.AbyssWeather;
 import com.evefarm.model.AbyssalCargo;
@@ -60,7 +61,8 @@ class AbyssalRunDaoTest {
         long id = runs.save(run, List.of(new AbyssalLoot(34, "Tritanium", 10, 4.0)));
 
         AbyssalRun edited = new AbyssalRun(id, PILOT, "Abyss Runner", run.startedAt(), 700, AbyssTier.RAGING,
-                AbyssWeather.GAMMA, null, "Gila", false, 30_000_000, 20_000_000.0, "lost to the Leshak");
+                AbyssWeather.GAMMA, AbyssFleet.FRIGATES, null, "Gila", false, 30_000_000, 20_000_000.0,
+                "lost to the Leshak");
         assertEquals(id, runs.save(edited, List.of(new AbyssalLoot(48121, "Triglavian Survey Database", 3, 100_000.0))));
 
         assertEquals(List.of(edited), runs.listRuns());
@@ -131,6 +133,7 @@ class AbyssalRunDaoTest {
     private static AbyssalRun run(long characterId, String startedAt, AbyssTier tier, AbyssWeather weather,
                                   double loot) {
         return new AbyssalRun(0, characterId, characterId == PILOT ? "Abyss Runner" : "Alt Runner",
-                Instant.parse(startedAt), 900, tier, weather, 17715, "Gila", true, loot, 9_500_000.0, null);
+                Instant.parse(startedAt), 900, tier, weather, AbyssFleet.CRUISER, 17715, "Gila", true, loot,
+                9_500_000.0, null);
     }
 }

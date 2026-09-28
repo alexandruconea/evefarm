@@ -5,10 +5,12 @@ import com.evefarm.auth.OAuthConfig;
 import com.evefarm.db.dao.AbyssalRunDao;
 import com.evefarm.esi.EsiException;
 import com.evefarm.esi.LocationApi;
+import com.evefarm.model.AbyssFleet;
 import com.evefarm.model.AbyssTier;
 import com.evefarm.model.AbyssWeather;
 import com.evefarm.model.AbyssalRun;
 import com.evefarm.model.EveCharacter;
+import com.evefarm.model.TypeInfo;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -20,7 +22,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
 import java.util.function.IntFunction;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -39,9 +40,9 @@ public final class AbyssTrackerService {
     public enum EventType { STARTED, ENTERED_ABYSS, LEFT_ABYSS, STOPPED, PROBLEM }
 
     public record Status(Phase phase, Long characterId, String characterName, AbyssTier tier, AbyssWeather weather,
-                         Instant enteredAt, String shipName, int runsSaved, String message) {
+                         AbyssFleet fleet, Instant enteredAt, String shipName, int runsSaved, String message) {
         static Status stopped(String message) {
-            return new Status(Phase.STOPPED, null, null, null, null, null, null, 0, message);
+            return new Status(Phase.STOPPED, null, null, null, null, null, null, null, 0, message);
         }
     }
 
@@ -62,11 +63,16 @@ public final class AbyssTrackerService {
         Future<?> schedule(Runnable poll);
     }
 
+    interface FilamentPricer {
+        Double cost(AbyssTier tier, AbyssWeather weather, AbyssFleet fleet);
+    }
+
     private static final class Session {
         final long characterId;
         final String characterName;
         AbyssTier tier;
         AbyssWeather weather;
+        AbyssFleet fleet;
         Phase phase = Phase.WAITING;
         Instant enteredAt;
         Integer shipTypeId;
@@ -76,23 +82,25 @@ public final class AbyssTrackerService {
         String message;
         Future<?> task;
 
-        Session(long characterId, String characterName, AbyssTier tier, AbyssWeather weather, Instant now) {
+        Session(long characterId, String characterName, AbyssTier tier, AbyssWeather weather, AbyssFleet fleet,
+                Instant now) {
             this.characterId = characterId;
             this.characterName = characterName;
             this.tier = tier;
             this.weather = weather;
+            this.fleet = fleet;
             this.lastActivity = now;
         }
 
         Status status() {
-            return new Status(phase, characterId, characterName, tier, weather, enteredAt, shipName, runsSaved,
+            return new Status(phase, characterId, characterName, tier, weather, fleet, enteredAt, shipName, runsSaved,
                     message);
         }
     }
 
     private final LocationSource locationSource;
-    private final IntFunction<String> shipNames;
-    private final BiFunction<AbyssTier, AbyssWeather, Double> filamentCosts;
+    private final IntFunction<TypeInfo> shipTypes;
+    private final FilamentPricer filamentCosts;
     private final AbyssalRunDao runDao;
     private final Clock clock;
     private final PollScheduler scheduler;
@@ -116,18 +124,18 @@ public final class AbyssTrackerService {
                              .shipTypeId();
                  }
              },
-                typeId -> typeNameCacheService.resolveType(typeId).name(),
+                typeNameCacheService::resolveType,
                 lootService::filamentCost,
                 runDao,
                 Clock.systemUTC(),
                 defaultScheduler());
     }
 
-    AbyssTrackerService(LocationSource locationSource, IntFunction<String> shipNames,
-                        BiFunction<AbyssTier, AbyssWeather, Double> filamentCosts, AbyssalRunDao runDao,
+    AbyssTrackerService(LocationSource locationSource, IntFunction<TypeInfo> shipTypes,
+                        FilamentPricer filamentCosts, AbyssalRunDao runDao,
                         Clock clock, PollScheduler scheduler) {
         this.locationSource = locationSource;
-        this.shipNames = shipNames;
+        this.shipTypes = shipTypes;
         this.filamentCosts = filamentCosts;
         this.runDao = runDao;
         this.clock = clock;
@@ -161,7 +169,7 @@ public final class AbyssTrackerService {
         return session == null ? lastStatus : session.status();
     }
 
-    public void start(EveCharacter character, AbyssTier tier, AbyssWeather weather) {
+    public void start(EveCharacter character, AbyssTier tier, AbyssWeather weather, AbyssFleet fleet) {
         if (!canTrack(character)) {
             throw new IllegalStateException(character.characterName()
                     + " has not allowed EVE Farm to read its location yet. Log this character in again from "
@@ -170,7 +178,7 @@ public final class AbyssTrackerService {
         Status status;
         synchronized (this) {
             cancelTask();
-            session = new Session(character.characterId(), character.characterName(), tier, weather,
+            session = new Session(character.characterId(), character.characterName(), tier, weather, fleet,
                     clock.instant());
             session.message = "Waiting for " + character.characterName() + " to enter the Abyss";
             status = session.status();
@@ -179,10 +187,11 @@ public final class AbyssTrackerService {
         fire(new Event(EventType.STARTED, status, null));
     }
 
-    public synchronized void changeFilament(AbyssTier tier, AbyssWeather weather) {
+    public synchronized void changeFilament(AbyssTier tier, AbyssWeather weather, AbyssFleet fleet) {
         if (session != null) {
             session.tier = tier;
             session.weather = weather;
+            session.fleet = fleet;
         }
     }
 
@@ -198,7 +207,7 @@ public final class AbyssTrackerService {
             }
             cancelTask();
             lastStatus = new Status(Phase.STOPPED, session.characterId, session.characterName, session.tier,
-                    session.weather, null, null, session.runsSaved, message);
+                    session.weather, session.fleet, null, null, session.runsSaved, message);
             session = null;
             status = lastStatus;
         }
@@ -254,11 +263,16 @@ public final class AbyssTrackerService {
     private void enterAbyss(Session current) {
         Instant now = clock.instant();
         Integer shipTypeId = shipTypeOrNull(current.characterId);
-        String shipName = shipTypeId == null ? null : shipNameOrNull(shipTypeId);
+        TypeInfo ship = shipTypeId == null ? null : shipInfoOrNull(shipTypeId);
+        String shipName = ship == null ? null : ship.name();
+        AbyssFleet shipFleet = ship == null ? null : AbyssFleet.forShipGroup(ship.groupName());
         Status status;
         synchronized (this) {
             if (session != current) {
                 return;
+            }
+            if (shipFleet != null) {
+                current.fleet = shipFleet;
             }
             current.phase = Phase.IN_ABYSS;
             current.enteredAt = now;
@@ -275,15 +289,17 @@ public final class AbyssTrackerService {
         Integer exitShip = shipTypeOrNull(current.characterId);
         AbyssTier tier;
         AbyssWeather weather;
+        AbyssFleet fleet;
         synchronized (this) {
             tier = current.tier;
             weather = current.weather;
+            fleet = current.fleet;
         }
         boolean survived = survived(current.shipTypeId, exitShip);
         int seconds = (int) Math.max(1, Duration.between(current.enteredAt, now).toSeconds());
         AbyssalRun run = new AbyssalRun(0, current.characterId, current.characterName, current.enteredAt, seconds,
-                tier, weather, current.shipTypeId, current.shipName, survived, 0, filamentCostOrNull(tier, weather),
-                null);
+                tier, weather, fleet, current.shipTypeId, current.shipName, survived, 0,
+                filamentCostOrNull(tier, weather, fleet), null);
         run = run.withId(runDao.save(run, List.of()));
         Status status;
         synchronized (this) {
@@ -339,17 +355,17 @@ public final class AbyssTrackerService {
         }
     }
 
-    private String shipNameOrNull(int typeId) {
+    private TypeInfo shipInfoOrNull(int typeId) {
         try {
-            return shipNames.apply(typeId);
+            return shipTypes.apply(typeId);
         } catch (RuntimeException e) {
             return null;
         }
     }
 
-    private Double filamentCostOrNull(AbyssTier tier, AbyssWeather weather) {
+    private Double filamentCostOrNull(AbyssTier tier, AbyssWeather weather, AbyssFleet fleet) {
         try {
-            return filamentCosts.apply(tier, weather);
+            return filamentCosts.cost(tier, weather, fleet);
         } catch (RuntimeException e) {
             LOG.log(Level.FINE, "Couldn't price the filament", e);
             return null;

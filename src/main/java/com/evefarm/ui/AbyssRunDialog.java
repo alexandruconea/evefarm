@@ -2,6 +2,7 @@ package com.evefarm.ui;
 
 import com.evefarm.AppContext;
 import com.evefarm.db.dao.SettingsDao;
+import com.evefarm.model.AbyssFleet;
 import com.evefarm.model.AbyssTier;
 import com.evefarm.model.AbyssWeather;
 import com.evefarm.model.AbyssalCargo;
@@ -83,6 +84,7 @@ final class AbyssRunDialog extends JDialog {
     private final JTextField durationField = new JTextField(6);
     private final JComboBox<AbyssTier> tierCombo = new JComboBox<>(AbyssTier.values());
     private final JComboBox<AbyssWeather> weatherCombo = new JComboBox<>(AbyssWeather.values());
+    private final JComboBox<AbyssFleet> fleetCombo = new JComboBox<>(AbyssFleet.values());
     private final JTextField shipField = new JTextField(16);
     private final JCheckBox lostCheck = new JCheckBox("Ship lost");
     private final JTextField filamentField = new JTextField(12);
@@ -143,10 +145,11 @@ final class AbyssRunDialog extends JDialog {
         shipRow.add(shipField);
         shipRow.add(javax.swing.Box.createHorizontalStrut(10));
         shipRow.add(lostCheck);
-        addRow(form, c, 2, "Ship:", shipRow, "Time (mm:ss):", durationField);
-        addRow(form, c, 3, "Filament cost:", filamentField, "Loot value:", lootField);
+        addRow(form, c, 2, "Fleet:", fleetCombo, "Time (mm:ss):", durationField);
+        addRow(form, c, 3, "Ship:", shipRow, "", new JLabel());
+        addRow(form, c, 4, "Filament cost:", filamentField, "Loot value:", lootField);
         c.gridx = 0;
-        c.gridy = 4;
+        c.gridy = 5;
         form.add(new JLabel("Notes:"), c);
         c.gridx = 1;
         c.gridwidth = 3;
@@ -223,6 +226,8 @@ final class AbyssRunDialog extends JDialog {
         filamentField.getDocument().addDocumentListener(valuesChanged);
         tierCombo.addActionListener(e -> lookUpFilamentCost());
         weatherCombo.addActionListener(e -> lookUpFilamentCost());
+        fleetCombo.addActionListener(e -> lookUpFilamentCost());
+        fleetCombo.setToolTipText("Every ship uses a filament of its own, so the cost counts them all");
         characterCombo.addActionListener(e -> prefillCargoBefore());
     }
 
@@ -360,6 +365,7 @@ final class AbyssRunDialog extends JDialog {
             startedField.setText(STARTED_FORMAT.format(LocalDateTime.now()));
             selectSaved(tierCombo, AbyssTier.class, appContext.settingsDao, SettingsDao.ABYSS_TIER);
             selectSaved(weatherCombo, AbyssWeather.class, appContext.settingsDao, SettingsDao.ABYSS_WEATHER);
+            selectSaved(fleetCombo, AbyssFleet.class, appContext.settingsDao, SettingsDao.ABYSS_FLEET);
             lootField.setText(IskFormatter.formatPlain(0));
             prefillCargoBefore();
             lookUpFilamentCost();
@@ -375,6 +381,7 @@ final class AbyssRunDialog extends JDialog {
         durationField.setText(AbyssRunsTableModel.formatDuration(original.durationSeconds()));
         tierCombo.setSelectedItem(original.tier());
         weatherCombo.setSelectedItem(original.weather());
+        fleetCombo.setSelectedItem(original.fleet());
         shipField.setText(original.shipName() == null ? "" : original.shipName());
         lostCheck.setSelected(!original.survived());
         filamentField.setText(original.filamentCost() == null ? "" : IskFormatter.formatPlain(original.filamentCost()));
@@ -454,11 +461,12 @@ final class AbyssRunDialog extends JDialog {
     private void lookUpFilamentCost() {
         AbyssTier tier = (AbyssTier) tierCombo.getSelectedItem();
         AbyssWeather weather = (AbyssWeather) weatherCombo.getSelectedItem();
+        AbyssFleet fleet = (AbyssFleet) fleetCombo.getSelectedItem();
         int generation = filamentGeneration.incrementAndGet();
         new SwingWorker<Double, Void>() {
             @Override
             protected Double doInBackground() {
-                return appContext.abyssLootService.filamentCost(tier, weather);
+                return appContext.abyssLootService.filamentCost(tier, weather, fleet);
             }
 
             @Override
@@ -579,7 +587,8 @@ final class AbyssRunDialog extends JDialog {
         boolean sameShip = original != null && ship.equals(original.shipName() == null ? "" : original.shipName());
         AbyssalRun run = new AbyssalRun(original == null ? 0 : original.id(), character.id(), character.name(),
                 started, duration, (AbyssTier) tierCombo.getSelectedItem(),
-                (AbyssWeather) weatherCombo.getSelectedItem(), sameShip ? original.shipTypeId() : null,
+                (AbyssWeather) weatherCombo.getSelectedItem(), (AbyssFleet) fleetCombo.getSelectedItem(),
+                sameShip ? original.shipTypeId() : null,
                 ship.isEmpty() ? null : ship, !lostCheck.isSelected(), lootValue, filament,
                 notes.isEmpty() ? null : notes);
         String before = beforeArea.getText();

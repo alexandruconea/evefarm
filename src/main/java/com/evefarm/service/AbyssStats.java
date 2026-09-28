@@ -39,6 +39,11 @@ public final class AbyssStats {
                         .thenComparing(AbyssalRun::weather, Comparator.nullsLast(Comparator.naturalOrder())));
     }
 
+    public static List<Summary> byFleet(Collection<AbyssalRun> runs) {
+        return grouped(runs, run -> run.fleet() == null ? null : run.fleet().toString(),
+                Comparator.comparing(AbyssalRun::fleet, Comparator.nullsLast(Comparator.naturalOrder())));
+    }
+
     static String filamentLabel(AbyssalRun run) {
         AbyssTier tier = run.tier();
         AbyssWeather weather = run.weather();

@@ -2,6 +2,7 @@ package com.evefarm.ui;
 
 import com.evefarm.AppContext;
 import com.evefarm.db.dao.SettingsDao;
+import com.evefarm.model.AbyssFleet;
 import com.evefarm.model.AbyssTier;
 import com.evefarm.model.AbyssWeather;
 import com.evefarm.model.AbyssalCargo;
@@ -57,6 +58,7 @@ public final class AbyssPanel extends JPanel {
     private static final long WARNING_SECONDS = 5 * 60;
     private static final String GROUP_BY_TIER = "Tier";
     private static final String GROUP_BY_FILAMENT = "Filament";
+    private static final String GROUP_BY_FLEET = "Fleet";
     private static final Color SURVIVED_BACKGROUND = new Color(193, 212, 169);
     private static final Color SURVIVED_FOREGROUND = new Color(33, 33, 33);
     private static final DateTimeFormatter COPY_TIME = DateTimeFormatter.ofPattern("HH:mm")
@@ -67,6 +69,7 @@ public final class AbyssPanel extends JPanel {
     private final JComboBox<String> characterCombo = new JComboBox<>();
     private final JComboBox<AbyssTier> tierCombo = new JComboBox<>(AbyssTier.values());
     private final JComboBox<AbyssWeather> weatherCombo = new JComboBox<>(AbyssWeather.values());
+    private final JComboBox<AbyssFleet> fleetCombo = new JComboBox<>(AbyssFleet.values());
     private final JButton trackButton = new JButton();
     private final JCheckBox lootPromptCheck = new JCheckBox("Open the run window after each run");
     private final JButton pasteBeforeButton = new JButton("Paste Cargo Before", Icons.CLIPBOARD);
@@ -91,7 +94,7 @@ public final class AbyssPanel extends JPanel {
     private final JPanel filterBarContainer = new JPanel();
     private final JLabel countLabel = new JLabel("0 runs");
     private final JLabel overallLabel = new JLabel(" ");
-    private final JComboBox<String> groupByCombo = new JComboBox<>(new String[]{GROUP_BY_TIER, GROUP_BY_FILAMENT});
+    private final JComboBox<String> groupByCombo = new JComboBox<>(new String[]{GROUP_BY_TIER, GROUP_BY_FILAMENT, GROUP_BY_FLEET});
     private final StatsTableModel statsModel = new StatsTableModel();
     private final JTable statsTable = new JTable(statsModel);
     private final Timer clock = new Timer(1000, e -> updateTimer());
@@ -118,8 +121,11 @@ public final class AbyssPanel extends JPanel {
         AbyssRunDialog.selectSaved(tierCombo, AbyssTier.class, appContext.settingsDao, SettingsDao.ABYSS_TIER);
         AbyssRunDialog.selectSaved(weatherCombo, AbyssWeather.class, appContext.settingsDao,
                 SettingsDao.ABYSS_WEATHER);
+        AbyssRunDialog.selectSaved(fleetCombo, AbyssFleet.class, appContext.settingsDao, SettingsDao.ABYSS_FLEET);
         tierCombo.addActionListener(e -> filamentChanged());
         weatherCombo.addActionListener(e -> filamentChanged());
+        fleetCombo.addActionListener(e -> filamentChanged());
+        fleetCombo.setToolTipText("The ships that go in on one filament. Every ship uses a filament of its own.");
         lootPromptCheck.setSelected("true".equals(
                 appContext.settingsDao.getOrDefault(SettingsDao.ABYSS_LOOT_PROMPT, "false")));
         lootPromptCheck.addActionListener(e -> appContext.settingsDao.set(SettingsDao.ABYSS_LOOT_PROMPT,
@@ -192,7 +198,11 @@ public final class AbyssPanel extends JPanel {
         if (weather != null) {
             appContext.settingsDao.set(SettingsDao.ABYSS_WEATHER, weather.name());
         }
-        appContext.abyssTrackerService.changeFilament(tier, weather);
+        AbyssFleet fleet = (AbyssFleet) fleetCombo.getSelectedItem();
+        if (fleet != null) {
+            appContext.settingsDao.set(SettingsDao.ABYSS_FLEET, fleet.name());
+        }
+        appContext.abyssTrackerService.changeFilament(tier, weather, fleet);
     }
 
     private EveCharacter selectedCharacter() {
@@ -227,7 +237,7 @@ public final class AbyssPanel extends JPanel {
         }
         try {
             appContext.abyssTrackerService.start(character, (AbyssTier) tierCombo.getSelectedItem(),
-                    (AbyssWeather) weatherCombo.getSelectedItem());
+                    (AbyssWeather) weatherCombo.getSelectedItem(), (AbyssFleet) fleetCombo.getSelectedItem());
         } catch (RuntimeException e) {
             LOG.log(Level.WARNING, "Couldn't start Abyss tracking", e);
             JOptionPane.showMessageDialog(this, e.getMessage(), "Abyss Tracking", JOptionPane.WARNING_MESSAGE);
@@ -245,8 +255,13 @@ public final class AbyssPanel extends JPanel {
                 cargoNote = null;
                 clipboardWatcher.start();
             }
-            case ENTERED_ABYSS -> notifier.accept("Entered the Abyss",
-                    status.characterName() + " entered the Abyss. The 20 minute timer is running.");
+            case ENTERED_ABYSS -> {
+                if (status.fleet() != null && status.fleet() != fleetCombo.getSelectedItem()) {
+                    fleetCombo.setSelectedItem(status.fleet());
+                }
+                notifier.accept("Entered the Abyss",
+                        status.characterName() + " entered the Abyss. The 20 minute timer is running.");
+            }
             case LEFT_ABYSS -> runFinished(event.run());
             case STOPPED -> {
                 clipboardWatcher.stop();
@@ -549,8 +564,9 @@ public final class AbyssPanel extends JPanel {
                     : " in " + AbyssRunsTableModel.formatDuration(Math.round(overall.averageSeconds())))
                     + (overall.iskPerHour() == null ? "" : "   |   " + compact(overall.iskPerHour()) + " ISK/h"));
         }
-        statsModel.setSummaries(GROUP_BY_FILAMENT.equals(groupByCombo.getSelectedItem())
-                ? AbyssStats.byFilament(runs) : AbyssStats.byTier(runs));
+        Object groupBy = groupByCombo.getSelectedItem();
+        statsModel.setSummaries(GROUP_BY_FILAMENT.equals(groupBy) ? AbyssStats.byFilament(runs)
+                : GROUP_BY_FLEET.equals(groupBy) ? AbyssStats.byFleet(runs) : AbyssStats.byTier(runs));
         TableStyler.packColumns(statsTable);
     }
 
@@ -570,6 +586,9 @@ public final class AbyssPanel extends JPanel {
         controls.add(new JLabel("Filament:"));
         controls.add(tierCombo);
         controls.add(weatherCombo);
+        controls.add(javax.swing.Box.createHorizontalStrut(8));
+        controls.add(new JLabel("Fleet:"));
+        controls.add(fleetCombo);
         controls.add(javax.swing.Box.createHorizontalStrut(8));
         controls.add(trackButton);
         controls.add(javax.swing.Box.createHorizontalStrut(8));

@@ -2,6 +2,7 @@ package com.evefarm.db.dao;
 
 import com.evefarm.db.Database;
 import com.evefarm.db.JdbcUtil;
+import com.evefarm.model.AbyssFleet;
 import com.evefarm.model.AbyssTier;
 import com.evefarm.model.AbyssWeather;
 import com.evefarm.model.AbyssalCargo;
@@ -85,9 +86,9 @@ public final class AbyssalRunDao {
 
     private static long insert(Connection connection, AbyssalRun run) throws SQLException {
         String sql = """
-                INSERT INTO abyssal_run(character_id, started_at, duration_seconds, tier, weather, ship_type_id,
-                  ship_name, survived, loot_value, filament_cost, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO abyssal_run(character_id, started_at, duration_seconds, tier, weather, fleet,
+                  ship_type_id, ship_name, survived, loot_value, filament_cost, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             bind(ps, run);
@@ -102,12 +103,13 @@ public final class AbyssalRunDao {
     private static long update(Connection connection, AbyssalRun run) throws SQLException {
         String sql = """
                 UPDATE abyssal_run SET character_id = ?, started_at = ?, duration_seconds = ?, tier = ?, weather = ?,
-                  ship_type_id = ?, ship_name = ?, survived = ?, loot_value = ?, filament_cost = ?, notes = ?
+                  fleet = ?, ship_type_id = ?, ship_name = ?, survived = ?, loot_value = ?, filament_cost = ?,
+                  notes = ?
                 WHERE id = ?
                 """;
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             bind(ps, run);
-            ps.setLong(12, run.id());
+            ps.setLong(13, run.id());
             ps.executeUpdate();
             return run.id();
         }
@@ -119,12 +121,13 @@ public final class AbyssalRunDao {
         JdbcUtil.setNullable(ps, 3, run.durationSeconds());
         JdbcUtil.setNullable(ps, 4, run.tier() == null ? null : run.tier().level());
         ps.setString(5, run.weather() == null ? null : run.weather().name());
-        JdbcUtil.setNullable(ps, 6, run.shipTypeId());
-        ps.setString(7, run.shipName());
-        ps.setInt(8, run.survived() ? 1 : 0);
-        ps.setDouble(9, run.lootValue());
-        JdbcUtil.setNullable(ps, 10, run.filamentCost());
-        ps.setString(11, run.notes());
+        ps.setString(6, run.fleet() == null ? null : run.fleet().name());
+        JdbcUtil.setNullable(ps, 7, run.shipTypeId());
+        ps.setString(8, run.shipName());
+        ps.setInt(9, run.survived() ? 1 : 0);
+        ps.setDouble(10, run.lootValue());
+        JdbcUtil.setNullable(ps, 11, run.filamentCost());
+        ps.setString(12, run.notes());
     }
 
     public void delete(long runId) {
@@ -153,6 +156,7 @@ public final class AbyssalRunDao {
                 while (rs.next()) {
                     Long tier = JdbcUtil.getNullableLong(rs, "tier");
                     String weather = rs.getString("weather");
+                    String fleet = rs.getString("fleet");
                     Long shipTypeId = JdbcUtil.getNullableLong(rs, "ship_type_id");
                     Long duration = JdbcUtil.getNullableLong(rs, "duration_seconds");
                     runs.add(new AbyssalRun(
@@ -163,6 +167,7 @@ public final class AbyssalRunDao {
                             duration == null ? null : duration.intValue(),
                             tier == null ? null : tierOf(tier.intValue()),
                             weather == null ? null : AbyssWeather.valueOf(weather),
+                            fleet == null ? null : AbyssFleet.valueOf(fleet),
                             shipTypeId == null ? null : shipTypeId.intValue(),
                             rs.getString("ship_name"),
                             rs.getInt("survived") != 0,

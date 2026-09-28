@@ -6,10 +6,12 @@ import com.evefarm.db.MigrationRunner;
 import com.evefarm.db.dao.AbyssalRunDao;
 import com.evefarm.db.dao.CharacterDao;
 import com.evefarm.esi.EsiException;
+import com.evefarm.model.AbyssFleet;
 import com.evefarm.model.AbyssTier;
 import com.evefarm.model.AbyssWeather;
 import com.evefarm.model.AbyssalRun;
 import com.evefarm.model.EveCharacter;
+import com.evefarm.model.TypeInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -37,6 +39,7 @@ class AbyssTrackerServiceTest {
     private static final long ABYSSAL_POCKET = 32_000_057L;
     private static final int GILA = 17715;
     private static final int CAPSULE = 670;
+    private static final int RETRIBUTION = 11393;
     private static final Instant START = Instant.parse("2026-09-28T18:00:00Z");
     private static final EveCharacter CHARACTER = new EveCharacter(PILOT, "Abyss Runner", null,
             List.of(OAuthConfig.LOCATION_SCOPE, OAuthConfig.SHIP_SCOPE), START, true);
@@ -69,15 +72,16 @@ class AbyssTrackerServiceTest {
                 return ships.removeFirst();
             }
         };
-        tracker = new AbyssTrackerService(source, typeId -> typeId == GILA ? "Gila" : "Capsule",
-                (tier, weather) -> tier == AbyssTier.FIERCE ? 9_500_000.0 : null, runs, clock,
+        tracker = new AbyssTrackerService(source, AbyssTrackerServiceTest::shipType,
+                (tier, weather, fleet) -> tier == AbyssTier.FIERCE ? 9_500_000.0 * AbyssFleet.shipsOf(fleet) : null,
+                runs, clock,
                 poll -> new CompletableFuture<>());
         tracker.addListener(events::add);
     }
 
     @Test
     void aRunIsTimedFromEnteringTheAbyssToLeavingItAndSaved() {
-        tracker.start(CHARACTER, AbyssTier.FIERCE, AbyssWeather.EXOTIC);
+        tracker.start(CHARACTER, AbyssTier.FIERCE, AbyssWeather.EXOTIC, AbyssFleet.CRUISER);
         pollAt(0, JITA);
         ships.add(GILA);
         pollAt(10, ABYSSAL_POCKET);
@@ -102,7 +106,7 @@ class AbyssTrackerServiceTest {
 
     @Test
     void leavingTheAbyssInACapsuleSavesTheRunAsLost() {
-        tracker.start(CHARACTER, AbyssTier.RAGING, AbyssWeather.DARK);
+        tracker.start(CHARACTER, AbyssTier.RAGING, AbyssWeather.DARK, AbyssFleet.CRUISER);
         ships.add(GILA);
         pollAt(0, ABYSSAL_POCKET);
         ships.add(CAPSULE);
@@ -116,21 +120,23 @@ class AbyssTrackerServiceTest {
 
     @Test
     void theFilamentCanBeChangedWhileTracking() {
-        tracker.start(CHARACTER, AbyssTier.CALM, AbyssWeather.DARK);
+        tracker.start(CHARACTER, AbyssTier.CALM, AbyssWeather.DARK, AbyssFleet.CRUISER);
         ships.add(GILA);
         pollAt(0, ABYSSAL_POCKET);
-        tracker.changeFilament(AbyssTier.FIERCE, AbyssWeather.GAMMA);
+        tracker.changeFilament(AbyssTier.FIERCE, AbyssWeather.GAMMA, AbyssFleet.FRIGATES);
         ships.add(GILA);
         pollAt(600, JITA);
 
         AbyssalRun run = events.get(2).run();
         assertEquals(AbyssTier.FIERCE, run.tier());
         assertEquals(AbyssWeather.GAMMA, run.weather());
+        assertEquals(AbyssFleet.FRIGATES, run.fleet());
+        assertEquals(28_500_000.0, run.filamentCost(), "three frigates use three filaments");
     }
 
     @Test
     void trackingStopsAfterAnHourWithoutARun() {
-        tracker.start(CHARACTER, AbyssTier.FIERCE, AbyssWeather.EXOTIC);
+        tracker.start(CHARACTER, AbyssTier.FIERCE, AbyssWeather.EXOTIC, AbyssFleet.CRUISER);
         pollAt(0, JITA);
         pollAt(AbyssTrackerService.IDLE_LIMIT.toSeconds() - 1, JITA);
         assertEquals(AbyssTrackerService.Phase.WAITING, tracker.status().phase());
@@ -145,7 +151,7 @@ class AbyssTrackerServiceTest {
 
     @Test
     void aRefusedLocationStopsTrackingAndAsksForANewLogin() {
-        tracker.start(CHARACTER, AbyssTier.FIERCE, AbyssWeather.EXOTIC);
+        tracker.start(CHARACTER, AbyssTier.FIERCE, AbyssWeather.EXOTIC, AbyssFleet.CRUISER);
         locations.add(new EsiException(403, "token is not valid for scope(s): esi-location.read_location.v1"));
         tracker.poll();
 
@@ -155,7 +161,7 @@ class AbyssTrackerServiceTest {
 
     @Test
     void aTemporaryErrorKeepsTracking() {
-        tracker.start(CHARACTER, AbyssTier.FIERCE, AbyssWeather.EXOTIC);
+        tracker.start(CHARACTER, AbyssTier.FIERCE, AbyssWeather.EXOTIC, AbyssFleet.CRUISER);
         locations.add(new EsiException(502, "bad gateway"));
         tracker.poll();
 
@@ -173,7 +179,7 @@ class AbyssTrackerServiceTest {
 
         assertFalse(AbyssTrackerService.canTrack(oldLogin));
         assertThrows(IllegalStateException.class,
-                () -> tracker.start(oldLogin, AbyssTier.FIERCE, AbyssWeather.EXOTIC));
+                () -> tracker.start(oldLogin, AbyssTier.FIERCE, AbyssWeather.EXOTIC, AbyssFleet.CRUISER));
     }
 
     @Test
@@ -190,6 +196,41 @@ class AbyssTrackerServiceTest {
         assertFalse(AbyssTrackerService.survived(GILA, CAPSULE));
         assertFalse(AbyssTrackerService.survived(null, CAPSULE));
         assertTrue(AbyssTrackerService.survived(GILA, null));
+    }
+
+    @Test
+    void theFleetFollowsTheHullOfTheShipThatEnters() {
+        tracker.start(CHARACTER, AbyssTier.FIERCE, AbyssWeather.EXOTIC, AbyssFleet.CRUISER);
+        ships.add(RETRIBUTION);
+        pollAt(0, ABYSSAL_POCKET);
+        assertEquals(AbyssFleet.FRIGATES, tracker.status().fleet());
+        ships.add(RETRIBUTION);
+        pollAt(500, JITA);
+
+        AbyssalRun run = events.get(2).run();
+        assertEquals("Retribution", run.shipName());
+        assertEquals(AbyssFleet.FRIGATES, run.fleet());
+        assertEquals(28_500_000.0, run.filamentCost(), "a frigate fleet always uses three filaments");
+    }
+
+    @Test
+    void shipGroupsAreSortedIntoFleetSizes() {
+        assertEquals(AbyssFleet.FRIGATES, AbyssFleet.forShipGroup("Assault Frigate"));
+        assertEquals(AbyssFleet.FRIGATES, AbyssFleet.forShipGroup("Interceptor"));
+        assertEquals(AbyssFleet.DESTROYERS, AbyssFleet.forShipGroup("Tactical Destroyer"));
+        assertEquals(AbyssFleet.DESTROYERS, AbyssFleet.forShipGroup("Interdictor"));
+        assertEquals(AbyssFleet.CRUISER, AbyssFleet.forShipGroup("Heavy Assault Cruiser"));
+        assertEquals(AbyssFleet.CRUISER, AbyssFleet.forShipGroup("Logistics"));
+        assertNull(AbyssFleet.forShipGroup("Capsule"));
+        assertNull(AbyssFleet.forShipGroup(null));
+    }
+
+    private static TypeInfo shipType(int typeId) {
+        return switch (typeId) {
+            case GILA -> new TypeInfo(GILA, "Gila", "Cruiser", "Ship", 0);
+            case RETRIBUTION -> new TypeInfo(RETRIBUTION, "Retribution", "Assault Frigate", "Ship", 0);
+            default -> new TypeInfo(typeId, "Capsule", "Capsule", "Ship", 0);
+        };
     }
 
     private void pollAt(long secondsAfterStart, long solarSystemId) {

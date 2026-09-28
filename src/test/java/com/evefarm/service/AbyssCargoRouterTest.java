@@ -15,8 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 class AbyssCargoRouterTest {
 
     private static final Instant NOW = Instant.parse("2026-09-28T18:00:00Z");
-    private static final AbyssalRun RUN = new AbyssalRun(7, 1, "Pilot", NOW, 900, null, null, null, null, true, 0,
-            null, null);
+    private static final AbyssalRun RUN = new AbyssalRun(7, 1, "Pilot", NOW, 900, null, null, null, null, null, true,
+            0, null, null);
 
     private final AbyssCargoRouter router = new AbyssCargoRouter();
 

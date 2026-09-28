@@ -4,6 +4,7 @@ import com.evefarm.db.Database;
 import com.evefarm.db.MigrationRunner;
 import com.evefarm.db.dao.AbyssalRunDao;
 import com.evefarm.db.dao.ItemTypeDao;
+import com.evefarm.model.AbyssFleet;
 import com.evefarm.model.AbyssTier;
 import com.evefarm.model.AbyssWeather;
 import com.evefarm.model.AbyssalLoot;
@@ -85,9 +86,12 @@ class AbyssLootServiceTest {
     }
 
     @Test
-    void theFilamentIsPricedFromItsTierAndWeather() {
-        assertEquals(9_500_000.0, service.filamentCost(AbyssTier.FIERCE, AbyssWeather.EXOTIC));
-        assertNull(service.filamentCost(AbyssTier.CALM, AbyssWeather.DARK));
-        assertNull(service.filamentCost(null, AbyssWeather.DARK));
+    void everyShipOfTheFleetUsesAFilamentOfItsOwn() {
+        assertEquals(9_500_000.0, service.filamentCost(AbyssTier.FIERCE, AbyssWeather.EXOTIC, AbyssFleet.CRUISER));
+        assertEquals(19_000_000.0, service.filamentCost(AbyssTier.FIERCE, AbyssWeather.EXOTIC, AbyssFleet.DESTROYERS));
+        assertEquals(28_500_000.0, service.filamentCost(AbyssTier.FIERCE, AbyssWeather.EXOTIC, AbyssFleet.FRIGATES));
+        assertEquals(9_500_000.0, service.filamentCost(AbyssTier.FIERCE, AbyssWeather.EXOTIC, null));
+        assertNull(service.filamentCost(AbyssTier.CALM, AbyssWeather.DARK, AbyssFleet.FRIGATES));
+        assertNull(service.filamentCost(null, AbyssWeather.DARK, AbyssFleet.CRUISER));
     }
 }

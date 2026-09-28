@@ -1,5 +1,6 @@
 package com.evefarm.service;
 
+import com.evefarm.model.AbyssFleet;
 import com.evefarm.model.AbyssTier;
 import com.evefarm.model.AbyssWeather;
 import com.evefarm.model.AbyssalRun;
@@ -55,6 +56,15 @@ class AbyssStatsTest {
     }
 
     @Test
+    void runsAreGroupedByFleet() {
+        List<AbyssStats.Summary> byFleet = AbyssStats.byFleet(RUNS);
+
+        assertEquals(List.of("3 Frigates", "Unknown"), byFleet.stream().map(AbyssStats.Summary::label).toList());
+        assertEquals(3, byFleet.get(0).runs());
+        assertEquals(1, byFleet.get(1).deaths());
+    }
+
+    @Test
     void runsWithoutATimeHaveNoIskPerHour() {
         AbyssStats.Summary summary = AbyssStats.overall(List.of(run(null, null, null, true, 5, null)));
 
@@ -74,7 +84,7 @@ class AbyssStatsTest {
 
     private static AbyssalRun run(AbyssTier tier, AbyssWeather weather, Integer seconds, boolean survived,
                                   double loot, Double filament) {
-        return new AbyssalRun(0, 1, "Pilot", Instant.parse("2026-09-28T18:00:00Z"), seconds, tier, weather, null,
-                null, survived, loot, filament, null);
+        return new AbyssalRun(0, 1, "Pilot", Instant.parse("2026-09-28T18:00:00Z"), seconds, tier, weather,
+                tier == AbyssTier.FIERCE ? AbyssFleet.FRIGATES : null, null, null, survived, loot, filament, null);
     }
 }
