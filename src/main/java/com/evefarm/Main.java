@@ -6,6 +6,7 @@ import com.evefarm.db.MigrationRunner;
 import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.service.BackupRestoreService;
 import com.evefarm.ui.CompactMenuItemUI;
+import com.evefarm.ui.EveLaf;
 import com.evefarm.ui.MainFrame;
 import com.evefarm.ui.UnderlineTabbedPaneUI;
 import com.evefarm.util.AppLogging;
@@ -149,6 +150,8 @@ public final class Main {
             FlatLaf.registerCustomDefaultsSource("com.evefarm.ui.theme");
             if ("flatlaf-dark".equals(theme)) {
                 UIManager.setLookAndFeel(new FlatDarkLaf());
+            } else if ("eve".equals(theme)) {
+                UIManager.setLookAndFeel(new EveLaf());
             } else {
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
                 CompactMenuItemUI.install();

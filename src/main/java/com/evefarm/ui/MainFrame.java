@@ -18,6 +18,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.Timer;
 import java.awt.AWTException;
+import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Image;
@@ -589,16 +590,10 @@ public final class MainFrame extends javax.swing.JFrame {
 
         setJMenuBar(jMenuBar1);
 
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
-        getContentPane().setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(tabbedPane, javax.swing.GroupLayout.DEFAULT_SIZE, 1000, Short.MAX_VALUE)
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(tabbedPane, javax.swing.GroupLayout.DEFAULT_SIZE, 650, Short.MAX_VALUE)
-        );
+        tabbedPane.setPreferredSize(new Dimension(1000, 650));
+        getContentPane().setLayout(new BorderLayout());
+        getContentPane().add(tabbedPane, BorderLayout.CENTER);
+        getContentPane().add(LegalFooter.create(), BorderLayout.SOUTH);
 
         pack();
     }

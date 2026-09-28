@@ -90,10 +90,6 @@ public final class AggroWatchService {
         listeners.add(listener);
     }
 
-    public synchronized boolean running() {
-        return task != null;
-    }
-
     public synchronized void start() {
         if (task != null) {
             return;

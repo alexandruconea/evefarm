@@ -63,8 +63,9 @@ public final class AbyssPanel extends JPanel {
     private static final String GROUP_BY_TIER = "Tier";
     private static final String GROUP_BY_FILAMENT = "Filament";
     private static final String GROUP_BY_FLEET = "Fleet";
-    private static final Color SURVIVED_BACKGROUND = new Color(193, 212, 169);
-    private static final Color SURVIVED_FOREGROUND = new Color(33, 33, 33);
+    private static final Color SURVIVED_ON_DARK = new Color(193, 212, 169);
+    private static final Color SURVIVED_ON_LIGHT = new Color(0x3d, 0x7a, 0x2a);
+    private static final Color LOST_FALLBACK = new Color(0xc0, 0x39, 0x2b);
     private static final DateTimeFormatter COPY_TIME = DateTimeFormatter.ofPattern("HH:mm")
             .withZone(ZoneId.systemDefault());
     private static final DateTimeFormatter AGGRO_TIME = DateTimeFormatter.ofPattern("HH:mm:ss")
@@ -723,13 +724,22 @@ public final class AbyssPanel extends JPanel {
                                                        int row, int column) {
             super.getTableCellRendererComponent(t, value, isSelected, hasFocus, row, column);
             if (!isSelected) {
-                boolean survived = AbyssRunsTableModel.SURVIVED.equals(value);
-                setBackground(survived ? SURVIVED_BACKGROUND
-                        : row % 2 == 0 ? t.getBackground() : TableStyler.stripeColor(t));
-                setForeground(survived ? SURVIVED_FOREGROUND : t.getForeground());
+                setBackground(row % 2 == 0 ? t.getBackground() : TableStyler.stripeColor(t));
+                setForeground(resultColor(t, value));
             }
             return this;
         }
+    }
+
+    static Color resultColor(JTable table, Object value) {
+        if (AbyssRunsTableModel.SURVIVED.equals(value)) {
+            return com.formdev.flatlaf.FlatLaf.isLafDark() ? SURVIVED_ON_DARK : SURVIVED_ON_LIGHT;
+        }
+        if (value != null && !String.valueOf(value).isBlank()) {
+            Color red = UIManager.getColor("Actions.Red");
+            return red != null ? red : LOST_FALLBACK;
+        }
+        return table.getForeground();
     }
 
     private static final class StatsTableModel extends AbstractTableModel {

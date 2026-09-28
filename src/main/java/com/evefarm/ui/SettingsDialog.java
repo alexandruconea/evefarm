@@ -38,8 +38,8 @@ public final class SettingsDialog extends JDialog {
     private static final int BACKUP_NOTE_WIDTH = 520;
 
     private final SettingsDao settingsDao;
-    private static final List<String> THEME_KEYS = List.of("system", "flatlaf-dark");
-    private final JComboBox<String> themeCombo = new JComboBox<>(new String[]{"Windows", "Dark"});
+    private static final List<String> THEME_KEYS = List.of("system", "flatlaf-dark", "eve");
+    private final JComboBox<String> themeCombo = new JComboBox<>(new String[]{"Windows", "Dark", "EVE"});
     private final JComboBox<String> priceProviderCombo = new JComboBox<>(new String[]{
             "CCP (ESI, global average)", "Fuzzwork (Jita 4-4 sell price)", "Janice (Jita 4-4, requires API key)"});
     private final JPasswordField janiceApiKeyField = new JPasswordField();
