@@ -7,6 +7,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -38,6 +40,16 @@ class ItemTypeDaoTest {
         assertEquals(List.of("Estamel's Modified 350mm Railgun", "Estamel's Modified Large Shield Booster"),
                 dao.listOfficerItems("Estamel").stream().map(ItemType::typeName).toList());
         assertEquals(4, dao.count());
+    }
+
+    @Test
+    void itemsAreFoundByTheirExactNameWhateverTheCase() {
+        Map<String, ItemType> found = dao.findByNames(
+                List.of("large shield booster II", "ESTAMEL'S MODIFIED 350MM RAILGUN", "Large Shield", " "));
+
+        assertEquals(Set.of("large shield booster ii", "estamel's modified 350mm railgun"), found.keySet());
+        assertEquals(1, found.get("large shield booster ii").typeId());
+        assertEquals(Map.of(), dao.findByNames(List.of()));
     }
 
     @Test

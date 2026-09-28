@@ -41,8 +41,8 @@ public final class ColumnCopySupport {
                 if (viewRow < 0 || viewColumn < 0) {
                     return;
                 }
-                if (!table.isRowSelected(viewRow)) {
-                    table.setRowSelectionInterval(viewRow, viewRow);
+                if (!table.isCellSelected(viewRow, viewColumn)) {
+                    table.changeSelection(viewRow, viewColumn, false, false);
                 }
                 int modelColumn = table.convertColumnIndexToModel(viewColumn);
                 ColumnDef<T> column = model.columns().get(modelColumn);

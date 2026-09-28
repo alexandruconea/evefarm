@@ -2,6 +2,7 @@ package com.evefarm;
 
 import com.evefarm.auth.AuthService;
 import com.evefarm.db.Database;
+import com.evefarm.db.dao.AbyssalRunDao;
 import com.evefarm.db.dao.AgentDao;
 import com.evefarm.db.dao.AssetDao;
 import com.evefarm.db.dao.CharacterDao;
@@ -34,11 +35,14 @@ import com.evefarm.esi.EsiHttpClient;
 import com.evefarm.esi.FuzzworkApi;
 import com.evefarm.esi.IndustryApi;
 import com.evefarm.esi.JaniceApi;
+import com.evefarm.esi.LocationApi;
 import com.evefarm.esi.LoyaltyApi;
 import com.evefarm.esi.MarketsApi;
 import com.evefarm.esi.SkillsApi;
 import com.evefarm.esi.UniverseApi;
 import com.evefarm.esi.WalletApi;
+import com.evefarm.service.AbyssLootService;
+import com.evefarm.service.AbyssTrackerService;
 import com.evefarm.service.AgentImportService;
 import com.evefarm.service.AssetService;
 import com.evefarm.service.BackupRestoreService;
@@ -89,6 +93,7 @@ public final class AppContext {
     public final AgentDao agentDao;
     public final EncounterDao encounterDao;
     public final OfficerDao officerDao;
+    public final AbyssalRunDao abyssalRunDao;
 
     public final AuthService authService;
     public final CharacterService characterService;
@@ -110,6 +115,8 @@ public final class AppContext {
     public final OfficerService officerService;
     public final KillsReportService killsReportService;
     public final AgentImportService agentImportService;
+    public final AbyssLootService abyssLootService;
+    public final AbyssTrackerService abyssTrackerService;
     public final LpOfferPricingService lpOfferPricingService;
     public final ItemIconService itemIconService;
     public final ValueSummaryService valueSummaryService;
@@ -143,6 +150,7 @@ public final class AppContext {
         this.agentDao = new AgentDao(database);
         this.encounterDao = new EncounterDao(database);
         this.officerDao = new OfficerDao(database);
+        this.abyssalRunDao = new AbyssalRunDao(database);
 
         this.authService = new AuthService(characterDao, tokenDao);
         this.characterService = new CharacterService(authService, characterDao, settingsDao);
@@ -159,6 +167,7 @@ public final class AppContext {
         LoyaltyApi loyaltyApi = new LoyaltyApi(esiHttpClient);
         FuzzworkApi fuzzworkApi = new FuzzworkApi();
         JaniceApi janiceApi = new JaniceApi();
+        LocationApi locationApi = new LocationApi(esiHttpClient);
 
         this.priceService = new PriceService(marketsApi, fuzzworkApi, janiceApi, priceCacheDao, typeCacheDao,
                 settingsDao);
@@ -178,6 +187,9 @@ public final class AppContext {
                 npcCatalogService, priceService, universeApi);
         this.killsReportService = new KillsReportService();
         this.agentImportService = new AgentImportService(fuzzworkApi, agentDao, settingsDao);
+        this.abyssLootService = new AbyssLootService(itemTypeDao, priceService, abyssalRunDao);
+        this.abyssTrackerService = new AbyssTrackerService(authService, locationApi, typeNameCacheService,
+                abyssLootService, abyssalRunDao);
         this.lpOfferPricingService = new LpOfferPricingService(loyaltyApi, fuzzworkApi, typeNameCacheService,
                 priceService);
         this.itemIconService = new ItemIconService();
@@ -190,7 +202,7 @@ public final class AppContext {
         this.transactionService = new TransactionService(authService, walletApi, typeNameCacheService,
                 locationNameCacheService, entityNameCacheService, walletTransactionDao);
         this.contractService = new ContractService(authService, contractsApi, entityNameCacheService,
-                locationNameCacheService, contractDao);
+                locationNameCacheService, contractDao, typeNameCacheService, priceService);
         this.industryJobService = new IndustryJobService(authService, industryApi, typeNameCacheService,
                 locationNameCacheService, industryJobDao);
         this.valueSummaryService = new ValueSummaryService(snapshotDao, assetDao, characterService);

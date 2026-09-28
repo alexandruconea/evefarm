@@ -99,7 +99,7 @@ public final class EncounterDao {
         String placeholders = officerNames.stream().map(n -> "?").collect(Collectors.joining(","));
         String sql = """
                 SELECT e.id, e.character_id, c.character_name, e.started_at, e.ended_at, e.solar_system,
-                       n.npc_name, n.first_seen_at, n.bounty, n.last_kill_at,
+                       n.npc_name, n.first_seen_at, n.bounty, n.last_kill_at, n.damage_dealt,
                        (SELECT COALESCE(SUM(o.kills), 0) FROM combat_encounter_npc o
                          WHERE o.encounter_id = e.id AND o.npc_name <> n.npc_name) AS escort_kills,
                        (SELECT COALESCE(SUM(d.quantity * d.unit_price), 0) FROM officer_drop d
@@ -128,15 +128,21 @@ public final class EncounterDao {
                         JournalPayout payout = payoutAt == null ? null : new JournalPayout(Instant.parse(payoutAt),
                                 rs.getDouble("payout_amount"), rs.getString("payout_reason"),
                                 rs.getString("payout_description"));
+                        long encounterId = rs.getLong("id");
+                        long characterId = rs.getLong("character_id");
+                        String characterName = rs.getString("character_name");
+                        Instant firstSeenAt = Instant.parse(rs.getString("first_seen_at"));
+                        Instant killedAt = parseInstant(rs.getString("last_kill_at"));
+                        double bounty = rs.getDouble("bounty");
                         result.add(new OfficerSighting(
-                                rs.getLong("id"),
-                                rs.getLong("character_id"),
-                                rs.getString("character_name"),
+                                encounterId,
+                                characterId,
+                                characterName,
                                 rs.getString("npc_name"),
                                 null,
-                                Instant.parse(rs.getString("first_seen_at")),
-                                parseInstant(rs.getString("last_kill_at")),
-                                rs.getDouble("bounty"),
+                                firstSeenAt,
+                                killedAt,
+                                bounty,
                                 rs.getString("solar_system"),
                                 Instant.parse(rs.getString("started_at")),
                                 Instant.parse(rs.getString("ended_at")),
@@ -144,7 +150,9 @@ public final class EncounterDao {
                                 rs.getDouble("drop_value"),
                                 rs.getString("belt"),
                                 rs.getString("notes"),
-                                payout));
+                                payout,
+                                List.of(new OfficerSighting.Member(characterId, characterName, encounterId,
+                                        firstSeenAt, killedAt, bounty, rs.getLong("damage_dealt")))));
                     }
                 }
             } catch (SQLException e) {

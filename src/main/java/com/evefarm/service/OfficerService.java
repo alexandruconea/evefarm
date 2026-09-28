@@ -5,6 +5,7 @@ import com.evefarm.db.dao.ItemTypeDao;
 import com.evefarm.db.dao.OfficerDao;
 import com.evefarm.db.dao.WalletJournalDao;
 import com.evefarm.esi.UniverseApi;
+import com.evefarm.model.CharacterContribution;
 import com.evefarm.model.EncounterSummary;
 import com.evefarm.model.ItemType;
 import com.evefarm.model.JournalPayout;
@@ -16,10 +17,12 @@ import com.evefarm.model.SpawnMember;
 import com.evefarm.model.SpawnRow;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -79,7 +82,7 @@ public final class OfficerService {
             }
             result.add(enriched);
         }
-        return result;
+        return OfficerSightingGrouper.group(result);
     }
 
     private Optional<JournalPayout> findPayout(OfficerSighting sighting, NpcCatalog catalog) {
@@ -120,13 +123,14 @@ public final class OfficerService {
     public List<SpawnRow> listAllSpawns() {
         NpcCatalog catalog = npcCatalogService.catalog();
         List<SpawnRow> rows = new ArrayList<>();
-        for (EncounterSummary encounter : encounterDao.listEncounterSummaries()) {
+        for (List<EncounterSummary> fight : groupFights(encounterDao.listEncounterSummaries())) {
+            List<ParsedEncounter.Npc> npcs = mergeNpcs(fight.stream().flatMap(e -> e.npcs().stream()).toList());
             int killed = 0;
             double bounty = 0;
             SpawnClass strongest = SpawnClass.OTHER;
             boolean missions = false;
             List<ParsedEncounter.Npc> killedNpcs = new ArrayList<>();
-            for (ParsedEncounter.Npc npc : encounter.npcs()) {
+            for (ParsedEncounter.Npc npc : npcs) {
                 killed += npc.kills();
                 bounty += npc.bounty();
                 SpawnClass spawnClass = catalog.spawnClassOf(npc.name());
@@ -150,16 +154,118 @@ public final class OfficerService {
                     .collect(Collectors.joining(", "));
             String kind = strongest != SpawnClass.OTHER ? strongest.toString()
                     : missions ? NpcCatalog.MISSIONS_LABEL : "Other";
-            rows.add(new SpawnRow(encounter.encounterId(), encounter.characterName(), encounter.startedAt(),
-                    encounter.endedAt(), encounter.solarSystem(), kind, killed, bounty, composition));
+            List<CharacterContribution> contributions = contributions(fight);
+            rows.add(new SpawnRow(fight.stream().map(EncounterSummary::encounterId).toList(),
+                    contributions.stream().map(CharacterContribution::characterName)
+                            .collect(Collectors.joining(", ")),
+                    fight.stream().map(EncounterSummary::startedAt).min(Comparator.naturalOrder()).orElseThrow(),
+                    fight.stream().map(EncounterSummary::endedAt).max(Comparator.naturalOrder()).orElseThrow(),
+                    fight.get(0).solarSystem(), kind, killed, bounty, composition, contributions));
         }
+        rows.sort(Comparator.comparing(SpawnRow::startedAt).reversed());
         return rows;
     }
 
-    public List<SpawnMember> listSpawn(long encounterId) {
+    static List<List<EncounterSummary>> groupFights(List<EncounterSummary> encounters) {
+        List<EncounterSummary> sorted = new ArrayList<>(encounters);
+        sorted.sort(Comparator.comparing(EncounterSummary::startedAt).thenComparing(EncounterSummary::encounterId));
+        List<List<EncounterSummary>> fights = new ArrayList<>();
+        for (EncounterSummary encounter : sorted) {
+            List<EncounterSummary> target = null;
+            for (int i = fights.size() - 1; i >= 0 && target == null; i--) {
+                if (sameFight(encounter, fights.get(i))) {
+                    target = fights.get(i);
+                }
+            }
+            if (target == null) {
+                target = new ArrayList<>();
+                fights.add(target);
+            }
+            target.add(encounter);
+        }
+        return fights;
+    }
+
+    private static boolean sameFight(EncounterSummary encounter, List<EncounterSummary> fight) {
+        EncounterSummary first = fight.get(0);
+        if (encounter.solarSystem() == null || !encounter.solarSystem().equals(first.solarSystem())) {
+            return false;
+        }
+        Instant fightEnd = fight.stream().map(EncounterSummary::endedAt).max(Comparator.naturalOrder())
+                .orElse(first.endedAt());
+        if (encounter.startedAt().isAfter(fightEnd.plus(GameLogKillParser.ENCOUNTER_GAP))) {
+            return false;
+        }
+        Set<String> fightNpcs = new HashSet<>();
+        fight.forEach(member -> member.npcs().stream().filter(OfficerService::engaged)
+                .forEach(npc -> fightNpcs.add(npc.name())));
+        return encounter.npcs().stream().filter(OfficerService::engaged)
+                .anyMatch(npc -> fightNpcs.contains(npc.name()));
+    }
+
+    private static boolean engaged(ParsedEncounter.Npc npc) {
+        return npc.kills() > 0 || npc.damageDealt() > 0 || npc.damageTaken() > 0;
+    }
+
+    private static List<CharacterContribution> contributions(List<EncounterSummary> fight) {
+        Map<String, CharacterContribution> byName = new LinkedHashMap<>();
+        for (EncounterSummary encounter : fight) {
+            int kills = 0;
+            double bounty = 0;
+            long damage = 0;
+            for (ParsedEncounter.Npc npc : encounter.npcs()) {
+                kills += npc.kills();
+                bounty += npc.bounty();
+                damage += npc.damageDealt();
+            }
+            byName.merge(encounter.characterName(),
+                    new CharacterContribution(encounter.characterName(), kills, bounty, damage),
+                    (a, b) -> new CharacterContribution(a.characterName(), a.kills() + b.kills(),
+                            a.bounty() + b.bounty(), a.damageDealt() + b.damageDealt()));
+        }
+        List<CharacterContribution> result = new ArrayList<>(byName.values());
+        result.sort(Comparator.comparingInt(CharacterContribution::kills).reversed()
+                .thenComparing(Comparator.comparingLong(CharacterContribution::damageDealt).reversed()));
+        return result;
+    }
+
+    static List<ParsedEncounter.Npc> mergeNpcs(List<ParsedEncounter.Npc> npcs) {
+        Map<String, ParsedEncounter.Npc> byName = new LinkedHashMap<>();
+        for (ParsedEncounter.Npc npc : npcs) {
+            byName.merge(npc.name(), npc, (a, b) -> new ParsedEncounter.Npc(a.name(),
+                    earlier(a.firstSeenAt(), b.firstSeenAt()),
+                    later(a.lastSeenAt(), b.lastSeenAt()),
+                    a.kills() + b.kills(),
+                    a.bounty() + b.bounty(),
+                    later(a.lastKillAt(), b.lastKillAt()),
+                    a.damageDealt() + b.damageDealt(),
+                    a.damageTaken() + b.damageTaken()));
+        }
+        return new ArrayList<>(byName.values());
+    }
+
+    private static Instant earlier(Instant a, Instant b) {
+        if (a == null) {
+            return b;
+        }
+        return b == null || a.isBefore(b) ? a : b;
+    }
+
+    private static Instant later(Instant a, Instant b) {
+        if (a == null) {
+            return b;
+        }
+        return b == null || a.isAfter(b) ? a : b;
+    }
+
+    public List<SpawnMember> listSpawn(List<Long> encounterIds) {
         NpcCatalog catalog = npcCatalogService.catalog();
+        List<ParsedEncounter.Npc> npcs = new ArrayList<>();
+        for (long encounterId : new LinkedHashSet<>(encounterIds)) {
+            npcs.addAll(encounterDao.listEncounterNpcs(encounterId));
+        }
         List<SpawnMember> members = new ArrayList<>();
-        for (ParsedEncounter.Npc npc : encounterDao.listEncounterNpcs(encounterId)) {
+        for (ParsedEncounter.Npc npc : mergeNpcs(npcs)) {
             Optional<NpcCatalog.Entry> entry = catalog.find(npc.name());
             members.add(new SpawnMember(npc, entry.map(NpcCatalog.Entry::groupName).orElse(null),
                     entry.map(NpcCatalog.Entry::spawnClass).orElse(SpawnClass.OTHER)));
@@ -190,7 +296,16 @@ public final class OfficerService {
     }
 
     public List<OfficerDrop> listDrops(OfficerSighting sighting) {
-        return officerDao.listDrops(sighting.characterId(), sighting.officerName(), sighting.firstSeenAt());
+        List<OfficerDrop> drops = new ArrayList<>();
+        Set<String> keys = new HashSet<>();
+        for (OfficerSighting.Member member : sighting.members()) {
+            if (keys.add(member.characterId() + "|" + member.firstSeenAt())) {
+                drops.addAll(officerDao.listDrops(member.characterId(), sighting.officerName(), member.firstSeenAt()));
+            }
+        }
+        drops.sort(Comparator.comparingDouble(OfficerDrop::totalValue).reversed()
+                .thenComparing(OfficerDrop::typeName));
+        return drops;
     }
 
     public void addDrop(OfficerSighting sighting, ItemType item, int quantity, double unitPrice) {
@@ -230,8 +345,13 @@ public final class OfficerService {
     }
 
     public void saveDetails(OfficerSighting sighting, String belt, String notes) {
-        officerDao.saveDetails(sighting.characterId(), sighting.officerName(), sighting.firstSeenAt(),
-                blankToNull(belt), blankToNull(notes));
+        Set<String> keys = new HashSet<>();
+        for (OfficerSighting.Member member : sighting.members()) {
+            if (keys.add(member.characterId() + "|" + member.firstSeenAt())) {
+                officerDao.saveDetails(member.characterId(), sighting.officerName(), member.firstSeenAt(),
+                        blankToNull(belt), blankToNull(notes));
+            }
+        }
     }
 
     private static String blankToNull(String value) {

@@ -12,7 +12,7 @@ public final class SpawnsTableModel extends ColumnTableModel<SpawnRow> {
 
     private static final List<ColumnDef<SpawnRow>> COLUMNS = List.of(
             new ColumnDef<>("time", "Time (EVE)", String.class, r -> DateUtil.formatEveMinute(r.startedAt())),
-            new ColumnDef<>("character", "Character", String.class, SpawnRow::characterName),
+            new ColumnDef<>("character", "Characters", String.class, SpawnRow::characterName),
             new ColumnDef<>("system", "System", String.class, r -> r.solarSystem() == null ? "" : r.solarSystem()),
             new ColumnDef<>("kind", "Kind", String.class, SpawnRow::kind),
             new ColumnDef<>("killed", "Killed", Integer.class, SpawnRow::killed),

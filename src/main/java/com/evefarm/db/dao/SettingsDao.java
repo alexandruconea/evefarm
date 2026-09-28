@@ -32,6 +32,10 @@ public final class SettingsDao {
     public static final String UPDATE_AUTO_CHECK = "update_auto_check";
     public static final String UPDATE_SKIPPED_VERSION = "update_skipped_version";
     public static final String LAST_RUN_VERSION = "last_run_version";
+    public static final String ABYSS_TIER = "abyss_tier";
+    public static final String ABYSS_WEATHER = "abyss_weather";
+    public static final String ABYSS_LOOT_PROMPT = "abyss_loot_prompt";
+    public static final String ABYSS_CARGO_PREFIX = "abyss_cargo_";
 
     private final Database database;
 

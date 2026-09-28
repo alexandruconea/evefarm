@@ -62,6 +62,7 @@ public final class MainFrame extends javax.swing.JFrame {
     private LpStorePanel lpStorePanel;
     private NpcKillsPanel killsPanel;
     private AgentsPanel agentsPanel;
+    private AbyssPanel abyssPanel;
 
     public MainFrame(AppContext appContext) {
         initComponents();
@@ -92,6 +93,7 @@ public final class MainFrame extends javax.swing.JFrame {
         lpStorePanel = new LpStorePanel(appContext);
         killsPanel = new NpcKillsPanel(appContext);
         agentsPanel = new AgentsPanel(appContext);
+        abyssPanel = new AbyssPanel(appContext, this::showTrayNotification);
 
         tabSpecs.put("assets", new TabSpec("Assets", Icons.COIN, assetsPanel));
         tabSpecs.put("tracker", new TabSpec("Tracker", Icons.CHART, trackerPanel));
@@ -103,6 +105,7 @@ public final class MainFrame extends javax.swing.JFrame {
         tabSpecs.put("values", new TabSpec("Values", Icons.VALUE, valuesPanel));
         tabSpecs.put("lpStore", new TabSpec("LP Store", Icons.LP, lpStorePanel));
         tabSpecs.put("kills", new TabSpec("NPC Kills", Icons.CROSSHAIR, killsPanel));
+        tabSpecs.put("abyss", new TabSpec("Abyss", Icons.ABYSS, abyssPanel));
         tabSpecs.put("agents", new TabSpec("Agents", Icons.MEDAL, agentsPanel));
 
         rebuildTabs();
@@ -131,6 +134,8 @@ public final class MainFrame extends javax.swing.JFrame {
                 killsPanel.onShown();
             } else if (selected == agentsPanel) {
                 agentsPanel.onShown();
+            } else if (selected == abyssPanel) {
+                abyssPanel.onShown();
             }
         });
 
@@ -459,6 +464,7 @@ public final class MainFrame extends javax.swing.JFrame {
         valuesPanel.refreshCharacterFilter();
         lpStorePanel.refreshCharacterFilter();
         killsPanel.refreshCharacterFilter();
+        abyssPanel.refreshCharacterFilter();
     }
 
     private Map<String, TabSpec> orderedTabSpecs() {

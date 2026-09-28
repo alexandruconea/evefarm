@@ -10,6 +10,7 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.Shape;
 import java.awt.geom.Arc2D;
+import java.awt.geom.Area;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Line2D;
 import java.awt.geom.Path2D;
@@ -212,6 +213,28 @@ public final class Icons {
         g.draw(path(5.8, 8.6, 4.5, 14.5, 8, 12.8, 11.5, 14.5, 10.2, 8.6));
     });
 
+    public static final Icon KILLBOARD = icon(Tone.DANGER, g -> {
+        Area skull = new Area(new Ellipse2D.Double(2.75, 1.5, 10.5, 9.5));
+        skull.add(new Area(new RoundRectangle2D.Double(5, 8.25, 6, 5.5, 1.5, 1.5)));
+        g.draw(skull);
+        g.fill(new Ellipse2D.Double(5, 5.25, 2.4, 2.6));
+        g.fill(new Ellipse2D.Double(8.6, 5.25, 2.4, 2.6));
+        g.draw(line(7, 11.5, 7, 13.75));
+        g.draw(line(9, 11.5, 9, 13.75));
+    });
+
+    public static final Icon INFO = icon(Tone.ACCENT, g -> {
+        g.draw(new Ellipse2D.Double(1.75, 1.75, 12.5, 12.5));
+        g.draw(line(8, 7.25, 8, 11.5));
+        g.fill(new Ellipse2D.Double(7.05, 3.9, 1.9, 1.9));
+    });
+
+    public static final Icon ABYSS = icon(Tone.NEUTRAL, g -> {
+        g.draw(new Arc2D.Double(1.75, 1.75, 12.5, 12.5, 90, 270, Arc2D.OPEN));
+        g.draw(new Arc2D.Double(4.5, 4.5, 7, 7, 270, 270, Arc2D.OPEN));
+        g.fill(new Ellipse2D.Double(6.9, 6.9, 2.2, 2.2));
+    });
+
     public static Icon disabled(Icon icon) {
         if (icon instanceof LineIcon line) {
             return new LineIcon(line.tone, line.painter, true);
@@ -255,6 +278,11 @@ public final class Icons {
         @Override
         public int getIconHeight() {
             return SIZE;
+        }
+
+        @Override
+        public String toString() {
+            return "";
         }
     }
 

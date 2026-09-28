@@ -44,6 +44,7 @@ public final class AgentsPanel extends JPanel {
         support = new DataTablePanelSupport<>(appContext, PANEL_KEY, tableModel, table, filterBarContainer,
                 countLabel, "agents", appContext.agentDao::listAll);
         support.init();
+        ZkillboardLinks.install(table);
     }
 
     public void onShown() {
@@ -82,9 +83,13 @@ public final class AgentsPanel extends JPanel {
 
     private void updateStatusLabel() {
         String lastImported = appContext.settingsDao.get(SettingsDao.AGENTS_LAST_IMPORTED_AT).orElse(null);
-        statusLabel.setText(lastImported == null
+        String status = lastImported == null
                 ? "Never imported yet - click Refresh Agent Data to load the catalog."
-                : "Last imported: " + DateUtil.formatIsoInstant(lastImported));
+                : "Last imported: " + DateUtil.formatIsoInstant(lastImported);
+        if (lastImported != null && appContext.agentDao.hasAgentsWithoutLocationIds()) {
+            status += " - click Refresh Agent Data once to add the zKillboard links.";
+        }
+        statusLabel.setText(status);
     }
 
     private void initComponents() {

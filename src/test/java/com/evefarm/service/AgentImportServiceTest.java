@@ -45,6 +45,9 @@ class AgentImportServiceTest {
         assertEquals(0.7, row.security());
         assertEquals("IX-DOA", row.constellationName());
         assertEquals("The Forge", row.regionName());
+        assertEquals(30002780L, row.solarSystemId());
+        assertEquals(20000407L, row.constellationId());
+        assertEquals(10000033L, row.regionId());
         assertEquals(1, row.level());
         assertTrue(!row.isLocator());
     }

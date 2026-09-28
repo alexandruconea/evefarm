@@ -33,7 +33,11 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -215,6 +219,7 @@ public final class OfficersPanel extends JPanel {
     private void applySightings(List<OfficerSighting> sightings) {
         OfficerSighting previouslySelected = selected;
         OfficerSighting match = null;
+        int selectedColumn = Math.max(0, officersTable.getSelectedColumn());
         applyingRows = true;
         try {
             officersModel.setRows(sightings);
@@ -225,6 +230,8 @@ public final class OfficersPanel extends JPanel {
                         match = sightings.get(row);
                         int viewRow = officersTable.convertRowIndexToView(row);
                         officersTable.getSelectionModel().setSelectionInterval(viewRow, viewRow);
+                        officersTable.getColumnModel().getSelectionModel()
+                                .setSelectionInterval(selectedColumn, selectedColumn);
                         break;
                     }
                 }
@@ -241,8 +248,7 @@ public final class OfficersPanel extends JPanel {
     }
 
     private static boolean sameSighting(OfficerSighting a, OfficerSighting b) {
-        return a.characterId() == b.characterId() && a.officerName().equals(b.officerName())
-                && a.firstSeenAt().equals(b.firstSeenAt());
+        return a.sameAs(b);
     }
 
     private void updateSummary(List<OfficerSighting> sightings) {
@@ -294,7 +300,7 @@ public final class OfficersPanel extends JPanel {
         new SwingWorker<List<SpawnMember>, Void>() {
             @Override
             protected List<SpawnMember> doInBackground() {
-                return appContext.officerService.listSpawn(sighting.encounterId());
+                return appContext.officerService.listSpawn(sighting.encounterIds());
             }
 
             @Override
@@ -382,14 +388,41 @@ public final class OfficersPanel extends JPanel {
                 + DateUtil.formatEveClock(sighting.fightEndedAt()) + " EVE";
         String escort = sighting.escortKills() + " other NPC" + (sighting.escortKills() == 1 ? "" : "s")
                 + " killed in the same fight";
+        Instant firstSeen = sighting.earliestSeenAt();
         if (!sighting.killed()) {
-            return "First seen " + DateUtil.formatEveTime(sighting.firstSeenAt()) + " EVE in " + system
-                    + " - no bounty was recorded for it in this fight (" + fight + "). " + escort + ".";
+            return "First seen " + DateUtil.formatEveTime(firstSeen) + " EVE in " + system
+                    + " - no bounty was recorded for it in this fight (" + fight + "). " + escort + "."
+                    + fightersDescription(sighting);
         }
-        return "First seen " + DateUtil.formatEveTime(sighting.firstSeenAt()) + " EVE, killed "
+        return "First seen " + DateUtil.formatEveTime(firstSeen) + " EVE, killed "
                 + DateUtil.formatEveClock(sighting.killedAt()) + " ("
-                + formatDuration(Duration.between(sighting.firstSeenAt(), sighting.killedAt()))
-                + " later) in " + system + " · " + fight + " · " + escort + ".";
+                + formatDuration(Duration.between(firstSeen, sighting.killedAt()))
+                + " later) in " + system + " · " + fight + " · " + escort + "."
+                + fightersDescription(sighting);
+    }
+
+    static String fightersDescription(OfficerSighting sighting) {
+        Map<String, Long> damage = new LinkedHashMap<>();
+        Map<String, Boolean> bounty = new LinkedHashMap<>();
+        for (OfficerSighting.Member member : sighting.members()) {
+            damage.merge(member.characterName(), member.damageDealt(), Long::sum);
+            bounty.merge(member.characterName(), member.killed(), Boolean::logicalOr);
+        }
+        if (damage.size() < 2) {
+            return "";
+        }
+        StringBuilder text = new StringBuilder("\nFought by ");
+        boolean first = true;
+        for (Map.Entry<String, Long> entry : damage.entrySet()) {
+            if (!first) {
+                text.append(", ");
+            }
+            first = false;
+            text.append(entry.getKey()).append(" (")
+                    .append(bounty.get(entry.getKey()) ? "got the bounty, " : "")
+                    .append(String.format(Locale.US, "%,d", entry.getValue())).append(" damage)");
+        }
+        return text.append('.').toString();
     }
 
     private String payoutDescription(OfficerSighting sighting) {

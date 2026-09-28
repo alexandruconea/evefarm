@@ -104,8 +104,10 @@ final class AppUpdateDialog extends JDialog {
     }
 
     private void openReleasePage() {
+        String page = release.pageUrl() != null && release.pageUrl().startsWith(AppInfo.HOME_PAGE + "/")
+                ? release.pageUrl() : AppInfo.HOME_PAGE + "/releases";
         try {
-            Desktop.getDesktop().browse(URI.create(release.pageUrl()));
+            Desktop.getDesktop().browse(URI.create(page));
         } catch (Exception e) {
             LOG.log(Level.INFO, "Couldn't open the release page", e);
         }

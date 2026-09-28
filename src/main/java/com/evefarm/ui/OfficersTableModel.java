@@ -17,7 +17,7 @@ public final class OfficersTableModel extends ColumnTableModel<OfficerSighting> 
             new ColumnDef<>("officer", "Officer", String.class, OfficerSighting::officerName),
             new ColumnDef<>("class", "Class", String.class, r -> shortGroupName(r.officerGroup())),
             new ColumnDef<>("result", "Result", String.class, r -> r.killed() ? "Killed" : "Not killed"),
-            new ColumnDef<>("character", "Character", String.class, OfficerSighting::characterName),
+            new ColumnDef<>("character", "Characters", String.class, OfficerSighting::characterName),
             new ColumnDef<>("system", "System", String.class,
                     r -> r.solarSystem() == null ? KillDayTypeRow.UNKNOWN_SYSTEM : r.solarSystem()),
             new ColumnDef<>("belt", "Belt", String.class, r -> r.belt() == null ? "" : r.belt()),

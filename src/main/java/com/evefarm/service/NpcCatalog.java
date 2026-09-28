@@ -15,8 +15,6 @@ public final class NpcCatalog {
 
     public static final String MISSIONS_LABEL = "Missions";
 
-    public static final NpcCatalog EMPTY = new NpcCatalog(Map.of(), Map.of());
-
     public record Entry(String name, String groupName, SpawnClass spawnClass, List<Integer> typeIds) {
     }
 

@@ -1,9 +1,10 @@
 package com.evefarm.model;
 
 import java.time.Instant;
+import java.util.List;
 
 public record SpawnRow(
-        long encounterId,
+        List<Long> encounterIds,
         String characterName,
         Instant startedAt,
         Instant endedAt,
@@ -11,7 +12,8 @@ public record SpawnRow(
         String kind,
         int killed,
         double bounty,
-        String composition
+        String composition,
+        List<CharacterContribution> contributions
 ) {
 
     public long durationSeconds() {

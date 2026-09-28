@@ -112,7 +112,10 @@ public final class AgentImportService {
                     solarSystemName,
                     security,
                     constellationName,
-                    regionName
+                    regionName,
+                    solarSystem == null ? null : (long) solarSystem.solarSystemId(),
+                    solarSystem == null ? null : (long) solarSystem.constellationId(),
+                    solarSystem == null ? null : (long) solarSystem.regionId()
             ));
         }
         return rows;

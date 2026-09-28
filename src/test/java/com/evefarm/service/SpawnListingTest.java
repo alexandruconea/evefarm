@@ -8,6 +8,7 @@ import com.evefarm.db.dao.ItemTypeDao;
 import com.evefarm.db.dao.OfficerDao;
 import com.evefarm.db.dao.WalletJournalDao;
 import com.evefarm.esi.UniverseApi;
+import com.evefarm.model.CharacterContribution;
 import com.evefarm.model.NpcType;
 import com.evefarm.model.ParsedEncounter;
 import com.evefarm.model.SpawnRow;
@@ -18,6 +19,7 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -93,6 +95,59 @@ class SpawnListingTest {
         characters.remove(ALT);
 
         assertEquals(List.of("Pilot"), officers.listAllSpawns().stream().map(SpawnRow::characterName).toList());
+    }
+
+    @Test
+    void aSpawnFoughtByTwoCharactersIsOneSpawnWithEveryonesKills() {
+        encounters.replaceForLogFile(PILOT, "pilot.txt", List.of(
+                fight("2026-09-24T06:13:10Z", "2026-09-24T06:14:19Z", "Hibi",
+                        npc("Pithi Arrogator", 3, 30_000), npc("Pithi Destructor", 0, 0))));
+        encounters.replaceForLogFile(ALT, "alt.txt", List.of(
+                fight("2026-09-24T06:13:05Z", "2026-09-24T06:14:40Z", "Hibi",
+                        npc("Pithi Arrogator", 1, 10_000), npc("Pithi Destructor", 1, 45_000))));
+
+        List<SpawnRow> spawns = officers.listAllSpawns();
+
+        assertEquals(1, spawns.size());
+        SpawnRow spawn = spawns.get(0);
+        assertEquals("Pilot, Alt", spawn.characterName());
+        assertEquals(5, spawn.killed());
+        assertEquals(85_000, spawn.bounty());
+        assertEquals(Instant.parse("2026-09-24T06:13:05Z"), spawn.startedAt());
+        assertEquals(Instant.parse("2026-09-24T06:14:40Z"), spawn.endedAt());
+        assertEquals("4× Pithi Arrogator, 1× Pithi Destructor", spawn.composition());
+        assertEquals(List.of(new CharacterContribution("Pilot", 3, 30_000, 0),
+                new CharacterContribution("Alt", 2, 55_000, 0)), spawn.contributions());
+        assertEquals(2, spawn.encounterIds().size());
+        assertEquals(List.of(4, 1), officers.listSpawn(spawn.encounterIds()).stream()
+                .map(member -> member.npc().kills()).toList());
+    }
+
+    @Test
+    void fightsInAnotherSystemOrWithOtherNpcsOrLaterStaySeparate() {
+        encounters.replaceForLogFile(PILOT, "pilot.txt", List.of(
+                fight("2026-09-24T06:13:10Z", "2026-09-24T06:14:19Z", "Hibi", npc("Pithi Arrogator", 3, 30_000)),
+                fight("2026-09-24T06:30:00Z", "2026-09-24T06:31:00Z", "Hibi", npc("Pithi Arrogator", 1, 10_000))));
+        encounters.replaceForLogFile(ALT, "alt.txt", List.of(
+                fight("2026-09-24T06:13:10Z", "2026-09-24T06:14:19Z", "Jita", npc("Pithi Arrogator", 2, 20_000)),
+                fight("2026-09-24T06:30:10Z", "2026-09-24T06:31:00Z", "Hibi", npc("Pithi Destructor", 1, 45_000))));
+
+        List<SpawnRow> spawns = officers.listAllSpawns();
+
+        assertEquals(4, spawns.size());
+        assertTrue(spawns.stream().allMatch(spawn -> spawn.contributions().size() == 1));
+    }
+
+    @Test
+    void aCharacterThatOnlySawTheSameNpcDoesNotJoinTheSpawn() {
+        encounters.replaceForLogFile(PILOT, "pilot.txt", List.of(
+                fight("2026-09-24T06:13:10Z", "2026-09-24T06:14:19Z", "Hibi", npc("Pithi Arrogator", 3, 30_000))));
+        encounters.replaceForLogFile(ALT, "alt.txt", List.of(
+                fight("2026-09-24T06:13:20Z", "2026-09-24T06:13:20Z", "Hibi", npc("Pithi Arrogator", 0, 0))));
+
+        List<SpawnRow> spawns = officers.listAllSpawns();
+
+        assertEquals(List.of("Pilot"), spawns.stream().map(SpawnRow::characterName).toList());
     }
 
     private static ParsedEncounter fight(String start, String end, String system, ParsedEncounter.Npc... npcs) {

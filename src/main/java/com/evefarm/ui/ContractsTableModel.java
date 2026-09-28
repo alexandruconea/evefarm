@@ -6,12 +6,16 @@ import com.evefarm.ui.column.ColumnTableModel;
 import com.evefarm.util.DateUtil;
 import com.evefarm.util.IskFormatter;
 
+import javax.swing.Icon;
 import java.util.List;
 import java.util.Locale;
 
 public final class ContractsTableModel extends ColumnTableModel<ContractRow> {
 
+    static final String INFO_COLUMN = "info";
+
     private static final List<ColumnDef<ContractRow>> COLUMNS = List.of(
+            new ColumnDef<>(INFO_COLUMN, "Info", Icon.class, r -> Icons.INFO),
             new ColumnDef<>("character", "Character", String.class, ContractRow::characterName),
             new ColumnDef<>("type", "Type", String.class, r -> formatEnum(r.type())),
             new ColumnDef<>("status", "Status", String.class, r -> formatEnum(r.status())),
@@ -44,7 +48,7 @@ public final class ContractsTableModel extends ColumnTableModel<ContractRow> {
         return value == null ? "" : IskFormatter.format(value);
     }
 
-    private static String formatEnum(String value) {
+    static String formatEnum(String value) {
         if (value == null || value.isBlank()) {
             return "";
         }

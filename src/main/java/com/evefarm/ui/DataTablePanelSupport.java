@@ -12,6 +12,7 @@ import javax.swing.JPanel;
 import javax.swing.JTable;
 import javax.swing.table.TableRowSorter;
 import java.awt.BorderLayout;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
@@ -30,6 +31,8 @@ final class DataTablePanelSupport<R> {
     private final AtomicInteger reloadGeneration = new AtomicInteger();
     private FilterBarPanel filterBarPanel;
     private TableRowSorter<ColumnTableModel<R>> sorter;
+    private Runnable onRowsShown = () -> {
+    };
 
     DataTablePanelSupport(AppContext appContext, String panelKey, ColumnTableModel<R> tableModel, JTable table,
                            JPanel filterBarContainer, JLabel countLabel, String countNoun,
@@ -61,6 +64,18 @@ final class DataTablePanelSupport<R> {
         reload();
     }
 
+    void setOnRowsShown(Runnable onRowsShown) {
+        this.onRowsShown = onRowsShown;
+    }
+
+    List<R> visibleRows() {
+        List<R> visible = new ArrayList<>(table.getRowCount());
+        for (int row = 0; row < table.getRowCount(); row++) {
+            visible.add(tableModel.rowAt(table.convertRowIndexToModel(row)));
+        }
+        return visible;
+    }
+
     void reload() {
         BackgroundLoader.load(reloadGeneration, rowsSupplier, this::applyRows, countNoun,
                 () -> countLabel.setText("Couldn't load " + countNoun + " - see the log"));
@@ -76,5 +91,6 @@ final class DataTablePanelSupport<R> {
     private void applyFilter() {
         sorter.setRowFilter(filterBarPanel.buildRowFilter());
         filterBarPanel.setRowCounts(table.getRowCount(), tableModel.getRowCount());
+        onRowsShown.run();
     }
 }

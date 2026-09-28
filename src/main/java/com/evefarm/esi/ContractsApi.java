@@ -1,6 +1,7 @@
 package com.evefarm.esi;
 
 import com.evefarm.esi.dto.ContractDto;
+import com.evefarm.esi.dto.ContractItemDto;
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import java.util.ArrayList;
@@ -27,5 +28,16 @@ public final class ContractsApi {
             throw new IllegalStateException("Failed to parse contracts", e);
         }
         return result;
+    }
+
+    public List<ContractItemDto> listContractItems(long characterId, long contractId, String accessToken) {
+        String body = client.get("/characters/" + characterId + "/contracts/" + contractId + "/items/",
+                accessToken, Map.of());
+        try {
+            return client.objectMapper().readValue(body, new TypeReference<List<ContractItemDto>>() {
+            });
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to parse the items of contract " + contractId, e);
+        }
     }
 }

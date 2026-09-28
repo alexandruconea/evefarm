@@ -27,8 +27,9 @@ public final class AgentDao {
                     INSERT INTO sde_agent(
                       agent_id, agent_name, corporation_id, corporation_name, faction_id, faction_name,
                       division_name, agent_type_name, level, is_locator, station_id, station_name,
-                      solar_system_name, security, constellation_name, region_name)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      solar_system_name, security, constellation_name, region_name,
+                      solar_system_id, constellation_id, region_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """;
             try {
                 connection.setAutoCommit(false);
@@ -53,6 +54,9 @@ public final class AgentDao {
                         JdbcUtil.setNullable(ps, 14, agent.security());
                         ps.setString(15, agent.constellationName());
                         ps.setString(16, agent.regionName());
+                        JdbcUtil.setNullable(ps, 17, agent.solarSystemId());
+                        JdbcUtil.setNullable(ps, 18, agent.constellationId());
+                        JdbcUtil.setNullable(ps, 19, agent.regionId());
                         ps.addBatch();
                     }
                     ps.executeBatch();
@@ -73,11 +77,24 @@ public final class AgentDao {
         }
     }
 
+    public boolean hasAgentsWithoutLocationIds() {
+        String sql = "SELECT 1 FROM sde_agent WHERE solar_system_id IS NULL AND solar_system_name IS NOT NULL LIMIT 1";
+        synchronized (database) {
+            try (PreparedStatement ps = database.connection().prepareStatement(sql);
+                 ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            } catch (SQLException e) {
+                throw new IllegalStateException("Failed to check the agent catalog", e);
+            }
+        }
+    }
+
     public List<AgentRow> listAll() {
         String sql = """
                 SELECT agent_id, agent_name, corporation_id, corporation_name, faction_id, faction_name,
                        division_name, agent_type_name, level, is_locator, station_id, station_name,
-                       solar_system_name, security, constellation_name, region_name
+                       solar_system_name, security, constellation_name, region_name,
+                       solar_system_id, constellation_id, region_id
                 FROM sde_agent
                 ORDER BY agent_name
                 """;
@@ -103,7 +120,10 @@ public final class AgentDao {
                             rs.getString("solar_system_name"),
                             JdbcUtil.getNullableDouble(rs, "security"),
                             rs.getString("constellation_name"),
-                            rs.getString("region_name")
+                            rs.getString("region_name"),
+                            JdbcUtil.getNullableLong(rs, "solar_system_id"),
+                            JdbcUtil.getNullableLong(rs, "constellation_id"),
+                            JdbcUtil.getNullableLong(rs, "region_id")
                     ));
                 }
             } catch (SQLException e) {

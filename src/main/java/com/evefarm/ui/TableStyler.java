@@ -1,5 +1,7 @@
 package com.evefarm.ui;
 
+import javax.swing.Icon;
+import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JTable;
 import javax.swing.SwingConstants;
@@ -18,6 +20,7 @@ public final class TableStyler {
 
     public static void style(JTable table) {
         table.setRowHeight(26);
+        table.setCellSelectionEnabled(true);
         table.setFillsViewportHeight(true);
         table.setShowGrid(false);
         table.setIntercellSpacing(new java.awt.Dimension(0, 0));
@@ -41,6 +44,20 @@ public final class TableStyler {
         table.setDefaultRenderer(Long.class, stripedRenderer);
         table.setDefaultRenderer(Integer.class, stripedRenderer);
         table.setDefaultRenderer(Double.class, stripedRenderer);
+
+        DefaultTableCellRenderer iconRenderer = new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable t, Object value, boolean isSelected,
+                                                             boolean hasFocus, int row, int column) {
+                super.getTableCellRendererComponent(t, null, false, false, row, column);
+                setIcon(value instanceof Icon icon ? icon : null);
+                setBackground(row % 2 == 0 ? t.getBackground() : stripeColor(t));
+                return this;
+            }
+        };
+        iconRenderer.setHorizontalAlignment(SwingConstants.CENTER);
+        table.setDefaultRenderer(Icon.class, iconRenderer);
+        table.setDefaultRenderer(ImageIcon.class, iconRenderer);
     }
 
     static Color stripeColor(JTable table) {

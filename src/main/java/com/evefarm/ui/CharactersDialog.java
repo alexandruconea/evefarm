@@ -175,7 +175,7 @@ public final class CharactersDialog extends JDialog {
         EveCharacter selected = tableModel.rowAt(table.convertRowIndexToModel(selectedRow));
         appContext.characterService.setMainCharacter(selected.characterId());
         reloadCharacters();
-        table.setRowSelectionInterval(0, 0);
+        table.changeSelection(0, 0, false, false);
         onChanged.run();
     }
 

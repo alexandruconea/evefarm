@@ -16,6 +16,9 @@ public record AgentRow(
         String solarSystemName,
         Double security,
         String constellationName,
-        String regionName
+        String regionName,
+        Long solarSystemId,
+        Long constellationId,
+        Long regionId
 ) {
 }

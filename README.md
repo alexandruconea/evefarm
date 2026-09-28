@@ -1,6 +1,6 @@
 # EVE Farm
 
-EVE Farm is a Windows desktop app that keeps all your EVE Online characters in one place: assets and net worth over time, wallet journal and transactions, market orders, contracts, industry jobs, loyalty points and LP store value, NPC kills from your game logs, officer spawns and drops, and agents.
+EVE Farm is a Windows desktop app that keeps all your EVE Online characters in one place: assets and net worth over time, wallet journal and transactions, market orders, contracts, industry jobs, loyalty points and LP store value, NPC kills from your game logs, officer spawns and drops, agents, and Abyssal Deadspace runs with a timer that starts and stops by itself.
 
 ## Download
 
@@ -33,6 +33,8 @@ EVE Farm has no telemetry and sends nothing to its developer. It only connects t
 - Janice (`janice.e-351.com`), only if you choose it as your price provider;
 - `images.evetech.net`, for item icons;
 - GitHub (`api.github.com`, `github.com`), to check for and download updates. You can turn the automatic check off in **Options → Settings...**.
+
+A character's location and ship are only read while you track Abyss runs for it in the **Abyss** tab, every 10 seconds. EVE Farm saves the runs it detects (start, length and ship), not where the character has been. While tracking, it also checks the clipboard every second, so that a cargo list you copy in EVE counts as the cargo before or after a run. Anything that isn't a list of EVE items is ignored and never saved.
 
 ## Uninstalling
 
