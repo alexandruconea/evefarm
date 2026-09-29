@@ -22,6 +22,11 @@ class LegalFooterTest {
     }
 
     @Test
+    void theFreeAccountLinkOpensTheEveSignupPage() {
+        assertTrue(LegalFooter.SIGNUP_URL.startsWith("https://www.eveonline.com/signup?invc="));
+    }
+
+    @Test
     void theNoticeInTheAppMatchesTheReadme() throws IOException {
         String readme = Files.readString(Path.of("README.md"), StandardCharsets.UTF_8).replace("\r\n", "\n")
                 .replace("[MIT License](LICENSE)", "MIT License")

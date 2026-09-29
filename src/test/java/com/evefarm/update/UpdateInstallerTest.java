@@ -104,7 +104,7 @@ class UpdateInstallerTest {
         byte[] zipBytes = Files.readAllBytes(zip);
         served.put("/repo/releases/download/v1.4.0/" + ZIP_NAME, zipBytes);
         served.put("/repo/releases/download/v1.4.0/" + ZIP_NAME + ".sig", signature.getBytes(StandardCharsets.US_ASCII));
-        return new ReleaseInfo(VERSION, "EVE Farm 1.4.0", "", "https://x", ZIP_NAME,
+        return new ReleaseInfo(VERSION, "", "https://x", ZIP_NAME,
                 base() + "v1.4.0/" + ZIP_NAME, zipBytes.length, base() + "v1.4.0/" + ZIP_NAME + ".sig");
     }
 
@@ -146,7 +146,7 @@ class UpdateInstallerTest {
     void aDownloadFromAnywhereElseIsRefused() throws Exception {
         Path zip = appZip(NEW_APP);
         ReleaseInfo release = publish(zip, ReleaseSignature.sign(privateKey, VERSION, zip));
-        ReleaseInfo elsewhere = new ReleaseInfo(VERSION, "", "", "", ZIP_NAME, "https://evil.example/" + ZIP_NAME,
+        ReleaseInfo elsewhere = new ReleaseInfo(VERSION, "", "", ZIP_NAME, "https://evil.example/" + ZIP_NAME,
                 release.zipSize(), release.signatureUrl());
 
         IOException error = assertThrows(IOException.class,

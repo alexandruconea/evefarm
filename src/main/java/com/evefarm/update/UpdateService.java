@@ -13,11 +13,13 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 public final class UpdateService {
 
     public static final String LATEST_RELEASE_API =
             "https://api.github.com/repos/" + AppInfo.REPOSITORY + "/releases/latest";
+    private static final Pattern VERSION_FORMAT = Pattern.compile("\\d{1,5}(\\.\\d{1,5}){0,3}");
 
     private final SettingsDao settingsDao;
     private final String latestReleaseApi;
@@ -67,7 +69,7 @@ public final class UpdateService {
         }
         String tag = release.path("tag_name").asText("");
         String version = tag.startsWith("v") || tag.startsWith("V") ? tag.substring(1) : tag;
-        if (version.isBlank()) {
+        if (!VERSION_FORMAT.matcher(version).matches()) {
             return Optional.empty();
         }
         String zipName = "EVEFarm-" + version + "-win64.zip";
@@ -81,10 +83,8 @@ public final class UpdateService {
                 signature = asset;
             }
         }
-        String title = release.path("name").asText("");
         return Optional.of(new ReleaseInfo(
                 version,
-                title.isBlank() ? AppInfo.NAME + " " + version : title,
                 release.path("body").asText(""),
                 release.path("html_url").asText(AppInfo.HOME_PAGE + "/releases"),
                 zipName,

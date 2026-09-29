@@ -19,6 +19,7 @@ import javax.swing.SwingWorker;
 import javax.swing.Timer;
 import java.awt.AWTException;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Image;
@@ -43,7 +44,9 @@ public final class MainFrame extends javax.swing.JFrame {
     private record TabSpec(String label, Icon icon, Component component) {
     }
 
-    private static final int FIRST_UPDATE_CHECK_DELAY_MILLIS = 30_000;
+    private enum UpdateCheck { MENU, STARTUP, DAILY }
+
+    private static final int FIRST_UPDATE_CHECK_DELAY_MILLIS = 3_000;
     private static final int UPDATE_CHECK_INTERVAL_MILLIS = 24 * 60 * 60 * 1000;
     private static final int NOTIFICATION_TRAY_MILLIS = 20_000;
 
@@ -146,6 +149,7 @@ public final class MainFrame extends javax.swing.JFrame {
             @Override
             public void windowClosing(WindowEvent e) {
                 saveWindowState();
+                appContext.voiceService.close();
                 if (trayIcon != null) {
                     SystemTray.getSystemTray().remove(trayIcon);
                 }
@@ -220,7 +224,7 @@ public final class MainFrame extends javax.swing.JFrame {
     private void setupUpdates() {
         JMenu helpMenu = new JMenu("Help");
         JMenuItem checkItem = new JMenuItem("Check for Updates...", Icons.REFRESH);
-        checkItem.addActionListener(e -> checkForUpdates(true));
+        checkItem.addActionListener(e -> checkForUpdates(UpdateCheck.MENU));
         JMenuItem aboutItem = new JMenuItem("About " + AppInfo.NAME, Icons.DOCUMENT);
         aboutItem.addActionListener(e -> showAbout());
         helpMenu.add(checkItem);
@@ -231,6 +235,10 @@ public final class MainFrame extends javax.swing.JFrame {
         updateAvailableButton.setIcon(Icons.REFRESH);
         updateAvailableButton.setFocusable(false);
         updateAvailableButton.setVisible(false);
+        Color accent = javax.swing.UIManager.getColor("Component.accentColor");
+        if (accent != null) {
+            updateAvailableButton.setForeground(accent);
+        }
         updateAvailableButton.addActionListener(e -> {
             if (availableRelease != null) {
                 showUpdateDialog(availableRelease);
@@ -248,9 +256,11 @@ public final class MainFrame extends javax.swing.JFrame {
         cleanup.start();
 
         if (!AppInfo.isDevBuild()) {
-            Timer timer = new Timer(UPDATE_CHECK_INTERVAL_MILLIS, e -> checkForUpdates(false));
-            timer.setInitialDelay(FIRST_UPDATE_CHECK_DELAY_MILLIS);
-            timer.start();
+            Timer startup = new Timer(FIRST_UPDATE_CHECK_DELAY_MILLIS, e -> checkForUpdates(UpdateCheck.STARTUP));
+            startup.setRepeats(false);
+            startup.start();
+            Timer daily = new Timer(UPDATE_CHECK_INTERVAL_MILLIS, e -> checkForUpdates(UpdateCheck.DAILY));
+            daily.start();
         }
     }
 
@@ -268,11 +278,12 @@ public final class MainFrame extends javax.swing.JFrame {
                         "The last update couldn't be installed, so " + AppInfo.NAME + " is still on version "
                                 + current + ".\n\nReason: " + reason
                                 + "\n\nYou can try again from Help > Check for Updates. Details are in\n"
-                                + com.evefarm.util.AppPaths.appDataDir().resolve("logs").resolve("updater.log"),
+                                + AppPaths.appDataDir().resolve("logs").resolve("updater.log"),
                         "Update Failed", JOptionPane.WARNING_MESSAGE)));
     }
 
-    private void checkForUpdates(boolean userAsked) {
+    private void checkForUpdates(UpdateCheck check) {
+        boolean userAsked = check == UpdateCheck.MENU;
         if (!userAsked && !appContext.updateService.isAutoCheckEnabled()) {
             return;
         }
@@ -311,7 +322,7 @@ public final class MainFrame extends javax.swing.JFrame {
                 availableRelease = release.get();
                 updateAvailableButton.setText("Update available: " + availableRelease.version());
                 updateAvailableButton.setVisible(true);
-                if (userAsked) {
+                if (userAsked || (check == UpdateCheck.STARTUP && isVisible())) {
                     showUpdateDialog(availableRelease);
                 } else if (trayIcon != null && !isVisible()) {
                     trayIcon.displayMessage(AppInfo.NAME + " " + availableRelease.version() + " is available",

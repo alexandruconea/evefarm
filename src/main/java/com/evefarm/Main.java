@@ -48,6 +48,8 @@ public final class Main {
         }
 
         AppLogging.init();
+        Thread.setDefaultUncaughtExceptionHandler((thread, error) ->
+                LOG.log(Level.SEVERE, "Unexpected error in " + thread.getName(), error));
         try {
             startApp(instance);
         } catch (Exception e) {

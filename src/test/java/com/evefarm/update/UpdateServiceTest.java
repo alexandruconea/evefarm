@@ -106,6 +106,17 @@ class UpdateServiceTest {
     }
 
     @Test
+    void aTagThatIsNotAPlainVersionIsNeverOffered() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        for (String tag : new String[]{"v9.9.9<img src='https://example/x.png'>", "v../../9.9.9", "v9.9.9 ", "",
+                "v9.9.9.9.9", "latest"}) {
+            assertFalse(UpdateService.parseRelease(mapper.readTree(
+                    RELEASE.replace("\"tag_name\": \"v1.4.0\"", "\"tag_name\": " + mapper.writeValueAsString(tag))))
+                    .isPresent(), tag);
+        }
+    }
+
+    @Test
     void aSkippedVersionIsRemembered() throws Exception {
         UpdateService service = service();
         ReleaseInfo release = service.findNewerRelease("1.3.0").orElseThrow();

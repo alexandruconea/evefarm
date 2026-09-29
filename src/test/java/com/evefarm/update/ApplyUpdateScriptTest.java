@@ -35,13 +35,15 @@ class ApplyUpdateScriptTest {
         return run(install, staged, log, temp);
     }
 
-    private int run(Path install, Path staged, Path log, Path workingDirectory) throws Exception {
+    private int run(Path install, Path staged, Path log, Path workingDirectory, String... extra) throws Exception {
         Process finished = new ProcessBuilder("cmd.exe", "/c", "exit").start();
         finished.waitFor(10, TimeUnit.SECONDS);
-        Process process = new ProcessBuilder(List.of("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
-                "-File", script().toString(), "-ProcessId", String.valueOf(finished.pid()),
+        List<String> command = new java.util.ArrayList<>(List.of("powershell.exe", "-NoProfile", "-ExecutionPolicy",
+                "Bypass", "-File", script().toString(), "-ProcessId", String.valueOf(finished.pid()),
                 "-InstallDir", install.toString(), "-StagedDir", staged.toString(), "-LogFile", log.toString(),
-                "-NoLaunch"))
+                "-NoLaunch"));
+        command.addAll(List.of(extra));
+        Process process = new ProcessBuilder(command)
                 .directory(workingDirectory.toFile())
                 .redirectErrorStream(true)
                 .redirectOutput(ProcessBuilder.Redirect.DISCARD)
@@ -83,7 +85,54 @@ class ApplyUpdateScriptTest {
     }
 
     @Test
-    void ifTheSwapFailsTheOldVersionIsPutBack() throws Exception {
+    void theFilesYouAddedToTheAppFolderSurviveTheUpdate() throws Exception {
+        Path install = Files.createDirectories(temp.resolve("EVEFarm"));
+        Files.writeString(install.resolve("version.txt"), "old");
+        Files.writeString(install.resolve("EVEFarm.exe - Shortcut.lnk"), "shortcut");
+        Path staged = Files.createDirectories(temp.resolve("EVEFarm.update"));
+        Files.writeString(staged.resolve("version.txt"), "new");
+
+        run(install, staged, temp.resolve("updater.log"));
+
+        assertEquals("new", Files.readString(install.resolve("version.txt")));
+        assertEquals("shortcut", Files.readString(install.resolve("EVEFarm.exe - Shortcut.lnk")));
+        assertFalse(Files.exists(temp.resolve("EVEFarm.old").resolve("EVEFarm.exe - Shortcut.lnk")));
+    }
+
+    @Test
+    void anAppFolderOpenInAnotherProgramIsUpdatedFileByFile() throws Exception {
+        Path install = Files.createDirectories(temp.resolve("EVEFarm"));
+        Files.writeString(install.resolve("version.txt"), "old");
+        Files.createDirectories(install.resolve("app"));
+        Files.writeString(install.resolve("app").resolve("evefarm.jar"), "old jar");
+        Files.writeString(install.resolve("notes.txt"), "mine");
+        Path staged = Files.createDirectories(temp.resolve("EVEFarm.update"));
+        Files.writeString(staged.resolve("version.txt"), "new");
+        Files.createDirectories(staged.resolve("app"));
+        Files.writeString(staged.resolve("app").resolve("evefarm.jar"), "new jar");
+        Path log = temp.resolve("updater.log");
+        Process blocker = new ProcessBuilder("cmd.exe", "/c", "ping -n 60 127.0.0.1 > nul")
+                .directory(install.toFile()).start();
+        try {
+            run(install, staged, log, temp, "-MoveAttempts", "2");
+        } finally {
+            blocker.descendants().forEach(ProcessHandle::destroy);
+            blocker.destroy();
+            blocker.waitFor(10, TimeUnit.SECONDS);
+        }
+
+        assertEquals("new", Files.readString(install.resolve("version.txt")));
+        assertEquals("new jar", Files.readString(install.resolve("app").resolve("evefarm.jar")));
+        assertEquals("mine", Files.readString(install.resolve("notes.txt")));
+        assertEquals("old jar", Files.readString(temp.resolve("EVEFarm.old").resolve("app").resolve("evefarm.jar")));
+        String written = Files.readString(log);
+        assertTrue(written.contains("replacing the files inside it"), written);
+        assertTrue(written.contains("installed the new version"), written);
+        assertFalse(Files.exists(staged));
+    }
+
+    @Test
+    void ifTheNewVersionIsMissingTheOldOneIsLeftAlone() throws Exception {
         Path install = Files.createDirectories(temp.resolve("EVEFarm"));
         Files.writeString(install.resolve("version.txt"), "old");
         Path log = temp.resolve("updater.log");
@@ -91,7 +140,7 @@ class ApplyUpdateScriptTest {
         run(install, temp.resolve("missing-staged-folder"), log);
 
         assertEquals("old", Files.readString(install.resolve("version.txt")));
-        assertTrue(Files.readString(log).contains("restored the previous version"));
+        assertTrue(Files.readString(log).contains("update failed"));
         String reason = UpdateInstaller.takeUpdateFailure(temp.resolve("update-failed.txt")).orElseThrow();
         assertTrue(reason.contains("missing-staged-folder"), "the app is told why: " + reason);
         assertFalse(Files.exists(temp.resolve("update-failed.txt")), "the reason is shown only once");

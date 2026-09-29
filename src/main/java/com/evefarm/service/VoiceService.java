@@ -1,5 +1,6 @@
 package com.evefarm.service;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
@@ -50,6 +51,9 @@ public final class VoiceService {
             }
             writer = null;
         }
+        if (process != null && process.isAlive()) {
+            process.destroy();
+        }
         process = null;
     }
 
@@ -72,6 +76,7 @@ public final class VoiceService {
             return;
         }
         process = new ProcessBuilder(command())
+                .directory(new File(System.getProperty("user.home")))
                 .redirectErrorStream(true)
                 .redirectOutput(ProcessBuilder.Redirect.DISCARD)
                 .start();
