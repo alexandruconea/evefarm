@@ -9,6 +9,7 @@ public record MarketOrderRow(
         String groupName,
         String categoryName,
         boolean isBuyOrder,
+        String state,
         double price,
         long volumeRemain,
         long volumeTotal,
@@ -28,4 +29,10 @@ public record MarketOrderRow(
         Double brokerFee,
         Double brokerFeePercent
 ) {
+    public static final String ACTIVE = "active";
+    public static final String CLOSED = "closed";
+
+    public boolean active() {
+        return ACTIVE.equals(state);
+    }
 }

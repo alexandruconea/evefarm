@@ -23,22 +23,30 @@ public final class MarketOrderDao {
         this.database = database;
     }
 
-    public void replaceForCharacter(long characterId, List<MarketOrderEntry> entries) {
+    public void saveForCharacter(long characterId, List<MarketOrderEntry> entries) {
         synchronized (database) {
             Connection connection = database.connection();
-            String deleteSql = "DELETE FROM market_order_current WHERE character_id = ?";
+            String closeSql = "UPDATE market_order_current SET state = ? WHERE character_id = ? AND state = ?";
             String insertSql = """
                     INSERT INTO market_order_current(
                       character_id, order_id, type_id, is_buy_order, price, volume_remain, volume_total,
                       escrow, location_id, issued, duration, state, range, min_volume, fetched_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(character_id, order_id) DO UPDATE SET
+                      type_id = excluded.type_id, is_buy_order = excluded.is_buy_order, price = excluded.price,
+                      volume_remain = excluded.volume_remain, volume_total = excluded.volume_total,
+                      escrow = excluded.escrow, location_id = excluded.location_id, issued = excluded.issued,
+                      duration = excluded.duration, state = excluded.state, range = excluded.range,
+                      min_volume = excluded.min_volume, fetched_at = excluded.fetched_at
                     """;
             String now = Instant.now().toString();
             try {
                 connection.setAutoCommit(false);
-                try (PreparedStatement del = connection.prepareStatement(deleteSql)) {
-                    del.setLong(1, characterId);
-                    del.executeUpdate();
+                try (PreparedStatement close = connection.prepareStatement(closeSql)) {
+                    close.setString(1, MarketOrderRow.CLOSED);
+                    close.setLong(2, characterId);
+                    close.setString(3, MarketOrderRow.ACTIVE);
+                    close.executeUpdate();
                 }
                 try (PreparedStatement ps = connection.prepareStatement(insertSql)) {
                     for (MarketOrderEntry entry : entries) {
@@ -67,7 +75,7 @@ public final class MarketOrderDao {
                     connection.rollback();
                 } catch (SQLException ignored) {
                 }
-                throw new IllegalStateException("Failed to replace market orders for character " + characterId, e);
+                throw new IllegalStateException("Failed to save market orders for character " + characterId, e);
             } finally {
                 try {
                     connection.setAutoCommit(true);
@@ -77,21 +85,26 @@ public final class MarketOrderDao {
         }
     }
 
-    public List<MarketOrderRow> listRows(Set<Long> characterIdFilter) {
+    public List<MarketOrderRow> listRows(Set<Long> characterIdFilter, boolean includeClosed) {
         StringBuilder sql = new StringBuilder("""
                 SELECT o.order_id, o.character_id, c.character_name, o.type_id,
                        COALESCE(t.name, 'Type #' || o.type_id) AS type_name,
-                       t.group_name, t.category_name, o.is_buy_order, o.price, o.volume_remain, o.volume_total, o.escrow,
+                       t.group_name, t.category_name, o.is_buy_order, o.state, o.price, o.volume_remain,
+                       o.volume_total, o.escrow,
                        COALESCE(l.name, 'Location #' || o.location_id) AS location_name,
                        o.issued, o.duration, o.range, o.min_volume, t.volume
                 FROM market_order_current o
                 JOIN characters c ON c.character_id = o.character_id
                 LEFT JOIN type_cache t ON t.type_id = o.type_id
                 LEFT JOIN location_cache l ON l.location_id = o.location_id
+                WHERE c.removed_at IS NULL
                 """);
+        if (!includeClosed) {
+            sql.append(" AND o.state = '").append(MarketOrderRow.ACTIVE).append("'");
+        }
         if (characterIdFilter != null && !characterIdFilter.isEmpty()) {
             String placeholders = characterIdFilter.stream().map(id -> "?").collect(Collectors.joining(","));
-            sql.append(" WHERE o.character_id IN (").append(placeholders).append(")");
+            sql.append(" AND o.character_id IN (").append(placeholders).append(")");
         }
         sql.append(" ORDER BY o.issued DESC");
 
@@ -116,6 +129,7 @@ public final class MarketOrderDao {
                                 rs.getString("group_name"),
                                 rs.getString("category_name"),
                                 rs.getInt("is_buy_order") != 0,
+                                rs.getString("state"),
                                 rs.getDouble("price"),
                                 rs.getLong("volume_remain"),
                                 rs.getLong("volume_total"),

@@ -38,6 +38,7 @@ public final class SettingsDao {
     public static final String ABYSS_LOOT_PROMPT = "abyss_loot_prompt";
     public static final String ABYSS_AGGRO_VOICE = "abyss_aggro_voice";
     public static final String ABYSS_CARGO_PREFIX = "abyss_cargo_";
+    public static final String MARKET_ORDERS_SHOW_CLOSED = "market_orders_show_closed";
 
     private final Database database;
 

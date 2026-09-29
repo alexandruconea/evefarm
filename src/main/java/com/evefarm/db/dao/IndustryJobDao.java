@@ -22,15 +22,24 @@ public final class IndustryJobDao {
         this.database = database;
     }
 
-    public void replaceForCharacter(long characterId, List<IndustryJobEntry> entries) {
+    public void saveForCharacter(long characterId, List<IndustryJobEntry> entries) {
         synchronized (database) {
             Connection connection = database.connection();
-            String deleteSql = "DELETE FROM industry_job WHERE character_id = ?";
+            String deleteSql = """
+                    DELETE FROM industry_job
+                    WHERE character_id = ? AND (status IS NULL OR status NOT IN ('delivered', 'cancelled', 'reverted'))
+                    """;
             String insertSql = """
                     INSERT INTO industry_job(
                       character_id, job_id, activity_id, status, blueprint_type_id, product_type_id,
                       runs, cost, facility_id, output_location_id, start_date, end_date)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(character_id, job_id) DO UPDATE SET
+                      activity_id = excluded.activity_id, status = excluded.status,
+                      blueprint_type_id = excluded.blueprint_type_id, product_type_id = excluded.product_type_id,
+                      runs = excluded.runs, cost = excluded.cost, facility_id = excluded.facility_id,
+                      output_location_id = excluded.output_location_id, start_date = excluded.start_date,
+                      end_date = excluded.end_date
                     """;
             try {
                 connection.setAutoCommit(false);
@@ -62,7 +71,7 @@ public final class IndustryJobDao {
                     connection.rollback();
                 } catch (SQLException ignored) {
                 }
-                throw new IllegalStateException("Failed to replace industry jobs for character " + characterId, e);
+                throw new IllegalStateException("Failed to save industry jobs for character " + characterId, e);
             } finally {
                 try {
                     connection.setAutoCommit(true);
@@ -87,10 +96,11 @@ public final class IndustryJobDao {
                 LEFT JOIN type_cache bp ON bp.type_id = j.blueprint_type_id
                 LEFT JOIN type_cache pr ON pr.type_id = j.product_type_id
                 LEFT JOIN location_cache l ON l.location_id = j.facility_id
+                WHERE c.removed_at IS NULL
                 """);
         if (characterIdFilter != null && !characterIdFilter.isEmpty()) {
             String placeholders = characterIdFilter.stream().map(id -> "?").collect(Collectors.joining(","));
-            sql.append(" WHERE j.character_id IN (").append(placeholders).append(")");
+            sql.append(" AND j.character_id IN (").append(placeholders).append(")");
         }
         sql.append(" ORDER BY j.end_date DESC");
 

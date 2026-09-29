@@ -86,6 +86,14 @@ public final class AssetService {
         return assetDao.listRows(characterIdFilter);
     }
 
+    public List<AssetDao.ArchivedMonth> getArchivedMonths() {
+        return assetDao.listArchivedMonths();
+    }
+
+    public List<AssetRow> getArchivedAssetRows(String month, Set<Long> characterIdFilter) {
+        return assetDao.listArchivedRows(month, characterIdFilter);
+    }
+
     private long resolveTopLevelLocationId(AssetDto asset, Map<Long, AssetDto> byItemId) {
         AssetDto current = asset;
         for (int depth = 0; depth < 10; depth++) {

@@ -15,8 +15,16 @@ public final class IndustryApi {
     }
 
     public List<IndustryJobDto> listActiveJobs(long characterId, String accessToken) {
+        return listJobs(characterId, accessToken, false);
+    }
+
+    public List<IndustryJobDto> listJobsWithHistory(long characterId, String accessToken) {
+        return listJobs(characterId, accessToken, true);
+    }
+
+    private List<IndustryJobDto> listJobs(long characterId, String accessToken, boolean includeCompleted) {
         String body = client.get("/characters/" + characterId + "/industry/jobs/",
-                accessToken, Map.of("include_completed", "false"));
+                accessToken, Map.of("include_completed", String.valueOf(includeCompleted)));
         try {
             return client.objectMapper().readValue(body, new TypeReference<List<IndustryJobDto>>() {
             });

@@ -6,6 +6,7 @@ import com.evefarm.db.dao.LoyaltyPointDao;
 import com.evefarm.esi.LoyaltyApi;
 import com.evefarm.esi.dto.LoyaltyPointDto;
 import com.evefarm.model.LoyaltyPointEntry;
+import com.evefarm.model.LoyaltyPointHistoryRow;
 import com.evefarm.model.LoyaltyPointRow;
 import com.evefarm.model.NpcCorporationRow;
 
@@ -50,6 +51,10 @@ public final class LoyaltyPointService {
 
     public List<LoyaltyPointRow> getLoyaltyPoints(long characterId) {
         return loyaltyPointDao.listForCharacter(characterId);
+    }
+
+    public List<LoyaltyPointHistoryRow> getHistory() {
+        return loyaltyPointDao.listHistory();
     }
 
     public List<NpcCorporationRow> listAllNpcCorporations() {

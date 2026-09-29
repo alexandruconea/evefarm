@@ -68,8 +68,7 @@ public final class CharacterDao {
     }
 
     private static final List<String> CURRENT_STATE_TABLES = List.of(
-            "tokens", "asset_current", "market_order_current", "character_contract", "industry_job",
-            "character_loyalty_points");
+            "tokens", "asset_current", "character_loyalty_points");
 
     public void remove(long characterId) {
         synchronized (database) {

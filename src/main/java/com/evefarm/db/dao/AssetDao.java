@@ -58,6 +58,7 @@ public final class AssetDao {
                     }
                     ps.executeBatch();
                 }
+                archiveMonth(connection, characterId, now.substring(0, 7));
                 connection.commit();
             } catch (SQLException e) {
                 try {
@@ -72,6 +73,52 @@ public final class AssetDao {
                 }
             }
         }
+    }
+
+    private static void archiveMonth(Connection connection, long characterId, String month) throws SQLException {
+        try (PreparedStatement del = connection.prepareStatement(
+                "DELETE FROM asset_archive WHERE character_id = ? AND month = ?")) {
+            del.setLong(1, characterId);
+            del.setString(2, month);
+            del.executeUpdate();
+        }
+        try (PreparedStatement copy = connection.prepareStatement("""
+                INSERT INTO asset_archive(character_id, month, captured_at, item_id, type_id, quantity, location_id,
+                                          location_flag, is_singleton, name, container_name, unit_price, total_value)
+                SELECT character_id, ?, fetched_at, item_id, type_id, quantity, location_id, location_flag,
+                       is_singleton, name, container_name, unit_price, total_value
+                FROM asset_current WHERE character_id = ?
+                """)) {
+            copy.setString(1, month);
+            copy.setLong(2, characterId);
+            copy.executeUpdate();
+        }
+    }
+
+    public List<ArchivedMonth> listArchivedMonths() {
+        String sql = """
+                SELECT a.month, MAX(a.captured_at) AS captured_at
+                FROM asset_archive a
+                JOIN characters c ON c.character_id = a.character_id
+                WHERE c.removed_at IS NULL
+                GROUP BY a.month
+                ORDER BY a.month DESC
+                """;
+        synchronized (database) {
+            List<ArchivedMonth> result = new ArrayList<>();
+            try (PreparedStatement ps = database.connection().prepareStatement(sql);
+                 ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    result.add(new ArchivedMonth(rs.getString("month"), rs.getString("captured_at")));
+                }
+            } catch (SQLException e) {
+                throw new IllegalStateException("Failed to list the archived asset months", e);
+            }
+            return result;
+        }
+    }
+
+    public record ArchivedMonth(String month, String lastSavedAt) {
     }
 
     public double sumTotalValue(long characterId) {
@@ -91,6 +138,14 @@ public final class AssetDao {
     }
 
     public List<AssetRow> listRows(Set<Long> characterIdFilter) {
+        return queryRows("asset_current", null, characterIdFilter);
+    }
+
+    public List<AssetRow> listArchivedRows(String month, Set<Long> characterIdFilter) {
+        return queryRows("asset_archive", month, characterIdFilter);
+    }
+
+    private List<AssetRow> queryRows(String table, String month, Set<Long> characterIdFilter) {
         StringBuilder sql = new StringBuilder("""
                 SELECT a.item_id, a.character_id, c.character_name, a.type_id,
                        COALESCE(t.name, 'Type #' || a.type_id) AS type_name,
@@ -100,14 +155,18 @@ public final class AssetDao {
                        a.container_name,
                        a.location_flag, a.is_singleton, t.volume,
                        a.unit_price, a.total_value
-                FROM asset_current a
+                FROM %s a
                 JOIN characters c ON c.character_id = a.character_id
                 LEFT JOIN type_cache t ON t.type_id = a.type_id
                 LEFT JOIN location_cache l ON l.location_id = a.location_id
-                """);
+                WHERE c.removed_at IS NULL
+                """.formatted(table));
+        if (month != null) {
+            sql.append(" AND a.month = ?");
+        }
         if (characterIdFilter != null && !characterIdFilter.isEmpty()) {
             String placeholders = characterIdFilter.stream().map(id -> "?").collect(Collectors.joining(","));
-            sql.append(" WHERE a.character_id IN (").append(placeholders).append(")");
+            sql.append(" AND a.character_id IN (").append(placeholders).append(")");
         }
         sql.append(" ORDER BY a.total_value DESC");
 
@@ -115,8 +174,11 @@ public final class AssetDao {
             Connection connection = database.connection();
             List<AssetRow> result = new ArrayList<>();
             try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
+                int index = 1;
+                if (month != null) {
+                    ps.setString(index++, month);
+                }
                 if (characterIdFilter != null && !characterIdFilter.isEmpty()) {
-                    int index = 1;
                     for (Long id : characterIdFilter) {
                         ps.setLong(index++, id);
                     }

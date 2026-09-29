@@ -20,6 +20,8 @@ Everything stays on your computer, in `%USERPROFILE%\.evefarm`:
 - `backups` holds automatic daily backups (the last 7 days and one per month for a year);
 - `logs` holds the log files.
 
+EVE only shows the last 30 to 90 days of most history, so EVE Farm saves it as it updates and keeps it for as long as you keep the app: wallet journal and transactions, closed market orders (**Show closed orders** in the Market Orders tab), finished contracts with their items, finished industry jobs, every change in your loyalty points (**LP History...** in the LP Store tab), and your whole asset list as it was at the end of each month (**Show** at the bottom of the Assets tab).
+
 **Options → Settings...** can copy every automatic backup to a second folder, such as a cloud-synced one. **Options → Backup Data...** and **Restore Data...** create or restore a backup by hand.
 
 EVE Farm logs in through the official EVE SSO (OAuth 2.0 with PKCE), so it never sees your password. Login tokens are encrypted with Windows DPAPI and can only be read by your Windows account.

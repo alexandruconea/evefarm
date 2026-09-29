@@ -18,6 +18,7 @@ public final class MarketOrdersTableModel extends ColumnTableModel<MarketOrderRo
             new ColumnDef<>("group", "Group", String.class, r -> nullToEmpty(r.groupName())),
             new ColumnDef<>("category", "Category", String.class, r -> nullToEmpty(r.categoryName())),
             new ColumnDef<>("side", "Side", String.class, r -> r.isBuyOrder() ? "Buy" : "Sell"),
+            new ColumnDef<>("status", "Status", String.class, MarketOrdersTableModel::statusText),
             new ColumnDef<>("price", "Price", String.class, r -> IskFormatter.format(r.price())),
             new ColumnDef<>("outbid", "Outbid", String.class, MarketOrdersTableModel::formatOutbid),
             new ColumnDef<>("quantity", "Quantity", String.class, r -> r.volumeRemain() + " / " + r.volumeTotal()),
@@ -50,6 +51,19 @@ public final class MarketOrdersTableModel extends ColumnTableModel<MarketOrderRo
 
     private static String formatIsk(Double value) {
         return value == null ? "" : IskFormatter.format(value);
+    }
+
+    static String statusText(MarketOrderRow row) {
+        if (row.state() == null) {
+            return "";
+        }
+        return switch (row.state()) {
+            case MarketOrderRow.ACTIVE -> "Active";
+            case "expired" -> row.volumeRemain() == 0 ? "Fulfilled" : "Expired";
+            case "cancelled" -> "Cancelled";
+            case MarketOrderRow.CLOSED -> "Closed";
+            default -> row.state();
+        };
     }
 
     private static String formatOutbid(MarketOrderRow row) {

@@ -6,6 +6,8 @@ import com.evefarm.ui.column.ColumnTableModel;
 import com.evefarm.util.DateUtil;
 import com.evefarm.util.IskFormatter;
 
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 
@@ -25,7 +27,7 @@ public final class IndustryJobsTableModel extends ColumnTableModel<IndustryJobRo
             new ColumnDef<>("character", "Character", String.class, IndustryJobRow::characterName),
             new ColumnDef<>("activity", "Activity", String.class,
                     r -> ACTIVITY_NAMES.getOrDefault(r.activityId(), "Activity #" + r.activityId())),
-            new ColumnDef<>("status", "Status", String.class, r -> r.status() == null ? "" : capitalize(r.status())),
+            new ColumnDef<>("status", "Status", String.class, r -> statusText(r, Instant.now())),
             new ColumnDef<>("blueprint", "Blueprint", String.class, IndustryJobRow::blueprintName),
             new ColumnDef<>("product", "Product", String.class, r -> r.productName() == null ? "" : r.productName()),
             new ColumnDef<>("runs", "Runs", String.class, r -> r.runs() == null ? "" : String.valueOf(r.runs())),
@@ -39,6 +41,24 @@ public final class IndustryJobsTableModel extends ColumnTableModel<IndustryJobRo
 
     public IndustryJobsTableModel() {
         super(COLUMNS);
+    }
+
+    static String statusText(IndustryJobRow row, Instant now) {
+        if (row.status() == null) {
+            return "";
+        }
+        if ("active".equals(row.status()) && isPast(row.endDate(), now)) {
+            return "Ready";
+        }
+        return capitalize(row.status());
+    }
+
+    private static boolean isPast(String isoInstant, Instant now) {
+        try {
+            return isoInstant != null && !Instant.parse(isoInstant).isAfter(now);
+        } catch (DateTimeParseException e) {
+            return false;
+        }
     }
 
     private static String capitalize(String value) {

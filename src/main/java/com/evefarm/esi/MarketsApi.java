@@ -4,6 +4,7 @@ import com.evefarm.esi.dto.MarketOrderDto;
 import com.evefarm.esi.dto.MarketPriceDto;
 import com.fasterxml.jackson.core.type.TypeReference;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +24,21 @@ public final class MarketsApi {
         } catch (Exception e) {
             throw new IllegalStateException("Failed to parse market orders", e);
         }
+    }
+
+    public List<MarketOrderDto> listCharacterOrderHistory(long characterId, String accessToken) {
+        List<String> pages = client.getAllPages("/characters/" + characterId + "/orders/history/", accessToken,
+                Map.of());
+        List<MarketOrderDto> result = new ArrayList<>();
+        try {
+            for (String page : pages) {
+                result.addAll(client.objectMapper().readValue(page, new TypeReference<List<MarketOrderDto>>() {
+                }));
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to parse the market order history", e);
+        }
+        return result;
     }
 
     public List<MarketPriceDto> listPrices() {

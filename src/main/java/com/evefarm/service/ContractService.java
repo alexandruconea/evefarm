@@ -3,10 +3,11 @@ package com.evefarm.service;
 import com.evefarm.auth.AuthService;
 import com.evefarm.db.dao.ContractDao;
 import com.evefarm.esi.ContractsApi;
+import com.evefarm.esi.EsiException;
 import com.evefarm.esi.dto.ContractDto;
-import com.evefarm.esi.dto.ContractItemDto;
 import com.evefarm.model.ContractEntry;
 import com.evefarm.model.ContractItem;
+import com.evefarm.model.ContractItemEntry;
 import com.evefarm.model.ContractRow;
 import com.evefarm.model.TypeInfo;
 
@@ -15,8 +16,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.OptionalDouble;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public final class ContractService {
+
+    private static final Logger LOG = Logger.getLogger(ContractService.class.getName());
 
     private final AuthService authService;
     private final ContractsApi contractsApi;
@@ -40,9 +45,11 @@ public final class ContractService {
     }
 
     public List<ContractItem> listContractItems(long characterId, long contractId) {
-        String accessToken = authService.getValidAccessToken(characterId);
-        List<ContractItemDto> items = contractsApi.listContractItems(characterId, contractId, accessToken);
-        typeNameCacheService.resolveTypes(items.stream().map(ContractItemDto::typeId).toList());
+        List<ContractItemEntry> items = contractDao.findItems(characterId, contractId).orElseGet(() -> {
+            String accessToken = authService.getValidAccessToken(characterId);
+            return fetchAndSaveItems(characterId, contractId, accessToken);
+        });
+        typeNameCacheService.resolveTypes(items.stream().map(ContractItemEntry::typeId).toList());
         return items.stream()
                 .map(item -> {
                     TypeInfo type = typeNameCacheService.resolveType(item.typeId());
@@ -91,7 +98,32 @@ public final class ContractService {
                         c.forCorporation(), c.issuerId(), c.assigneeId(), c.acceptorId(),
                         c.startLocationId(), c.endLocationId()))
                 .toList();
-        contractDao.replaceForCharacter(characterId, entries);
+        contractDao.saveForCharacter(characterId, entries);
+        saveMissingItems(characterId, accessToken);
+    }
+
+    private void saveMissingItems(long characterId, String accessToken) {
+        for (long contractId : contractDao.contractsWithoutItems(characterId)) {
+            try {
+                fetchAndSaveItems(characterId, contractId, accessToken);
+            } catch (EsiException e) {
+                if (e.statusCode() == 403 || e.statusCode() == 404) {
+                    contractDao.markItemsUnavailable(characterId, contractId);
+                } else {
+                    LOG.log(Level.FINE, "Couldn't save the items of contract " + contractId + " yet", e);
+                }
+            }
+        }
+    }
+
+    private List<ContractItemEntry> fetchAndSaveItems(long characterId, long contractId, String accessToken) {
+        List<ContractItemEntry> items = contractsApi.listContractItems(characterId, contractId, accessToken).stream()
+                .map(item -> new ContractItemEntry(item.recordId(), item.typeId(), item.quantity(),
+                        item.rawQuantity(), item.included()))
+                .toList();
+        typeNameCacheService.resolveTypes(items.stream().map(ContractItemEntry::typeId).toList());
+        contractDao.saveItems(characterId, contractId, items);
+        return items;
     }
 
     public List<ContractRow> getContractRows(Set<Long> characterIdFilter) {

@@ -75,6 +75,9 @@ public final class LpStorePanel extends javax.swing.JPanel {
         favoriteCheckBox.addActionListener(e -> onFavoriteToggled());
         refreshOffersButton.addActionListener(e -> fetchOffers());
         setTargetButton.addActionListener(e -> openTargetDialog());
+        historyButton.setIcon(Icons.CHART);
+        historyButton.addActionListener(e -> LoyaltyPointHistoryDialog.open(
+                javax.swing.SwingUtilities.getWindowAncestor(this), appContext));
 
         loadTargetIskPerLp();
         reloadCharacters(true);
@@ -342,6 +345,7 @@ public final class LpStorePanel extends javax.swing.JPanel {
     private javax.swing.JLabel offerCountLabel;
     private javax.swing.JButton refreshOffersButton;
     private javax.swing.JButton setTargetButton;
+    private javax.swing.JButton historyButton;
     private javax.swing.JTable table;
     private javax.swing.JLabel wealthLabel;
     private javax.swing.JLabel yourLpLabel;
@@ -356,6 +360,7 @@ public final class LpStorePanel extends javax.swing.JPanel {
         wealthLabel = new javax.swing.JLabel();
         refreshOffersButton = new javax.swing.JButton();
         setTargetButton = new javax.swing.JButton();
+        historyButton = new javax.swing.JButton("LP History...");
         filterBarContainer = new javax.swing.JPanel();
         jScrollPane2 = new javax.swing.JScrollPane();
         table = new javax.swing.JTable();
@@ -420,7 +425,9 @@ public final class LpStorePanel extends javax.swing.JPanel {
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                                 .addComponent(refreshOffersButton)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(setTargetButton)))
+                                .addComponent(setTargetButton)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(historyButton)))
                         .addGap(0, 167, Short.MAX_VALUE)))
                 .addContainerGap())
         );
@@ -435,7 +442,8 @@ public final class LpStorePanel extends javax.swing.JPanel {
                     .addComponent(corporationCombo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(favoriteCheckBox)
                     .addComponent(refreshOffersButton)
-                    .addComponent(setTargetButton))
+                    .addComponent(setTargetButton)
+                    .addComponent(historyButton))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(filterBarContainer, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)

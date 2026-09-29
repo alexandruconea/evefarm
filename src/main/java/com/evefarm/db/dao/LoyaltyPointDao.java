@@ -1,7 +1,9 @@
 package com.evefarm.db.dao;
 
 import com.evefarm.db.Database;
+import com.evefarm.db.JdbcUtil;
 import com.evefarm.model.LoyaltyPointEntry;
+import com.evefarm.model.LoyaltyPointHistoryRow;
 import com.evefarm.model.LoyaltyPointRow;
 
 import java.sql.Connection;
@@ -10,7 +12,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 public final class LoyaltyPointDao {
 
@@ -45,6 +51,7 @@ public final class LoyaltyPointDao {
                     }
                     ps.executeBatch();
                 }
+                recordChanges(connection, characterId, entries, now);
                 connection.commit();
             } catch (SQLException e) {
                 try {
@@ -58,6 +65,83 @@ public final class LoyaltyPointDao {
                 } catch (SQLException ignored) {
                 }
             }
+        }
+    }
+
+    private static void recordChanges(Connection connection, long characterId, List<LoyaltyPointEntry> entries,
+                                      String now) throws SQLException {
+        Map<Long, Long> last = new HashMap<>();
+        try (PreparedStatement ps = connection.prepareStatement("""
+                SELECT h.corporation_id, h.loyalty_points FROM loyalty_point_history h
+                WHERE h.character_id = ? AND h.recorded_at = (
+                  SELECT MAX(x.recorded_at) FROM loyalty_point_history x
+                  WHERE x.character_id = h.character_id AND x.corporation_id = h.corporation_id)
+                """)) {
+            ps.setLong(1, characterId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    last.put(rs.getLong(1), rs.getLong(2));
+                }
+            }
+        }
+        Map<Long, Long> current = new HashMap<>();
+        for (LoyaltyPointEntry entry : entries) {
+            current.put(entry.corporationId(), entry.loyaltyPoints());
+        }
+        Set<Long> corporations = new TreeSet<>(last.keySet());
+        corporations.addAll(current.keySet());
+        try (PreparedStatement ps = connection.prepareStatement("""
+                INSERT OR REPLACE INTO loyalty_point_history(character_id, corporation_id, loyalty_points, recorded_at)
+                VALUES (?, ?, ?, ?)
+                """)) {
+            for (long corporationId : corporations) {
+                long points = current.getOrDefault(corporationId, 0L);
+                Long previous = last.get(corporationId);
+                if (previous == null ? points == 0 : previous == points) {
+                    continue;
+                }
+                ps.setLong(1, characterId);
+                ps.setLong(2, corporationId);
+                ps.setLong(3, points);
+                ps.setString(4, now);
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        }
+    }
+
+    public List<LoyaltyPointHistoryRow> listHistory() {
+        String sql = """
+                SELECT h.character_id, c.character_name, h.corporation_id,
+                       COALESCE(e.name, 'Corporation #' || h.corporation_id) AS corporation_name,
+                       h.loyalty_points,
+                       h.loyalty_points - LAG(h.loyalty_points) OVER (
+                         PARTITION BY h.character_id, h.corporation_id ORDER BY h.recorded_at) AS change,
+                       h.recorded_at
+                FROM loyalty_point_history h
+                JOIN characters c ON c.character_id = h.character_id
+                LEFT JOIN entity_name_cache e ON e.entity_id = h.corporation_id
+                WHERE c.removed_at IS NULL
+                ORDER BY h.recorded_at DESC, c.character_name, corporation_name
+                """;
+        synchronized (database) {
+            List<LoyaltyPointHistoryRow> result = new ArrayList<>();
+            try (PreparedStatement ps = database.connection().prepareStatement(sql);
+                 ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    result.add(new LoyaltyPointHistoryRow(
+                            rs.getLong("character_id"),
+                            rs.getString("character_name"),
+                            rs.getLong("corporation_id"),
+                            rs.getString("corporation_name"),
+                            rs.getLong("loyalty_points"),
+                            JdbcUtil.getNullableLong(rs, "change"),
+                            rs.getString("recorded_at")));
+                }
+            } catch (SQLException e) {
+                throw new IllegalStateException("Failed to list the loyalty point history", e);
+            }
+            return result;
         }
     }
 

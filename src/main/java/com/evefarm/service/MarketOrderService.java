@@ -40,7 +40,10 @@ public final class MarketOrderService {
 
     public void refreshOrdersForCharacter(long characterId) {
         String accessToken = authService.getValidAccessToken(characterId);
-        List<MarketOrderDto> orders = marketsApi.listCharacterOrders(characterId, accessToken);
+        List<MarketOrderDto> active = marketsApi.listCharacterOrders(characterId, accessToken);
+        List<MarketOrderDto> history = marketsApi.listCharacterOrderHistory(characterId, accessToken);
+        List<MarketOrderDto> orders = new ArrayList<>(active);
+        orders.addAll(history);
 
         Set<Integer> typeIds = orders.stream().map(MarketOrderDto::typeId).collect(Collectors.toSet());
         typeNameCacheService.resolveTypes(typeIds);
@@ -48,21 +51,28 @@ public final class MarketOrderService {
         Set<Long> locationIds = orders.stream().map(MarketOrderDto::locationId).collect(Collectors.toSet());
         locationNameCacheService.resolveLocations(locationIds, accessToken);
 
-        List<MarketOrderEntry> entries = orders.stream()
-                .map(order -> new MarketOrderEntry(order.orderId(), order.typeId(), order.isBuyOrder(),
-                        order.price(), order.volumeRemain(), order.volumeTotal(), order.escrow(),
-                        order.locationId(), order.issued(), order.duration(), order.state(),
-                        order.range(), order.minVolume()))
-                .toList();
-        marketOrderDao.replaceForCharacter(characterId, entries);
+        List<MarketOrderEntry> entries = new ArrayList<>(orders.size());
+        for (MarketOrderDto order : active) {
+            entries.add(entry(order, MarketOrderRow.ACTIVE));
+        }
+        for (MarketOrderDto order : history) {
+            entries.add(entry(order, order.state() == null ? MarketOrderRow.CLOSED : order.state()));
+        }
+        marketOrderDao.saveForCharacter(characterId, entries);
     }
 
-    public List<MarketOrderRow> getOrderRows(Set<Long> characterIdFilter) {
+    private static MarketOrderEntry entry(MarketOrderDto order, String state) {
+        return new MarketOrderEntry(order.orderId(), order.typeId(), order.isBuyOrder(), order.price(),
+                order.volumeRemain(), order.volumeTotal(), order.escrow(), order.locationId(), order.issued(),
+                order.duration(), state, order.range(), order.minVolume());
+    }
+
+    public List<MarketOrderRow> getOrderRows(Set<Long> characterIdFilter, boolean includeClosed) {
         Map<Integer, Double> marketPrices = priceService.getUnitPrices();
         Map<Integer, Double> sellMins = priceService.getUnitPrices(PriceMode.SELL_MIN);
         Map<Integer, Double> buyMaxes = priceService.getUnitPrices(PriceMode.BUY_MAX);
-        List<MarketOrderRow> rows = marketOrderDao.listRows(characterIdFilter).stream()
-                .map(row -> withMarketPrice(row, marketPrices, sellMins, buyMaxes))
+        List<MarketOrderRow> rows = marketOrderDao.listRows(characterIdFilter, includeClosed).stream()
+                .map(row -> row.active() ? withMarketPrice(row, marketPrices, sellMins, buyMaxes) : row)
                 .toList();
         return withBrokerFees(rows);
     }
@@ -82,7 +92,7 @@ public final class MarketOrderService {
         }
         Boolean outbid = computeOutbid(row.isBuyOrder(), row.price(), sellMin, buyMax);
         return new MarketOrderRow(row.orderId(), row.characterId(), row.characterName(), row.typeId(),
-                row.typeName(), row.groupName(), row.categoryName(), row.isBuyOrder(), row.price(),
+                row.typeName(), row.groupName(), row.categoryName(), row.isBuyOrder(), row.state(), row.price(),
                 row.volumeRemain(), row.volumeTotal(), row.escrow(), row.locationName(), row.issued(),
                 row.duration(), row.range(), row.minVolume(), row.volume(), marketPrice, sellMin, buyMax,
                 marginPercent, profit, outbid, null, null);
@@ -113,7 +123,7 @@ public final class MarketOrderService {
                 feePercent = (fee / orderValue) * 100;
             }
             result.add(new MarketOrderRow(row.orderId(), row.characterId(), row.characterName(), row.typeId(),
-                    row.typeName(), row.groupName(), row.categoryName(), row.isBuyOrder(), row.price(),
+                    row.typeName(), row.groupName(), row.categoryName(), row.isBuyOrder(), row.state(), row.price(),
                     row.volumeRemain(), row.volumeTotal(), row.escrow(), row.locationName(), row.issued(),
                     row.duration(), row.range(), row.minVolume(), row.volume(), row.marketPrice(),
                     row.marketSellMin(), row.marketBuyMax(), row.marketMarginPercent(), row.marketProfit(),

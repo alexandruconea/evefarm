@@ -72,6 +72,25 @@ class CharacterDaoTest {
     }
 
     @Test
+    void ordersContractsAndJobsAreKeptButHiddenWhileTheCharacterIsRemoved() throws SQLException {
+        execute("INSERT INTO market_order_current(character_id, order_id, type_id, is_buy_order, price, volume_remain, "
+                + "volume_total, state, fetched_at) VALUES (" + CHARACTER_ID + ", 1, 34, 0, 5, 0, 10, 'expired', 'now')");
+        execute("INSERT INTO character_contract(character_id, contract_id, status, for_corporation) "
+                + "VALUES (" + CHARACTER_ID + ", 2, 'finished', 0)");
+        execute("INSERT INTO industry_job(character_id, job_id, activity_id, status) "
+                + "VALUES (" + CHARACTER_ID + ", 3, 1, 'delivered')");
+
+        characters.remove(CHARACTER_ID);
+
+        assertEquals(1, count("market_order_current"));
+        assertEquals(1, count("character_contract"));
+        assertEquals(1, count("industry_job"));
+        assertEquals(List.of(), new MarketOrderDao(database).listRows(null, true));
+        assertEquals(List.of(), new ContractDao(database).listRows(null));
+        assertEquals(List.of(), new IndustryJobDao(database).listRows(null));
+    }
+
+    @Test
     void addingTheCharacterAgainBringsItsHistoryBack() {
         characters.remove(CHARACTER_ID);
         characters.upsert(CHARACTER_ID, "Malpais Legate", null, List.of(), "new-owner");

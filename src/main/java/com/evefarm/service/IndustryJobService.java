@@ -32,7 +32,7 @@ public final class IndustryJobService {
 
     public void refreshJobsForCharacter(long characterId) {
         String accessToken = authService.getValidAccessToken(characterId);
-        List<IndustryJobDto> jobs = industryApi.listActiveJobs(characterId, accessToken);
+        List<IndustryJobDto> jobs = industryApi.listJobsWithHistory(characterId, accessToken);
 
         Set<Integer> typeIds = new HashSet<>();
         for (IndustryJobDto job : jobs) {
@@ -54,7 +54,7 @@ public final class IndustryJobService {
                         j.productTypeId(), j.runs(), j.cost(), j.facilityId(), j.outputLocationId(),
                         j.startDate(), j.endDate()))
                 .toList();
-        industryJobDao.replaceForCharacter(characterId, entries);
+        industryJobDao.saveForCharacter(characterId, entries);
     }
 
     public List<IndustryJobRow> getJobRows(Set<Long> characterIdFilter) {
