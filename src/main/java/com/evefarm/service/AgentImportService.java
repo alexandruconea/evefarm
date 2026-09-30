@@ -4,7 +4,7 @@ import com.evefarm.db.dao.AgentDao;
 import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.esi.FuzzworkApi;
 import com.evefarm.model.AgentRow;
-import com.evefarm.util.CsvParsing;
+import com.evefarm.util.CsvTable;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -121,40 +121,12 @@ public final class AgentImportService {
         return rows;
     }
 
-    private record CsvTable(Map<String, Integer> columnIndex, List<List<String>> rows) {
-        String get(List<String> row, String column) {
-            Integer index = columnIndex.get(column);
-            return (index == null || index >= row.size()) ? null : row.get(index);
-        }
-    }
-
-    private static CsvTable parseCsv(String csvText) {
-        String text = csvText.startsWith("﻿") ? csvText.substring(1) : csvText;
-        String[] lines = text.split("\r?\n");
-        if (lines.length == 0) {
-            return new CsvTable(Map.of(), List.of());
-        }
-        List<String> header = CsvParsing.parseLine(lines[0]);
-        Map<String, Integer> columnIndex = new HashMap<>();
-        for (int i = 0; i < header.size(); i++) {
-            columnIndex.put(header.get(i), i);
-        }
-        List<List<String>> rows = new ArrayList<>();
-        for (int i = 1; i < lines.length; i++) {
-            if (lines[i].isBlank()) {
-                continue;
-            }
-            rows.add(CsvParsing.parseLine(lines[i]));
-        }
-        return new CsvTable(columnIndex, rows);
-    }
-
     private static Map<Integer, String> parseIdNameMap(String csvText, String idColumn, String nameColumn) {
-        CsvTable table = parseCsv(csvText);
+        CsvTable table = CsvTable.parse(csvText);
         Map<Integer, String> result = new HashMap<>();
         for (List<String> row : table.rows()) {
-            Integer id = parseIntOrNull(table.get(row, idColumn));
-            String name = table.get(row, nameColumn);
+            Integer id = table.integer(row, idColumn);
+            String name = table.text(row, nameColumn);
             if (id != null && name != null) {
                 result.put(id, name);
             }
@@ -163,45 +135,45 @@ public final class AgentImportService {
     }
 
     private static List<RawAgent> parseAgents(String csvText) {
-        CsvTable table = parseCsv(csvText);
+        CsvTable table = CsvTable.parse(csvText);
         List<RawAgent> result = new ArrayList<>();
         for (List<String> row : table.rows()) {
-            Long agentId = parseLongOrNull(table.get(row, "agentID"));
-            Integer divisionId = parseIntOrNull(table.get(row, "divisionID"));
-            Integer corporationId = parseIntOrNull(table.get(row, "corporationID"));
-            Long stationId = parseLongOrNull(table.get(row, "locationID"));
-            Integer level = parseIntOrNull(table.get(row, "level"));
-            Integer agentTypeId = parseIntOrNull(table.get(row, "agentTypeID"));
+            Long agentId = table.number(row, "agentID");
+            Integer divisionId = table.integer(row, "divisionID");
+            Integer corporationId = table.integer(row, "corporationID");
+            Long stationId = table.number(row, "locationID");
+            Integer level = table.integer(row, "level");
+            Integer agentTypeId = table.integer(row, "agentTypeID");
             if (agentId == null || divisionId == null || corporationId == null || stationId == null
                     || level == null || agentTypeId == null) {
                 continue;
             }
             result.add(new RawAgent(agentId, divisionId, corporationId, stationId, level, agentTypeId,
-                    "1".equals(table.get(row, "isLocator"))));
+                    "1".equals(table.text(row, "isLocator"))));
         }
         return result;
     }
 
     private static Map<Integer, RawCorporation> parseCorporations(String csvText) {
-        CsvTable table = parseCsv(csvText);
+        CsvTable table = CsvTable.parse(csvText);
         Map<Integer, RawCorporation> result = new HashMap<>();
         for (List<String> row : table.rows()) {
-            Integer corporationId = parseIntOrNull(table.get(row, "corporationID"));
-            String name = table.get(row, "corporationName");
+            Integer corporationId = table.integer(row, "corporationID");
+            String name = table.text(row, "corporationName");
             if (corporationId != null && name != null) {
-                result.put(corporationId, new RawCorporation(corporationId, name, parseIntOrNull(table.get(row, "factionID"))));
+                result.put(corporationId, new RawCorporation(corporationId, name, table.integer(row, "factionID")));
             }
         }
         return result;
     }
 
     private static Map<Long, RawStation> parseStations(String csvText) {
-        CsvTable table = parseCsv(csvText);
+        CsvTable table = CsvTable.parse(csvText);
         Map<Long, RawStation> result = new HashMap<>();
         for (List<String> row : table.rows()) {
-            Long stationId = parseLongOrNull(table.get(row, "stationID"));
-            String name = table.get(row, "stationName");
-            Integer solarSystemId = parseIntOrNull(table.get(row, "solarSystemID"));
+            Long stationId = table.number(row, "stationID");
+            String name = table.text(row, "stationName");
+            Integer solarSystemId = table.integer(row, "solarSystemID");
             if (stationId != null && name != null && solarSystemId != null) {
                 result.put(stationId, new RawStation(stationId, name, solarSystemId));
             }
@@ -210,67 +182,34 @@ public final class AgentImportService {
     }
 
     private static Map<Integer, RawSolarSystem> parseSolarSystems(String csvText) {
-        CsvTable table = parseCsv(csvText);
+        CsvTable table = CsvTable.parse(csvText);
         Map<Integer, RawSolarSystem> result = new HashMap<>();
         for (List<String> row : table.rows()) {
-            Integer solarSystemId = parseIntOrNull(table.get(row, "solarSystemID"));
-            String name = table.get(row, "solarSystemName");
-            Integer constellationId = parseIntOrNull(table.get(row, "constellationID"));
-            Integer regionId = parseIntOrNull(table.get(row, "regionID"));
+            Integer solarSystemId = table.integer(row, "solarSystemID");
+            String name = table.text(row, "solarSystemName");
+            Integer constellationId = table.integer(row, "constellationID");
+            Integer regionId = table.integer(row, "regionID");
             if (solarSystemId != null && name != null && constellationId != null && regionId != null) {
-                result.put(solarSystemId, new RawSolarSystem(solarSystemId, name,
-                        parseDoubleOrNull(table.get(row, "security")), constellationId, regionId));
+                result.put(solarSystemId, new RawSolarSystem(solarSystemId, name, table.decimal(row, "security"),
+                        constellationId, regionId));
             }
         }
         return result;
     }
 
     private static Map<Long, String> parseAgentNames(String csvText, Set<Long> agentIds) {
-        CsvTable table = parseCsv(csvText);
+        CsvTable table = CsvTable.parse(csvText);
         Map<Long, String> result = new HashMap<>();
         for (List<String> row : table.rows()) {
-            Long itemId = parseLongOrNull(table.get(row, "itemID"));
+            Long itemId = table.number(row, "itemID");
             if (itemId == null || !agentIds.contains(itemId)) {
                 continue;
             }
-            String name = table.get(row, "itemName");
+            String name = table.text(row, "itemName");
             if (name != null) {
                 result.put(itemId, name);
             }
         }
         return result;
-    }
-
-    private static Integer parseIntOrNull(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        try {
-            return Integer.parseInt(value.trim());
-        } catch (NumberFormatException e) {
-            return null;
-        }
-    }
-
-    private static Long parseLongOrNull(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        try {
-            return Long.parseLong(value.trim());
-        } catch (NumberFormatException e) {
-            return null;
-        }
-    }
-
-    private static Double parseDoubleOrNull(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        try {
-            return Double.parseDouble(value.trim());
-        } catch (NumberFormatException e) {
-            return null;
-        }
     }
 }

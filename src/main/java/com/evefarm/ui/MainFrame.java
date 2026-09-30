@@ -67,6 +67,7 @@ public final class MainFrame extends javax.swing.JFrame {
     private NpcKillsPanel killsPanel;
     private AgentsPanel agentsPanel;
     private AbyssPanel abyssPanel;
+    private MiningPanel miningPanel;
 
     public MainFrame(AppContext appContext) {
         initComponents();
@@ -98,6 +99,7 @@ public final class MainFrame extends javax.swing.JFrame {
         killsPanel = new NpcKillsPanel(appContext);
         agentsPanel = new AgentsPanel(appContext);
         abyssPanel = new AbyssPanel(appContext, this::showTrayNotification);
+        miningPanel = new MiningPanel(appContext);
 
         tabSpecs.put("assets", new TabSpec("Assets", Icons.COIN, assetsPanel));
         tabSpecs.put("tracker", new TabSpec("Tracker", Icons.CHART, trackerPanel));
@@ -110,6 +112,7 @@ public final class MainFrame extends javax.swing.JFrame {
         tabSpecs.put("lpStore", new TabSpec("LP Store", Icons.LP, lpStorePanel));
         tabSpecs.put("kills", new TabSpec("NPC Kills", Icons.CROSSHAIR, killsPanel));
         tabSpecs.put("abyss", new TabSpec("Abyss", Icons.ABYSS, abyssPanel));
+        tabSpecs.put("mining", new TabSpec("Mining", Icons.MINING, miningPanel));
         tabSpecs.put("agents", new TabSpec("Agents", Icons.MEDAL, agentsPanel));
 
         rebuildTabs();
@@ -140,6 +143,8 @@ public final class MainFrame extends javax.swing.JFrame {
                 agentsPanel.onShown();
             } else if (selected == abyssPanel) {
                 abyssPanel.onShown();
+            } else if (selected == miningPanel) {
+                miningPanel.onShown();
             }
         });
 
@@ -477,6 +482,7 @@ public final class MainFrame extends javax.swing.JFrame {
         lpStorePanel.refreshCharacterFilter();
         killsPanel.refreshCharacterFilter();
         abyssPanel.refreshCharacterFilter();
+        miningPanel.refreshCharacterFilter();
     }
 
     private Map<String, TabSpec> orderedTabSpecs() {
@@ -714,5 +720,6 @@ public final class MainFrame extends javax.swing.JFrame {
         valuesPanel.onShown();
         lpStorePanel.onShown();
         killsPanel.onShown();
+        miningPanel.onShown();
     }
 }

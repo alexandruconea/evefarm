@@ -13,7 +13,8 @@ import java.util.logging.Logger;
 public final class VoiceService {
 
     private static final Logger LOG = Logger.getLogger(VoiceService.class.getName());
-    private static final int MAX_TEXT_LENGTH = 200;
+    private static final int MAX_TEXT_LENGTH = 400;
+    private static final char VOLUME_COMMAND = '\u0001';
     private static final String SCRIPT = String.join("\n",
             "[Console]::InputEncoding = [System.Text.Encoding]::UTF8",
             "Add-Type -AssemblyName System.Speech",
@@ -22,11 +23,13 @@ public final class VoiceService {
             "while ($true) {",
             "  $line = [Console]::In.ReadLine()",
             "  if ($line -eq $null) { break }",
+            "  if ($line.StartsWith([string][char]1)) { $voice.Volume = [int]$line.Substring(1); continue }",
             "  if ($line.Length -gt 0) { [void]$voice.SpeakAsync($line) }",
             "}");
 
     private Process process;
     private Writer writer;
+    private int volume = 100;
 
     public synchronized void say(String text) {
         String clean = clean(text);
@@ -41,6 +44,28 @@ public final class VoiceService {
             LOG.log(Level.WARNING, "Couldn't speak the alert", e);
             close();
         }
+    }
+
+    public synchronized void setVolume(int percent) {
+        volume = Math.max(0, Math.min(100, percent));
+        if (process == null || !process.isAlive() || writer == null) {
+            return;
+        }
+        try {
+            writer.write(volumeCommand(volume));
+            writer.flush();
+        } catch (IOException e) {
+            LOG.log(Level.WARNING, "Couldn't change the voice volume", e);
+            close();
+        }
+    }
+
+    synchronized int volume() {
+        return volume;
+    }
+
+    static String volumeCommand(int percent) {
+        return VOLUME_COMMAND + String.valueOf(percent) + "\n";
     }
 
     public synchronized void close() {
@@ -81,5 +106,6 @@ public final class VoiceService {
                 .redirectOutput(ProcessBuilder.Redirect.DISCARD)
                 .start();
         writer = new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8);
+        writer.write(volumeCommand(volume));
     }
 }

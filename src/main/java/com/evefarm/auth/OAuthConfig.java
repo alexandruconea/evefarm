@@ -16,11 +16,13 @@ public final class OAuthConfig {
             "esi-universe.read_structures.v1",
             "esi-characters.read_loyalty.v1",
             "esi-location.read_location.v1",
-            "esi-location.read_ship_type.v1"
+            "esi-location.read_ship_type.v1",
+            "esi-industry.read_character_mining.v1"
     );
 
     public static final String LOCATION_SCOPE = "esi-location.read_location.v1";
     public static final String SHIP_SCOPE = "esi-location.read_ship_type.v1";
+    public static final String MINING_SCOPE = "esi-industry.read_character_mining.v1";
 
     private static final String CLIENT_ID = "87669db38180407d99c4925a7f504b06";
     private static final int REDIRECT_PORT = 8086;

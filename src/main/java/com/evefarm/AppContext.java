@@ -17,6 +17,8 @@ import com.evefarm.db.dao.OfficerDao;
 import com.evefarm.db.dao.LocationCacheDao;
 import com.evefarm.db.dao.LoyaltyPointDao;
 import com.evefarm.db.dao.MarketOrderDao;
+import com.evefarm.db.dao.MiningLedgerDao;
+import com.evefarm.db.dao.OreDao;
 import com.evefarm.db.dao.PriceCacheDao;
 import com.evefarm.db.dao.SavedFilterDao;
 import com.evefarm.db.dao.SettingsDao;
@@ -63,6 +65,8 @@ import com.evefarm.service.LocationNameCacheService;
 import com.evefarm.service.LoyaltyPointService;
 import com.evefarm.service.LpOfferPricingService;
 import com.evefarm.service.MarketOrderService;
+import com.evefarm.service.MiningService;
+import com.evefarm.service.OreCatalogService;
 import com.evefarm.service.PriceService;
 import com.evefarm.service.SchedulerService;
 import com.evefarm.service.TrackerSnapshotService;
@@ -110,6 +114,7 @@ public final class AppContext {
     public final TransactionService transactionService;
     public final ContractService contractService;
     public final IndustryJobService industryJobService;
+    public final MiningService miningService;
     public final LoyaltyPointService loyaltyPointService;
     public final NpcCatalogService npcCatalogService;
     public final KillService killService;
@@ -211,6 +216,9 @@ public final class AppContext {
                 locationNameCacheService, contractDao, typeNameCacheService, priceService);
         this.industryJobService = new IndustryJobService(authService, industryApi, typeNameCacheService,
                 locationNameCacheService, industryJobDao);
+        this.miningService = new MiningService(authService, characterDao, industryApi, typeNameCacheService,
+                locationNameCacheService, new MiningLedgerDao(database),
+                new OreCatalogService(fuzzworkApi, new OreDao(database), settingsDao), priceService);
         this.valueSummaryService = new ValueSummaryService(snapshotDao, assetDao, characterService);
         this.backupRestoreService = new BackupRestoreService(database, settingsDao);
         this.eveSettingsService = new EveSettingsService(settingsDao);

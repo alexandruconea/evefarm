@@ -1,6 +1,7 @@
 package com.evefarm.ui;
 
 import com.evefarm.AppContext;
+import com.evefarm.esi.EsiException;
 import com.evefarm.model.EveCharacter;
 import com.evefarm.service.UpdateCategories;
 
@@ -48,6 +49,7 @@ public final class UpdateDialog extends JDialog {
     private static final Duration MARKET_PRICES_COOLDOWN = Duration.ofHours(1);
     private static final Duration LOYALTY_POINTS_COOLDOWN = Duration.ofHours(1);
     private static final Duration KILLS_COOLDOWN = Duration.ofHours(1);
+    private static final Duration MINING_COOLDOWN = Duration.ofMinutes(10);
 
     private static final Dimension NOW_BUTTON_SIZE = new Dimension(100, 26);
     private static final Dimension BOTTOM_BUTTON_SIZE = new Dimension(130, 28);
@@ -85,6 +87,7 @@ public final class UpdateDialog extends JDialog {
     private final JCheckBox marketPricesBox = new JCheckBox("Market Prices", true);
     private final JCheckBox loyaltyPointsBox = new JCheckBox("Loyalty Points", true);
     private final JCheckBox killsBox = new JCheckBox("NPC Kills", true);
+    private final JCheckBox miningBox = new JCheckBox("Mining Ledger", true);
 
     private final JButton updateButton = new JButton("Update", Icons.REFRESH);
 
@@ -124,9 +127,10 @@ public final class UpdateDialog extends JDialog {
         rows.add(row(UpdateCategories.MARKET_PRICES, marketPricesBox, MARKET_PRICES_COOLDOWN, this::runMarketPrices));
         rows.add(row(UpdateCategories.LOYALTY_POINTS, loyaltyPointsBox, LOYALTY_POINTS_COOLDOWN, this::runLoyaltyPoints));
         rows.add(row(UpdateCategories.KILLS, killsBox, KILLS_COOLDOWN, this::runKills));
+        rows.add(row(UpdateCategories.MINING, miningBox, MINING_COOLDOWN, this::runMining));
 
         for (String label : new String[]{
-                "Blueprints", "Skills", "NPC Standing", "Mining"}) {
+                "Blueprints", "Skills", "NPC Standing"}) {
             rows.add(disabledRow(label));
         }
 
@@ -351,6 +355,10 @@ public final class UpdateDialog extends JDialog {
         while (deepest.getCause() != null && deepest.getCause() != deepest) {
             deepest = deepest.getCause();
         }
+        if (deepest instanceof EsiException esi && esi.statusCode() >= 502 && esi.statusCode() <= 504) {
+            return "EVE's servers didn't answer (HTTP " + esi.statusCode() + "). Around 11:00 EVE time that's the "
+                    + "daily downtime - try again in a few minutes.";
+        }
         String message = deepest.getMessage() != null ? deepest.getMessage() : deepest.getClass().getSimpleName();
         String top = error.getMessage();
         String text = top != null && !top.equals(message) && deepest != error ? top + " (" + message + ")" : message;
@@ -400,5 +408,9 @@ public final class UpdateDialog extends JDialog {
 
     private void runKills(List<String> failures) {
         attempt(failures, "Gamelogs", appContext.killService::refreshKillsFromLogs);
+    }
+
+    private void runMining(List<String> failures) {
+        forEachCharacter(failures, appContext.miningService::refreshLedgerForCharacter);
     }
 }

@@ -52,7 +52,8 @@ public final class MigrationRunner {
             "db/migrations/V27__abyssal_runs.sql",
             "db/migrations/V28__abyssal_cargo_and_ignored_items.sql",
             "db/migrations/V29__abyssal_fleet.sql",
-            "db/migrations/V30__keep_order_contract_lp_and_asset_history.sql"
+            "db/migrations/V30__keep_order_contract_lp_and_asset_history.sql",
+            "db/migrations/V31__mining_ledger.sql"
     );
 
     public static void run(Database database) {

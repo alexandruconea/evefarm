@@ -37,6 +37,13 @@ public final class SettingsDao {
     public static final String ABYSS_FLEET = "abyss_fleet";
     public static final String ABYSS_LOOT_PROMPT = "abyss_loot_prompt";
     public static final String ABYSS_AGGRO_VOICE = "abyss_aggro_voice";
+    public static final String ABYSS_ROOM_VOICE = "abyss_room_voice";
+    public static final String VOICE_VOLUME = "voice_volume";
+    public static final String ORE_CATALOG_IMPORTED_AT = "ore_catalog_imported_at";
+    public static final String MINING_VALUATION = "mining_valuation";
+    public static final String MINING_REFINE_RATE = "mining_refine_rate";
+    public static final String MINING_PERIOD = "mining_period";
+    public static final String MINING_GROUP_BY = "mining_group_by";
     public static final String ABYSS_CARGO_PREFIX = "abyss_cargo_";
     public static final String MARKET_ORDERS_SHOW_CLOSED = "market_orders_show_closed";
 

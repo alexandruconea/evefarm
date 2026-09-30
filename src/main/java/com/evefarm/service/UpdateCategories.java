@@ -12,6 +12,7 @@ public final class UpdateCategories {
     public static final String MARKET_PRICES = "marketPrices";
     public static final String LOYALTY_POINTS = "loyaltyPoints";
     public static final String KILLS = "kills";
+    public static final String MINING = "mining";
 
     private UpdateCategories() {
     }

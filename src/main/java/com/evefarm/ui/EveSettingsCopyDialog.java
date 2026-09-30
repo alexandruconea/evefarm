@@ -58,9 +58,11 @@ public final class EveSettingsCopyDialog extends JDialog {
     private final JComboBox<CharacterChoice> sourceCharacter = new JComboBox<>();
     private final JComboBox<Profile> targetProfile = new JComboBox<>();
     private final JComboBox<CharacterChoice> targetCharacter = new JComboBox<>();
-    private final JCheckBox includeAccount = new JCheckBox("Include account-wide settings (core_user)");
+    private final JCheckBox includeAccount =
+            new JCheckBox("Also copy keyboard shortcuts and other account-wide settings (core_user)");
     private final JComboBox<AccountChoice> sourceAccount = new JComboBox<>();
     private final JComboBox<AccountChoice> targetAccount = new JComboBox<>();
+    private final JLabel accountHint = new JLabel(" ");
     private final JTextArea status = new JTextArea();
     private final JButton copyButton = new JButton("Copy Settings", Icons.SWAP);
     private final JButton browseButton = new JButton("Browse...");
@@ -112,6 +114,13 @@ public final class EveSettingsCopyDialog extends JDialog {
         addRow(form, constraints, 6, "Source account file:", sourceAccount, null);
         addRow(form, constraints, 7, "Target account file:", targetAccount, null);
 
+        constraints.gridx = 1;
+        constraints.gridy = 8;
+        constraints.gridwidth = 2;
+        accountHint.putClientProperty("html.disable", Boolean.TRUE);
+        form.add(accountHint, constraints);
+        constraints.gridwidth = 1;
+
         TextAreaStyler.informational(status);
         status.setRows(5);
         status.setBorder(BorderFactory.createEmptyBorder(4, 14, 8, 14));
@@ -134,7 +143,7 @@ public final class EveSettingsCopyDialog extends JDialog {
         sourceProfile.addActionListener(e -> profilesChanged());
         targetProfile.addActionListener(e -> profilesChanged());
         sourceCharacter.addActionListener(e -> sourceCharacterChanged());
-        targetCharacter.addActionListener(e -> updateControls());
+        targetCharacter.addActionListener(e -> targetCharacterChanged());
         includeAccount.addActionListener(e -> updateControls());
         sourceAccount.addActionListener(e -> updateControls());
         targetAccount.addActionListener(e -> updateControls());
@@ -294,6 +303,7 @@ public final class EveSettingsCopyDialog extends JDialog {
         Profile target = (Profile) targetProfile.getSelectedItem();
         refillAccounts(targetAccount, target, oldTargetAccount);
         updating = false;
+        matchAccounts();
         updateControls();
     }
 
@@ -305,7 +315,62 @@ public final class EveSettingsCopyDialog extends JDialog {
         CharacterChoice oldTarget = (CharacterChoice) targetCharacter.getSelectedItem();
         refillTargetCharacters(oldTarget);
         updating = false;
+        matchAccounts();
         updateControls();
+    }
+
+    private void targetCharacterChanged() {
+        if (updating) {
+            return;
+        }
+        matchAccounts();
+        updateControls();
+    }
+
+    private void matchAccounts() {
+        CharacterChoice source = (CharacterChoice) sourceCharacter.getSelectedItem();
+        CharacterChoice target = (CharacterChoice) targetCharacter.getSelectedItem();
+        Long from = source == null ? null : accountOf(accountCharacters, source.id());
+        Long to = target == null ? null : accountOf(accountCharacters, target.id());
+        boolean fromListed = from != null && selectAccount(sourceAccount, from);
+        boolean toListed = to != null && selectAccount(targetAccount, to);
+        boolean sameProfile = sourceProfile.getSelectedItem() == targetProfile.getSelectedItem();
+        if (source == null || target == null) {
+            accountHint.setText(" ");
+        } else if (from != null && from.equals(to) && sameProfile) {
+            includeAccount.setSelected(false);
+            accountHint.setText("Both characters are on account " + from
+                    + ", so they already share keyboard shortcuts.");
+        } else if (fromListed && toListed) {
+            includeAccount.setSelected(true);
+            accountHint.setText(from.equals(to)
+                    ? "Keyboard shortcuts are saved per account and launcher profile: they will be copied to "
+                    + "account " + to + " in the target profile."
+                    : "Keyboard shortcuts are saved per account: they will be copied from account " + from
+                    + " to account " + to + ".");
+        } else {
+            accountHint.setText("Keyboard shortcuts are saved per account. Pick the two characters' account files "
+                    + "to copy them.");
+        }
+    }
+
+    static Long accountOf(Map<Long, List<Long>> accountCharacters, long characterId) {
+        for (Map.Entry<Long, List<Long>> account : accountCharacters.entrySet()) {
+            if (account.getValue().contains(characterId)) {
+                return account.getKey();
+            }
+        }
+        return null;
+    }
+
+    private static boolean selectAccount(JComboBox<AccountChoice> combo, long accountId) {
+        for (int index = 0; index < combo.getItemCount(); index++) {
+            if (combo.getItemAt(index).id() == accountId) {
+                combo.setSelectedIndex(index);
+                return true;
+            }
+        }
+        return false;
     }
 
     private void refillTargetCharacters(CharacterChoice previous) {
@@ -418,9 +483,11 @@ public final class EveSettingsCopyDialog extends JDialog {
             message.append(" It will be created because it does not exist yet.");
         }
         if (fromAccount != null && toAccount != null) {
-            message.append("\n\nAccount settings will also be copied from account ")
+            message.append("\n\nKeyboard shortcuts and other account settings will also be copied from account ")
                     .append(fromAccount.id()).append(" to account ").append(toAccount.id())
                     .append(". This affects every character on the target account.");
+        } else {
+            message.append("\n\nKeyboard shortcuts will not be copied: they are saved per account.");
         }
         message.append("\n\nEVE Online must remain closed. Existing targets are backed up automatically.");
         if (JOptionPane.showConfirmDialog(this, message.toString(), "Confirm settings copy",
@@ -445,10 +512,14 @@ public final class EveSettingsCopyDialog extends JDialog {
                     String backup = result.backupDirectory()
                             .map(path -> "\nBackup: " + path)
                             .orElse("\nNo previous target files needed a backup.");
+                    String shortcuts = fromAccount != null && toAccount != null
+                            && !fromAccount.file().path().equals(toAccount.file().path())
+                            ? "\nKeyboard shortcuts were copied with the account settings."
+                            : "\nKeyboard shortcuts were not copied - they are saved per account.";
                     loadProfiles();
-                    status.setText("Settings copied and verified successfully." + backup);
+                    status.setText("Settings copied and verified successfully." + shortcuts + backup);
                     JOptionPane.showMessageDialog(EveSettingsCopyDialog.this,
-                            "EVE settings were copied successfully." + backup,
+                            "EVE settings were copied successfully." + shortcuts + backup,
                             "Settings copied", JOptionPane.INFORMATION_MESSAGE);
                 } catch (Exception e) {
                     Throwable cause = e.getCause() != null ? e.getCause() : e;

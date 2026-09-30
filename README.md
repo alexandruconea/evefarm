@@ -1,6 +1,6 @@
 # EVE Farm
 
-EVE Farm is a Windows desktop app that keeps all your EVE Online characters in one place: assets and net worth over time, wallet journal and transactions, market orders, contracts, industry jobs, loyalty points and LP store value, NPC kills from your game logs, officer spawns and drops, agents, and Abyssal Deadspace runs with a timer that starts and stops by itself.
+EVE Farm is a Windows desktop app that keeps all your EVE Online characters in one place: assets and net worth over time, wallet journal and transactions, market orders, contracts, industry jobs, mining ledger, loyalty points and LP store value, NPC kills from your game logs, officer spawns and drops, agents, and Abyssal Deadspace runs with a timer that starts and stops by itself.
 
 ## Download
 
@@ -20,7 +20,7 @@ Everything stays on your computer, in `%USERPROFILE%\.evefarm`:
 - `backups` holds automatic daily backups (the last 7 days and one per month for a year);
 - `logs` holds the log files.
 
-EVE only shows the last 30 to 90 days of most history, so EVE Farm saves it as it updates and keeps it for as long as you keep the app: wallet journal and transactions, closed market orders (**Show closed orders** in the Market Orders tab), finished contracts with their items, finished industry jobs, every change in your loyalty points (**LP History...** in the LP Store tab), and your whole asset list as it was at the end of each month (**Show** at the bottom of the Assets tab).
+EVE only shows the last 30 to 90 days of most history, so EVE Farm saves it as it updates and keeps it for as long as you keep the app: wallet journal and transactions, closed market orders (**Show closed orders** in the Market Orders tab), finished contracts with their items, finished industry jobs, everything you mined (**Mining** tab), every change in your loyalty points (**LP History...** in the LP Store tab), and your whole asset list as it was at the end of each month (**Show** at the bottom of the Assets tab).
 
 **Options → Settings...** can copy every automatic backup to a second folder, such as a cloud-synced one. **Options → Backup Data...** and **Restore Data...** create or restore a backup by hand.
 
@@ -38,7 +38,7 @@ EVE Farm has no telemetry and sends nothing to its developer. It only connects t
 
 A character's location and ship are only read while you track Abyss runs for it in the **Abyss** tab, every 10 seconds. EVE Farm saves the runs it detects (start, length and ship), not where the character has been. While tracking, it also checks the clipboard every second, so that a cargo list you copy in EVE counts as the cargo before or after a run. Anything that isn't a list of EVE items is ignored and never saved.
 
-The aggro voice in the **Abyss** tab reads your characters' Gamelogs on this computer and speaks with Windows' own voice. It only plays a sound; it never sends anything or acts in the game for you.
+The aggro voice and the room announcements in the **Abyss** tab read your characters' Gamelogs on this computer and speak with Windows' own voice. A few seconds into each Abyss room, EVE Farm can say which NPCs are there, what e-war to expect and how to fight them. It only plays a sound; it never sends anything or acts in the game for you.
 
 ## Uninstalling
 

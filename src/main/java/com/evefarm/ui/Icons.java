@@ -235,6 +235,12 @@ public final class Icons {
         g.fill(new Ellipse2D.Double(6.9, 6.9, 2.2, 2.2));
     });
 
+    public static final Icon MINING = icon(Tone.NEUTRAL, g -> {
+        g.draw(closed(2.5, 9, 4.5, 4.25, 9, 2.5, 13, 5, 13.75, 10, 10.5, 13.5, 5, 13.25));
+        g.draw(path(4.5, 4.25, 7.5, 7.5, 13, 5));
+        g.draw(line(7.5, 7.5, 7, 13.35));
+    });
+
     public static Icon disabled(Icon icon) {
         if (icon instanceof LineIcon line) {
             return new LineIcon(line.tone, line.painter, true);

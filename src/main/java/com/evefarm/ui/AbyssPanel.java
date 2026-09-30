@@ -12,7 +12,6 @@ import com.evefarm.service.AbyssCargoRouter;
 import com.evefarm.service.AbyssLootService;
 import com.evefarm.service.AbyssStats;
 import com.evefarm.service.AbyssTrackerService;
-import com.evefarm.service.AggroWatchService;
 import com.evefarm.service.CargoParser;
 import com.evefarm.util.IskFormatter;
 
@@ -68,8 +67,6 @@ public final class AbyssPanel extends JPanel {
     private static final Color LOST_FALLBACK = new Color(0xc0, 0x39, 0x2b);
     private static final DateTimeFormatter COPY_TIME = DateTimeFormatter.ofPattern("HH:mm")
             .withZone(ZoneId.systemDefault());
-    private static final DateTimeFormatter AGGRO_TIME = DateTimeFormatter.ofPattern("HH:mm:ss")
-            .withZone(ZoneId.systemDefault());
 
     private final AppContext appContext;
     private final BiConsumer<String, String> notifier;
@@ -81,8 +78,7 @@ public final class AbyssPanel extends JPanel {
     private final JCheckBox lootPromptCheck = new JCheckBox("Open the run window after each run");
     private final JButton pasteBeforeButton = new JButton("Paste Cargo Before", Icons.CLIPBOARD);
     private final JLabel cargoLabel = new JLabel(" ");
-    private final JCheckBox aggroCheck = new JCheckBox("Say who gets aggro");
-    private final JLabel aggroLabel = new JLabel(" ");
+    private final AbyssVoicePanel voicePanel;
     private final AbyssCargoRouter cargoRouter = new AbyssCargoRouter();
     private final CargoClipboardWatcher clipboardWatcher = new CargoClipboardWatcher(this::clipboardChanged);
     private final JLabel timerLabel = new JLabel("--:--");
@@ -120,6 +116,7 @@ public final class AbyssPanel extends JPanel {
     public AbyssPanel(AppContext appContext, BiConsumer<String, String> notifier) {
         this.appContext = appContext;
         this.notifier = notifier;
+        this.voicePanel = new AbyssVoicePanel(appContext, this::trackerPhase);
         initComponents();
         postInit();
     }
@@ -142,15 +139,6 @@ public final class AbyssPanel extends JPanel {
         trackButton.addActionListener(e -> toggleTracking());
         pasteBeforeButton.setToolTipText("Use what you copied from your cargo in EVE as the cargo before the next run");
         pasteBeforeButton.addActionListener(e -> pasteCargoBefore());
-        aggroCheck.setToolTipText("Reads your characters' Gamelogs and says a character's name as soon as NPCs "
-                + "start shooting at it");
-        aggroCheck.setSelected("true".equals(
-                appContext.settingsDao.getOrDefault(SettingsDao.ABYSS_AGGRO_VOICE, "false")));
-        aggroCheck.addActionListener(e -> aggroToggled());
-        appContext.aggroWatchService.addListener(alert -> {
-            appContext.voiceService.say("Aggro on " + alert.characterName());
-            SwingUtilities.invokeLater(() -> showAggro(alert));
-        });
         addButton.addActionListener(e -> openRun(null));
         editButton.addActionListener(e -> editSelected());
         deleteButton.addActionListener(e -> deleteSelected());
@@ -177,37 +165,10 @@ public final class AbyssPanel extends JPanel {
         appContext.abyssTrackerService.addListener(event -> SwingUtilities.invokeLater(() -> onTrackerEvent(event)));
         reloadCharacters();
         clock.start();
-        if (aggroCheck.isSelected()) {
-            startAggroWatch();
-        } else {
-            aggroLabel.setText("Off");
-        }
     }
 
-    private void aggroToggled() {
-        appContext.settingsDao.set(SettingsDao.ABYSS_AGGRO_VOICE, String.valueOf(aggroCheck.isSelected()));
-        if (aggroCheck.isSelected()) {
-            startAggroWatch();
-        } else {
-            appContext.aggroWatchService.stop();
-            aggroLabel.setText("Off");
-        }
-    }
-
-    private void startAggroWatch() {
-        if (!appContext.killService.hasGameLogDirectory()) {
-            aggroLabel.setText("EVE's Gamelogs folder wasn't found - set it in Options > Settings");
-            return;
-        }
-        appContext.aggroWatchService.start();
-        aggroLabel.setText("Listening for NPCs shooting at your characters");
-    }
-
-    private void showAggro(AggroWatchService.Alert alert) {
-        if (aggroCheck.isSelected()) {
-            aggroLabel.setText("Last: " + alert.characterName() + ", from " + alert.attacker() + " at "
-                    + AGGRO_TIME.format(alert.at()));
-        }
+    private AbyssTrackerService.Phase trackerPhase() {
+        return trackerStatus == null ? null : trackerStatus.phase();
     }
 
     public void onShown() {
@@ -303,15 +264,20 @@ public final class AbyssPanel extends JPanel {
                 cargoRouter.reset();
                 cargoNote = null;
                 clipboardWatcher.start();
+                voicePanel.trackingStarted();
             }
             case ENTERED_ABYSS -> {
+                voicePanel.enteredAbyss();
                 if (status.fleet() != null && status.fleet() != fleetCombo.getSelectedItem()) {
                     fleetCombo.setSelectedItem(status.fleet());
                 }
                 notifier.accept("Entered the Abyss",
                         status.characterName() + " entered the Abyss. The 20 minute timer is running.");
             }
-            case LEFT_ABYSS -> runFinished(event.run());
+            case LEFT_ABYSS -> {
+                voicePanel.leftAbyss();
+                runFinished(event.run());
+            }
             case STOPPED -> {
                 clipboardWatcher.stop();
                 cargoRouter.reset();
@@ -623,7 +589,13 @@ public final class AbyssPanel extends JPanel {
         return new CompactIskNumberFormat(2).format(isk) + " ISK";
     }
 
-    private static void addStatusRow(JPanel panel, GridBagConstraints c, int row, String title,
+    private static JPanel topAligned(JPanel rows) {
+        JPanel holder = new JPanel(new BorderLayout());
+        holder.add(rows, BorderLayout.NORTH);
+        return holder;
+    }
+
+    static void addStatusRow(JPanel panel, GridBagConstraints c, int row, String title,
                                      java.awt.Component control, JLabel text) {
         JLabel heading = new JLabel(title);
         heading.setFont(heading.getFont().deriveFont(Font.BOLD));
@@ -667,15 +639,22 @@ public final class AbyssPanel extends JPanel {
         c.insets = new Insets(3, 0, 3, 16);
         addStatusRow(statusRows, c, 0, "Run", timerLabel, statusLabel);
         addStatusRow(statusRows, c, 1, "Cargo", pasteBeforeButton, cargoLabel);
-        addStatusRow(statusRows, c, 2, "Aggro voice", aggroCheck, aggroLabel);
+
+        Color separator = UIManager.getColor("Separator.foreground");
+        Color line = separator != null ? separator : Color.LIGHT_GRAY;
+        voicePanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 1, 0, 0, line),
+                BorderFactory.createEmptyBorder(0, 16, 0, 0)));
+        JPanel status = new JPanel(new BorderLayout(16, 0));
+        status.add(topAligned(statusRows), BorderLayout.CENTER);
+        status.add(topAligned(voicePanel), BorderLayout.EAST);
 
         JPanel tracker = new JPanel(new BorderLayout(0, 8));
-        Color separator = UIManager.getColor("Separator.foreground");
         tracker.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 1, 0, separator != null ? separator : Color.LIGHT_GRAY),
+                BorderFactory.createMatteBorder(0, 0, 1, 0, line),
                 BorderFactory.createEmptyBorder(8, 8, 10, 8)));
         tracker.add(controls, BorderLayout.NORTH);
-        tracker.add(statusRows, BorderLayout.CENTER);
+        tracker.add(status, BorderLayout.CENTER);
         add(tracker, BorderLayout.NORTH);
 
         JPanel runButtons = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));

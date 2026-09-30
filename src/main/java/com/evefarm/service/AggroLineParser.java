@@ -13,16 +13,17 @@ final class AggroLineParser {
     private static final Pattern WARP_ATTEMPT =
             Pattern.compile("^Warp (?:scramble|disruption) attempt from (.+?) to\\s*you!?$");
     private static final Pattern ENERGY_TAKEN = Pattern.compile("^\\d+ GJ energy (?:neutralized|drained) (.+?) - (.+)$");
+    private static final Pattern DAMAGE_TO = Pattern.compile("^\\d+ to (.+?) - \\S.*$");
+    private static final Pattern WE_MISS = Pattern.compile("^.+? misses (.+?) completely\\b.*$");
 
     private AggroLineParser() {
     }
 
     static Optional<String> attacker(String line) {
-        Matcher logLine = LOG_LINE.matcher(line.strip());
-        if (!logLine.matches() || !"combat".equalsIgnoreCase(logLine.group(2))) {
+        String text = combatText(line);
+        if (text == null) {
             return Optional.empty();
         }
-        String text = TAG.matcher(logLine.group(3)).replaceAll("").replaceAll("\\s+", " ").strip();
         for (Pattern pattern : new Pattern[]{DAMAGE_FROM, MISSES_YOU, WARP_ATTEMPT}) {
             Matcher matcher = pattern.matcher(text);
             if (matcher.matches()) {
@@ -34,5 +35,28 @@ final class AggroLineParser {
             return Optional.of(energy.group(1).strip());
         }
         return Optional.empty();
+    }
+
+    static Optional<String> opponent(String line) {
+        String text = combatText(line);
+        if (text == null) {
+            return Optional.empty();
+        }
+        for (Pattern pattern : new Pattern[]{DAMAGE_FROM, DAMAGE_TO, MISSES_YOU, WE_MISS, WARP_ATTEMPT,
+                ENERGY_TAKEN}) {
+            Matcher matcher = pattern.matcher(text);
+            if (matcher.matches()) {
+                return Optional.of(matcher.group(1).strip());
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static String combatText(String line) {
+        Matcher logLine = LOG_LINE.matcher(line.strip());
+        if (!logLine.matches() || !"combat".equalsIgnoreCase(logLine.group(2))) {
+            return null;
+        }
+        return TAG.matcher(logLine.group(3)).replaceAll("").replaceAll("\\s+", " ").strip();
     }
 }
