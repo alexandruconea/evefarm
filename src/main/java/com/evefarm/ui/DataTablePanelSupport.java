@@ -50,7 +50,7 @@ final class DataTablePanelSupport<R> {
     void init() {
         table.setModel(tableModel);
         sorter = new TableRowSorter<>(tableModel);
-        ColumnSorting.installNumericAwareComparators(sorter, tableModel);
+        ColumnSorting.install(sorter, tableModel);
         table.setRowSorter(sorter);
         TableStyler.style(table);
         ColumnVisibilitySupport.install(table, tableModel, panelKey, appContext.tableColumnStateDao);

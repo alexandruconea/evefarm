@@ -3,6 +3,7 @@ package com.evefarm.ui;
 import com.evefarm.AppContext;
 import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.model.MarketOrderRow;
+import com.evefarm.ui.column.ColumnSorting;
 import com.evefarm.ui.column.ColumnVisibilitySupport;
 import com.evefarm.ui.filter.FilterBarPanel;
 import com.evefarm.util.IskFormatter;
@@ -31,7 +32,7 @@ public final class MarketOrdersPanel extends javax.swing.JPanel {
     private void postInit() {
         table.setModel(tableModel);
         sorter = new TableRowSorter<>(tableModel);
-        com.evefarm.ui.column.ColumnSorting.installNumericAwareComparators(sorter, tableModel);
+        ColumnSorting.install(sorter, tableModel);
         table.setRowSorter(sorter);
         TableStyler.style(table);
         ColumnVisibilitySupport.install(table, tableModel, PANEL_KEY, appContext.tableColumnStateDao);

@@ -363,9 +363,10 @@ final class AbyssRunDialog extends JDialog {
         }
         if (original == null) {
             startedField.setText(STARTED_FORMAT.format(LocalDateTime.now()));
-            selectSaved(tierCombo, AbyssTier.class, appContext.settingsDao, SettingsDao.ABYSS_TIER);
-            selectSaved(weatherCombo, AbyssWeather.class, appContext.settingsDao, SettingsDao.ABYSS_WEATHER);
-            selectSaved(fleetCombo, AbyssFleet.class, appContext.settingsDao, SettingsDao.ABYSS_FLEET);
+            appContext.settingsDao.getEnum(SettingsDao.ABYSS_TIER, AbyssTier.class).ifPresent(tierCombo::setSelectedItem);
+            appContext.settingsDao.getEnum(SettingsDao.ABYSS_WEATHER, AbyssWeather.class)
+                    .ifPresent(weatherCombo::setSelectedItem);
+            appContext.settingsDao.getEnum(SettingsDao.ABYSS_FLEET, AbyssFleet.class).ifPresent(fleetCombo::setSelectedItem);
             lootField.setText(IskFormatter.formatPlain(0));
             prefillCargoBefore();
             lookUpFilamentCost();
@@ -399,16 +400,6 @@ final class AbyssRunDialog extends JDialog {
             cargoPrefilledFor = original.characterId();
         });
         loadSavedLoot();
-    }
-
-    static <E extends Enum<E>> void selectSaved(JComboBox<E> combo, Class<E> type, SettingsDao settingsDao,
-                                                String key) {
-        settingsDao.get(key).ifPresent(name -> {
-            try {
-                combo.setSelectedItem(Enum.valueOf(type, name));
-            } catch (IllegalArgumentException ignored) {
-            }
-        });
     }
 
     private void loadSavedLoot() {
@@ -713,10 +704,7 @@ final class AbyssRunDialog extends JDialog {
         public Object getValueAt(int row, int column) {
             AbyssalLoot item = items.get(row);
             return switch (column) {
-                case 0 -> {
-                    ImageIcon icon = icons.getIfLoaded(item.typeId());
-                    yield icon == null ? ItemIconService.BLANK_PLACEHOLDER : icon;
-                }
+                case 0 -> icons.iconOrPlaceholder(item.typeId());
                 case 1 -> item.typeName();
                 case 2 -> String.format(Locale.US, "%,d", item.quantity());
                 case 3 -> item.unitPrice() == null ? "" : IskFormatter.format(item.unitPrice());

@@ -27,10 +27,6 @@ public final class JournalTableModel extends ColumnTableModel<JournalRow> {
         super(COLUMNS);
     }
 
-    private static String nullToEmpty(String value) {
-        return value == null ? "" : value;
-    }
-
     private static String formatRefType(String refType) {
         if (refType == null || refType.isBlank()) {
             return "";

@@ -14,8 +14,7 @@ public final class LpStoreTableModel extends ColumnTableModel<LpOfferRow> {
 
     private static List<ColumnDef<LpOfferRow>> columns(ItemIconService iconService) {
         return List.of(
-            new ColumnDef<>("icon", "", ImageIcon.class,
-                    r -> orPlaceholder(iconService.getIfLoaded(r.typeId()))),
+            new ColumnDef<>("icon", "", ImageIcon.class, r -> iconService.iconOrPlaceholder(r.typeId())),
             new ColumnDef<>("item", "Item", String.class, LpOfferRow::itemName),
             new ColumnDef<>("category", "Category", String.class, r -> nullToEmpty(r.categoryName())),
             new ColumnDef<>("quantity", "Quantity", Long.class, LpOfferRow::quantity),
@@ -40,18 +39,6 @@ public final class LpStoreTableModel extends ColumnTableModel<LpOfferRow> {
 
     public LpStoreTableModel(ItemIconService iconService) {
         super(columns(iconService));
-    }
-
-    private static String nullToEmpty(String value) {
-        return value == null ? "" : value;
-    }
-
-    private static ImageIcon orPlaceholder(ImageIcon icon) {
-        return icon == null ? ItemIconService.BLANK_PLACEHOLDER : icon;
-    }
-
-    private static String formatIsk(Double value) {
-        return value == null ? "" : IskFormatter.format(value);
     }
 
     private static String formatIskPerLp(Double value) {

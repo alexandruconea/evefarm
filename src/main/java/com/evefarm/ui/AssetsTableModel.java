@@ -38,10 +38,6 @@ public final class AssetsTableModel extends ColumnTableModel<AssetRow> {
         return rows().stream().mapToDouble(AssetRow::totalValue).sum();
     }
 
-    private static String nullToEmpty(String value) {
-        return value == null ? "" : value;
-    }
-
     private static String formatFlag(String flag) {
         if (flag == null || flag.isBlank()) {
             return "";

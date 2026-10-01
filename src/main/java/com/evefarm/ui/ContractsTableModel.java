@@ -4,7 +4,6 @@ import com.evefarm.model.ContractRow;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
 import com.evefarm.util.DateUtil;
-import com.evefarm.util.IskFormatter;
 
 import javax.swing.Icon;
 import java.time.Instant;
@@ -55,14 +54,6 @@ public final class ContractsTableModel extends ColumnTableModel<ContractRow> {
         } catch (DateTimeParseException e) {
             return false;
         }
-    }
-
-    private static String nullToEmpty(String value) {
-        return value == null ? "" : value;
-    }
-
-    private static String formatIsk(Double value) {
-        return value == null ? "" : IskFormatter.format(value);
     }
 
     static String formatEnum(String value) {

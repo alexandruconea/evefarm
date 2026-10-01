@@ -34,10 +34,6 @@ public final class AgentsTableModel extends ColumnTableModel<AgentRow> {
         super(COLUMNS);
     }
 
-    private static String nullToEmpty(String value) {
-        return value == null ? "" : value;
-    }
-
     private static String formatSecurity(Double value) {
         return value == null ? "" : String.format(Locale.US, "%.1f", value);
     }

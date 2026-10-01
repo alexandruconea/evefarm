@@ -51,12 +51,4 @@ public final class AbyssRunsTableModel extends ColumnTableModel<AbyssalRun> {
                 ? String.format(Locale.US, "%d:%02d:%02d", hours, minutes, rest)
                 : String.format(Locale.US, "%02d:%02d", minutes, rest);
     }
-
-    private static String formatIsk(Double value) {
-        return value == null ? "" : IskFormatter.format(value);
-    }
-
-    private static String nullToEmpty(String value) {
-        return value == null ? "" : value;
-    }
 }

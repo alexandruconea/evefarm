@@ -133,8 +133,8 @@ public final class MiningService {
     }
 
     private static MiningRow toRow(MiningLedgerRow row, Double unitValue) {
-        return new MiningRow(row.characterId(), row.characterName(), row.date(), row.systemName(), row.oreName(),
-                kind(row.groupName()), row.quantity(), row.quantity() * row.unitVolume(), unitValue);
+        return new MiningRow(row.characterId(), row.characterName(), row.date(), row.systemName(), row.typeId(),
+                row.oreName(), kind(row.groupName()), row.quantity(), row.quantity() * row.unitVolume(), unitValue);
     }
 
     static Set<Integer> pricedTypes(Set<Integer> minedTypes, Map<Integer, Ore> ores) {

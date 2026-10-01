@@ -138,5 +138,4 @@ public final class IndustryJobDao {
             return result;
         }
     }
-
 }

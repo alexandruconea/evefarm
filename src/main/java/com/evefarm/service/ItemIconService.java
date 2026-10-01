@@ -31,7 +31,7 @@ public final class ItemIconService {
     private static final int CONCURRENCY = 6;
     public static final int RENDER_SIZE = 20;
 
-    public static final ImageIcon BLANK_PLACEHOLDER =
+    private static final ImageIcon BLANK_PLACEHOLDER =
             new ImageIcon(new BufferedImage(RENDER_SIZE, RENDER_SIZE, BufferedImage.TYPE_INT_ARGB));
 
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -45,8 +45,8 @@ public final class ItemIconService {
     private final Map<Integer, ImageIcon> memoryCache = new ConcurrentHashMap<>();
     private final Map<Integer, Boolean> inFlight = new ConcurrentHashMap<>();
 
-    public ImageIcon getIfLoaded(int typeId) {
-        return memoryCache.get(typeId);
+    public ImageIcon iconOrPlaceholder(int typeId) {
+        return memoryCache.getOrDefault(typeId, BLANK_PLACEHOLDER);
     }
 
     public void loadAsync(int typeId, Runnable onLoaded) {

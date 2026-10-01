@@ -181,5 +181,4 @@ public final class TrackerSnapshotService {
         }
         return total;
     }
-
 }

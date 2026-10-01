@@ -9,6 +9,7 @@ import com.evefarm.util.DateUtil;
 import com.evefarm.util.IskFormatter;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -118,7 +119,12 @@ final class ContractContentsDialog extends JDialog {
         addField(fields, "Expires", DateUtil.formatIsoInstant(contract.dateExpired()));
         addField(fields, "Completed", DateUtil.formatIsoInstant(contract.dateCompleted()));
 
-        JPanel panel = new JPanel(new GridBagLayout());
+        JPanel panel = new JPanel(new GridBagLayout()) {
+            @Override
+            public Dimension getMaximumSize() {
+                return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
+            }
+        };
         panel.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
         GridBagConstraints c = new GridBagConstraints();
@@ -138,6 +144,10 @@ final class ContractContentsDialog extends JDialog {
             panel.add(value, c);
             c.insets = new Insets(2, 0, 2, 12);
         }
+        GridBagConstraints filler = new GridBagConstraints();
+        filler.gridx = 4;
+        filler.weightx = 1;
+        panel.add(Box.createHorizontalGlue(), filler);
         return panel;
     }
 
@@ -269,10 +279,7 @@ final class ContractContentsDialog extends JDialog {
         public Object getValueAt(int row, int column) {
             ContractItem item = items.get(row);
             return switch (column) {
-                case 0 -> {
-                    ImageIcon icon = icons.getIfLoaded(item.typeId());
-                    yield icon == null ? ItemIconService.BLANK_PLACEHOLDER : icon;
-                }
+                case 0 -> icons.iconOrPlaceholder(item.typeId());
                 case 1 -> item.name();
                 case 2 -> item.groupName() == null ? "" : item.groupName();
                 case 3 -> String.format(Locale.US, "%,d", item.quantity());

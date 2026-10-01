@@ -68,7 +68,7 @@ final class LoyaltyPointHistoryDialog extends JDialog {
     }
 
     private void buildUi() {
-        ColumnSorting.installNumericAwareComparators(sorter, tableModel);
+        ColumnSorting.install(sorter, tableModel);
         table.setRowSorter(sorter);
         TableStyler.style(table);
         JScrollPane scroll = new JScrollPane(table);

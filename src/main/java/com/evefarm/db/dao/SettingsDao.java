@@ -75,6 +75,16 @@ public final class SettingsDao {
         return get(key).orElse(defaultValue);
     }
 
+    public <E extends Enum<E>> Optional<E> getEnum(String key, Class<E> type) {
+        return get(key).flatMap(name -> {
+            try {
+                return Optional.of(Enum.valueOf(type, name));
+            } catch (IllegalArgumentException e) {
+                return Optional.empty();
+            }
+        });
+    }
+
     public void set(String key, String value) {
         String sql = """
                 INSERT INTO app_settings(key, value) VALUES (?, ?)

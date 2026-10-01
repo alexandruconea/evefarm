@@ -45,14 +45,6 @@ public final class MarketOrdersTableModel extends ColumnTableModel<MarketOrderRo
         super(COLUMNS);
     }
 
-    private static String nullToEmpty(String value) {
-        return value == null ? "" : value;
-    }
-
-    private static String formatIsk(Double value) {
-        return value == null ? "" : IskFormatter.format(value);
-    }
-
     static String statusText(MarketOrderRow row) {
         if (row.state() == null) {
             return "";

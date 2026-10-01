@@ -28,9 +28,4 @@ public final class TransactionsTableModel extends ColumnTableModel<TransactionRo
     public TransactionsTableModel() {
         super(COLUMNS);
     }
-
-    private static String nullToEmpty(String value) {
-        return value == null ? "" : value;
-    }
-
 }

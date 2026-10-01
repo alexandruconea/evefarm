@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class MiningStatsTest {
 
     private static MiningRow mined(String character, String date, String ore, long quantity, double unitValue) {
-        return new MiningRow(1, character, date, "Jita", ore, "Ore", quantity, quantity * 0.1, unitValue);
+        return new MiningRow(1, character, date, "Jita", 1, ore, "Ore", quantity, quantity * 0.1, unitValue);
     }
 
     private static final List<MiningRow> ROWS = List.of(

@@ -285,5 +285,4 @@ public final class ContractDao {
             return result;
         }
     }
-
 }

@@ -84,7 +84,12 @@ public final class TableStyler {
                 Component comp = table.prepareRenderer(cellRenderer, row, col);
                 width = Math.max(width, comp.getPreferredSize().width);
             }
-            column.setPreferredWidth(Math.min(width + PACK_MARGIN_PX, PACK_MAX_WIDTH_PX));
+            int packed = Math.min(width + PACK_MARGIN_PX, PACK_MAX_WIDTH_PX);
+            if (Icon.class.isAssignableFrom(table.getColumnClass(col))) {
+                column.setMinWidth(packed);
+                column.setMaxWidth(packed);
+            }
+            column.setPreferredWidth(packed);
         }
     }
 

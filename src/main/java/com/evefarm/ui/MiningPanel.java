@@ -3,6 +3,7 @@ package com.evefarm.ui;
 import com.evefarm.AppContext;
 import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.model.MiningRow;
+import com.evefarm.service.ItemIconService;
 import com.evefarm.service.MiningService;
 import com.evefarm.service.MiningStats;
 import com.evefarm.util.IskFormatter;
@@ -31,7 +32,7 @@ public final class MiningPanel extends JPanel {
     private static final double DEFAULT_REFINE_RATE = 90.6;
 
     private final AppContext appContext;
-    private final MiningTableModel tableModel = new MiningTableModel();
+    private final MiningTableModel tableModel;
     private final JTable table = new JTable();
     private final JPanel filterBarContainer = new JPanel();
     private final JLabel countLabel = new JLabel("0 entries");
@@ -51,18 +52,19 @@ public final class MiningPanel extends JPanel {
 
     public MiningPanel(AppContext appContext) {
         this.appContext = appContext;
+        this.tableModel = new MiningTableModel(appContext.itemIconService);
         buildUi();
         postInit();
     }
 
     private void postInit() {
         periodCombo.setSelectedItem(MiningService.Period.MONTH);
-        AbyssRunDialog.selectSaved(periodCombo, MiningService.Period.class, appContext.settingsDao,
-                SettingsDao.MINING_PERIOD);
-        AbyssRunDialog.selectSaved(valuationCombo, MiningService.Valuation.class, appContext.settingsDao,
-                SettingsDao.MINING_VALUATION);
-        AbyssRunDialog.selectSaved(groupByCombo, MiningStats.GroupBy.class, appContext.settingsDao,
-                SettingsDao.MINING_GROUP_BY);
+        appContext.settingsDao.getEnum(SettingsDao.MINING_PERIOD, MiningService.Period.class)
+                .ifPresent(periodCombo::setSelectedItem);
+        appContext.settingsDao.getEnum(SettingsDao.MINING_VALUATION, MiningService.Valuation.class)
+                .ifPresent(valuationCombo::setSelectedItem);
+        appContext.settingsDao.getEnum(SettingsDao.MINING_GROUP_BY, MiningStats.GroupBy.class)
+                .ifPresent(groupByCombo::setSelectedItem);
         rateSpinner.setValue(savedRefineRate());
         readChoices();
         updateRateEnabled();
@@ -81,8 +83,12 @@ public final class MiningPanel extends JPanel {
 
         support = new DataTablePanelSupport<>(appContext, PANEL_KEY, tableModel, table, filterBarContainer,
                 countLabel, "entries", () -> appContext.miningService.getRows(period, valuation, refineRate / 100.0));
-        support.setOnRowsShown(this::refreshStats);
+        support.setOnRowsShown(() -> {
+            refreshStats();
+            loadIcons();
+        });
         support.init();
+        table.setRowHeight(Math.max(table.getRowHeight(), ItemIconService.RENDER_SIZE + 6));
         TableStyler.style(statsTable);
     }
 
@@ -136,6 +142,11 @@ public final class MiningPanel extends JPanel {
     private MiningStats.GroupBy selectedGroupBy() {
         Object selected = groupByCombo.getSelectedItem();
         return selected instanceof MiningStats.GroupBy chosen ? chosen : MiningStats.GroupBy.DAY;
+    }
+
+    private void loadIcons() {
+        support.visibleRows().stream().map(MiningRow::typeId).distinct()
+                .forEach(typeId -> appContext.itemIconService.loadAsync(typeId, table::repaint));
     }
 
     private void refreshStats() {

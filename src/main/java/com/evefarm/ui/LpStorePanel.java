@@ -1,6 +1,7 @@
 package com.evefarm.ui;
 
 import com.evefarm.AppContext;
+import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.model.EveCharacter;
 import com.evefarm.model.LoyaltyPointRow;
 import com.evefarm.model.LpOfferRow;
@@ -8,10 +9,9 @@ import com.evefarm.model.LpRequiredItem;
 import com.evefarm.model.NpcCorporationRow;
 import com.evefarm.service.ItemIconService;
 import com.evefarm.ui.column.ColumnCopySupport;
+import com.evefarm.ui.column.ColumnSorting;
 import com.evefarm.ui.column.ColumnVisibilitySupport;
 import com.evefarm.ui.filter.FilterBarPanel;
-
-import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.util.IskFormatter;
 
 import javax.swing.DefaultComboBoxModel;
@@ -52,8 +52,7 @@ public final class LpStorePanel extends javax.swing.JPanel {
     private void postInit() {
         table.setModel(tableModel);
         sorter = new TableRowSorter<>(tableModel);
-        com.evefarm.ui.column.ColumnSorting.installNumericAwareComparators(sorter, tableModel);
-        sorter.setSortable(0, false);
+        ColumnSorting.install(sorter, tableModel);
         table.setRowSorter(sorter);
         TableStyler.style(table);
         table.setRowHeight(Math.max(table.getRowHeight(), ItemIconService.RENDER_SIZE + 6));

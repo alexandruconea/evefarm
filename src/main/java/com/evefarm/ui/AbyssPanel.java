@@ -124,10 +124,10 @@ public final class AbyssPanel extends JPanel {
     private void postInit() {
         characterCombo.setRenderer(MainCharacterMarks.comboRenderer(() -> mainCharacterName));
         characterCombo.addActionListener(e -> updateTrackerUi());
-        AbyssRunDialog.selectSaved(tierCombo, AbyssTier.class, appContext.settingsDao, SettingsDao.ABYSS_TIER);
-        AbyssRunDialog.selectSaved(weatherCombo, AbyssWeather.class, appContext.settingsDao,
-                SettingsDao.ABYSS_WEATHER);
-        AbyssRunDialog.selectSaved(fleetCombo, AbyssFleet.class, appContext.settingsDao, SettingsDao.ABYSS_FLEET);
+        appContext.settingsDao.getEnum(SettingsDao.ABYSS_TIER, AbyssTier.class).ifPresent(tierCombo::setSelectedItem);
+        appContext.settingsDao.getEnum(SettingsDao.ABYSS_WEATHER, AbyssWeather.class)
+                .ifPresent(weatherCombo::setSelectedItem);
+        appContext.settingsDao.getEnum(SettingsDao.ABYSS_FLEET, AbyssFleet.class).ifPresent(fleetCombo::setSelectedItem);
         tierCombo.addActionListener(e -> filamentChanged());
         weatherCombo.addActionListener(e -> filamentChanged());
         fleetCombo.addActionListener(e -> filamentChanged());
