@@ -1,5 +1,7 @@
 package com.evefarm.ui;
 
+import com.formdev.flatlaf.FlatLaf;
+
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
@@ -11,6 +13,7 @@ import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
 
 public final class TableStyler {
 
@@ -23,7 +26,7 @@ public final class TableStyler {
         table.setCellSelectionEnabled(true);
         table.setFillsViewportHeight(true);
         table.setShowGrid(false);
-        table.setIntercellSpacing(new java.awt.Dimension(0, 0));
+        table.setIntercellSpacing(new Dimension(0, 0));
         if (table.getTableHeader().getDefaultRenderer() instanceof JLabel headerLabel) {
             headerLabel.setHorizontalAlignment(SwingConstants.LEADING);
         }
@@ -66,7 +69,7 @@ public final class TableStyler {
             return themed;
         }
         Color base = table.getBackground();
-        return com.formdev.flatlaf.FlatLaf.isLafDark() ? base.brighter() : new Color(247, 248, 250);
+        return FlatLaf.isLafDark() ? base.brighter() : new Color(247, 248, 250);
     }
 
     public static void packColumns(JTable table) {

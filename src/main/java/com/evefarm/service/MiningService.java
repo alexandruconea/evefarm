@@ -6,7 +6,6 @@ import com.evefarm.db.dao.CharacterDao;
 import com.evefarm.db.dao.MiningLedgerDao;
 import com.evefarm.esi.IndustryApi;
 import com.evefarm.esi.dto.MiningLedgerDto;
-import com.evefarm.model.EveCharacter;
 import com.evefarm.model.MiningEntry;
 import com.evefarm.model.MiningLedgerRow;
 import com.evefarm.model.MiningRow;
@@ -91,19 +90,8 @@ public final class MiningService {
         this.priceService = priceService;
     }
 
-    public static boolean canReadLedger(EveCharacter character) {
-        return character.scopes() != null && character.scopes().contains(OAuthConfig.MINING_SCOPE);
-    }
-
     public void refreshLedgerForCharacter(long characterId) {
-        EveCharacter character = characterDao.listAll().stream()
-                .filter(candidate -> candidate.characterId() == characterId)
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Character " + characterId + " isn't added"));
-        if (!canReadLedger(character)) {
-            throw new IllegalStateException("Add the character again (File > Characters... > Add Character...) "
-                    + "so EVE Farm may read its mining ledger");
-        }
+        CharacterScopes.require(characterDao, characterId, OAuthConfig.MINING_SCOPE, "mining ledger");
         String accessToken = authService.getValidAccessToken(characterId);
         List<MiningLedgerDto> ledger = industryApi.listMiningLedger(characterId, accessToken);
         oreCatalogService.refreshIfStale();

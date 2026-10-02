@@ -5,9 +5,9 @@ import org.junit.jupiter.api.Test;
 import javax.swing.Icon;
 import javax.swing.JLabel;
 import javax.swing.JTable;
-import java.awt.Component;
 import javax.swing.plaf.basic.BasicHTML;
 import javax.swing.table.DefaultTableModel;
+import java.awt.Component;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

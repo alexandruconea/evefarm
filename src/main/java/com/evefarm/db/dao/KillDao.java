@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -56,7 +57,7 @@ public final class KillDao {
     public record LogFileProgress(long size, int parserVersion) {
     }
 
-    public java.util.Optional<LogFileProgress> findProgress(String fileName) {
+    public Optional<LogFileProgress> findProgress(String fileName) {
         String sql = "SELECT last_size, parser_version FROM kill_log_progress WHERE file_name = ?";
         synchronized (database) {
             Connection connection = database.connection();
@@ -64,9 +65,9 @@ public final class KillDao {
                 ps.setString(1, fileName);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (!rs.next()) {
-                        return java.util.Optional.empty();
+                        return Optional.empty();
                     }
-                    return java.util.Optional.of(
+                    return Optional.of(
                             new LogFileProgress(rs.getLong("last_size"), rs.getInt("parser_version")));
                 }
             } catch (SQLException e) {

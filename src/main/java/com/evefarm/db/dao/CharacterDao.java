@@ -7,9 +7,11 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public final class CharacterDao {
 
@@ -38,7 +40,7 @@ public final class CharacterDao {
                 if (corporationId != null) {
                     ps.setLong(3, corporationId);
                 } else {
-                    ps.setNull(3, java.sql.Types.INTEGER);
+                    ps.setNull(3, Types.INTEGER);
                 }
                 ps.setString(4, String.join(" ", scopes));
                 ps.setString(5, Instant.now().toString());
@@ -50,16 +52,16 @@ public final class CharacterDao {
         }
     }
 
-    public java.util.Optional<String> findOwnerHash(long characterId) {
+    public Optional<String> findOwnerHash(long characterId) {
         String sql = "SELECT owner_hash FROM characters WHERE character_id = ? AND removed_at IS NULL";
         synchronized (database) {
             try (PreparedStatement ps = database.connection().prepareStatement(sql)) {
                 ps.setLong(1, characterId);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (!rs.next()) {
-                        return java.util.Optional.empty();
+                        return Optional.empty();
                     }
-                    return java.util.Optional.ofNullable(rs.getString("owner_hash"));
+                    return Optional.ofNullable(rs.getString("owner_hash"));
                 }
             } catch (SQLException e) {
                 throw new IllegalStateException("Failed to read owner hash for character " + characterId, e);
@@ -68,7 +70,8 @@ public final class CharacterDao {
     }
 
     private static final List<String> CURRENT_STATE_TABLES = List.of(
-            "tokens", "asset_current", "character_loyalty_points");
+            "tokens", "asset_current", "character_loyalty_points", "character_standings",
+            "character_skill", "character_attributes");
 
     public void remove(long characterId) {
         synchronized (database) {

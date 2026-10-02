@@ -6,7 +6,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -104,14 +106,14 @@ public final class LoopbackCallbackServer implements AutoCloseable {
         if (rawQuery == null || rawQuery.isBlank()) {
             return Map.of();
         }
-        Map<String, String> result = new java.util.HashMap<>();
+        Map<String, String> result = new HashMap<>();
         for (String pair : rawQuery.split("&")) {
             int eq = pair.indexOf('=');
             if (eq < 0) {
                 continue;
             }
-            String key = java.net.URLDecoder.decode(pair.substring(0, eq), StandardCharsets.UTF_8);
-            String value = java.net.URLDecoder.decode(pair.substring(eq + 1), StandardCharsets.UTF_8);
+            String key = URLDecoder.decode(pair.substring(0, eq), StandardCharsets.UTF_8);
+            String value = URLDecoder.decode(pair.substring(eq + 1), StandardCharsets.UTF_8);
             result.put(key, value);
         }
         return result;

@@ -8,6 +8,7 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
 import java.util.List;
 
 public final class ColumnCopySupport {
@@ -62,7 +63,7 @@ public final class ColumnCopySupport {
         if (selectedRows.length == 0) {
             return;
         }
-        List<T> rows = new java.util.ArrayList<>(selectedRows.length);
+        List<T> rows = new ArrayList<>(selectedRows.length);
         for (int viewRow : selectedRows) {
             rows.add(model.rowAt(table.convertRowIndexToModel(viewRow)));
         }

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.channels.FileChannel;
@@ -64,7 +65,7 @@ public final class SingleInstance implements AutoCloseable {
         try {
             int port = Integer.parseInt(Files.readString(directory.resolve(PORT_FILE), StandardCharsets.US_ASCII).trim());
             try (Socket socket = new Socket()) {
-                socket.connect(new java.net.InetSocketAddress(InetAddress.getLoopbackAddress(), port),
+                socket.connect(new InetSocketAddress(InetAddress.getLoopbackAddress(), port),
                         CONNECT_TIMEOUT_MILLIS);
                 OutputStream out = socket.getOutputStream();
                 out.write((SHOW_COMMAND + "\n").getBytes(StandardCharsets.US_ASCII));

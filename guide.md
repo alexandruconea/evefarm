@@ -23,6 +23,8 @@ This guide walks through every part of the app. Menu and button names are writte
    - [Abyss](#abyss)
    - [Mining](#mining)
    - [Agents](#agents)
+   - [Standings](#standings)
+   - [Skills](#skills)
 5. [Working with tables](#working-with-tables)
 6. [Settings](#settings)
 7. [Copy EVE Settings](#copy-eve-settings)
@@ -75,12 +77,14 @@ Open **Update > Update...** to fetch fresh data from EVE.
 | Loyalty Points | Your LP with every corporation | 1 hour |
 | NPC Kills | Reads your Gamelogs for new NPC kills | 1 hour |
 | Mining Ledger | What your characters mined | 10 minutes |
+| Standings | Your standing with factions, NPC corporations and agents | 1 hour |
+| Skills | Your skills, attributes and implants, for the skill planner | 5 minutes |
 
 While a line is waiting, its **Now** button shows the time left. The waits follow EVE's own cache times, so updating sooner wouldn't bring new data.
 
 Some things happen by themselves:
 
-- when EVE Farm starts, it updates the assets and takes a Tracker snapshot of every character;
+- when EVE Farm starts, it updates the assets and skills and takes a Tracker snapshot of every character;
 - market prices refresh once a day;
 - the Gamelogs are scanned for new kills every 10 minutes;
 - logins are kept alive in the background, so you don't have to log in again.
@@ -250,6 +254,52 @@ A searchable list of all of EVE's NPC agents: name, corporation, faction, divisi
 
 - Click **Refresh Agent Data...** the first time to download the list. It changes rarely.
 - System, constellation and region names have a zKillboard icon. Click it to see the recent kills there, so you can judge how dangerous the area is.
+
+### Standings
+
+Your characters' standings with EVE's factions, NPC corporations and agents. Run **Update > Standings** to fill it.
+
+The tab has two sides. Drag the bar between them to make one wider; EVE Farm remembers where you leave it.
+
+- **Factions and corporations** (left): each faction, best standing first, with its corporations just below it, indented. Corporations whose faction you have no standing with come after, then those whose faction isn't known.
+- **Agents** (right): each agent with its standing, corporation, level, division and system.
+- Click a faction on the left to see only its agents on the right, or a corporation to see only that corporation's agents, for the same character. **Show All Agents**, Esc, or a click below the rows shows every agent again.
+- Positive standings are blue, negative ones red.
+- Each side has its own filters and columns. Click a column header to sort another way; the grouping on the left comes back when the tab is opened again.
+
+The corporation, faction, level, division and system of an agent, and the faction of a corporation, come from the agent list. Click **Refresh Agent Data...** in the Agents tab once to fill them; without it, clicking a faction finds none of its agents.
+
+EVE's API gives the standing without the bonus from the Connections, Diplomacy and Criminal Connections skills, so it can differ a little from the value the game shows with your skills applied.
+
+A character added before EVE Farm 1.0.16 must be added again (**File > Characters... > Add Character...**) so EVE Farm may read its standings.
+
+### Skills
+
+A skill planner: make training plans for each character and see how long they take.
+
+Run **Update > Skills** first. The first time, it also downloads the list of EVE's skills, which takes a few seconds.
+
+**At the top** you see the character's attributes, total and unallocated skill points, and when the next attribute remap is available. The attributes are the ones EVE reports, with implants and any active cerebral accelerator.
+
+**Cerebral accelerators.** EVE Farm works out from the attributes how much an active accelerator adds, recognizes which accelerator gives that bonus, and how long it lasts with your Biology skill. EVE doesn't say when it was injected, so EVE Farm counts from the first time it sees it; skills are read every time EVE Farm starts, so start it soon after you inject one. The end date is shown next to the skill points, marked "about" while it is an estimate. Click **Accelerator...** to type the time left that EVE shows when you hover the booster icon under Active Boosters (for example `505:31:31`, hours:minutes:seconds), a time like `6d 4h`, or the end date. Training times use the accelerator until it ends and the normal speed after that, splitting a level that is in training when it runs out.
+
+**Plans** (left): **New...**, **Rename...**, **Copy...** and **Delete**. A character can have as many plans as you like.
+
+**The plan** (right) lists each skill level in training order: training time, finish date, how much is already done, skill points, attributes, group and notes. **Prerequisite** marks levels added because a planned skill needs them. Below the list are the total training time, the finish date, the skill books you still have to buy with their price, and how many skill injectors would finish the plan right away, with their price.
+
+**Skill injectors.** EVE Farm counts the cheapest mix of Large and Small Skill Injectors that gives the skill points the plan still needs, after your unallocated skill points. It follows EVE's rule that an injector gives fewer skill points the more the character has: a Large Skill Injector gives 500,000 SP under 5 million, 400,000 up to 50 million, 300,000 up to 80 million and 150,000 above that, and a Small one a fifth of that. The count goes up a threshold as soon as the injected points cross it. Prices come from your price provider.
+
+- **Add Skills...** opens the skill browser: skills by group, with a search box, each with its description, rank, attributes and what it requires (trained, planned or missing). Click **Plan to I** ... **Plan to V**; the levels and prerequisites it needs are added for you.
+- **Remove** takes the selected levels off. Levels that need them, and prerequisites nothing else needs, go too; EVE Farm asks first.
+- **Move Up** and **Move Down** change the order. A skill can't go above something it needs.
+- **Notes...** adds a note to a level.
+- **Import...** adds skills from text: a skill list, one per line (for example `Caldari Cruiser 4` or `Caldari Cruiser IV`), or a ship fit copied from EVE. For a fit, EVE Farm adds every skill the ship, modules, charges and drones need.
+- **From Skill Queue** adds the skills in the character's training queue in EVE, in the same order.
+- **Copy as Text** copies the plan as a skill list, one level per line, to paste anywhere.
+
+Training times use the character's attributes as of the last update and assume an Omega clone. Levels you have trained leave the plan by themselves after the next update.
+
+A character added before EVE Farm 1.0.16 must be added again (**File > Characters... > Add Character...**) so EVE Farm may read its skill queue.
 
 ## Working with tables
 

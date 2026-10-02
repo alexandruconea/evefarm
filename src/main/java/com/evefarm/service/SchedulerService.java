@@ -11,6 +11,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -44,12 +45,13 @@ public final class SchedulerService {
     private final UpdateCooldownDao updateCooldownDao;
     private final BackupRestoreService backupRestoreService;
     private final KillService killService;
+    private final SkillService skillService;
     private final List<Runnable> snapshotListeners = new CopyOnWriteArrayList<>();
 
     public SchedulerService(AuthService authService, CharacterService characterService, PriceService priceService,
                              AssetService assetService, TrackerSnapshotService trackerSnapshotService,
                              UpdateCooldownDao updateCooldownDao, BackupRestoreService backupRestoreService,
-                             KillService killService) {
+                             KillService killService, SkillService skillService) {
         this.authService = authService;
         this.characterService = characterService;
         this.priceService = priceService;
@@ -58,6 +60,7 @@ public final class SchedulerService {
         this.updateCooldownDao = updateCooldownDao;
         this.backupRestoreService = backupRestoreService;
         this.killService = killService;
+        this.skillService = skillService;
     }
 
     public void start() {
@@ -134,12 +137,19 @@ public final class SchedulerService {
             updateCooldownDao.markRefreshed(UpdateCategories.ASSETS);
             updateCooldownDao.markRefreshed(UpdateCategories.TRACKER);
         }
+        boolean skillsSucceeded = forEachCharacter("refresh skills", id -> {
+            skillService.refreshSkillsForCharacter(id);
+            return null;
+        });
+        if (skillsSucceeded) {
+            updateCooldownDao.markRefreshed(UpdateCategories.SKILLS);
+        }
         for (Runnable listener : snapshotListeners) {
             listener.run();
         }
     }
 
-    private boolean forEachCharacter(String action, java.util.function.Function<Long, Void> work) {
+    private boolean forEachCharacter(String action, Function<Long, Void> work) {
         List<EveCharacter> characters = characterService.listCharacters();
         boolean allSucceeded = true;
         for (EveCharacter character : characters) {

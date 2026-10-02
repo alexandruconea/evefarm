@@ -7,6 +7,7 @@ import com.evefarm.esi.FuzzworkApi;
 import com.evefarm.esi.JaniceApi;
 import com.evefarm.esi.MarketsApi;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 
 import java.util.List;
 import java.util.Set;
@@ -35,7 +36,7 @@ class PriceServiceTest {
 
         assertThrows(IllegalStateException.class, service::refreshPrices);
 
-        verify(prices, never()).replaceAllDetailed(org.mockito.ArgumentMatchers.anyMap());
+        verify(prices, never()).replaceAllDetailed(ArgumentMatchers.anyMap());
     }
 
     @Test
@@ -64,6 +65,6 @@ class PriceServiceTest {
 
         assertDoesNotThrow(() -> service.ensureFreshPrices(List.of(34, 35)));
 
-        verify(prices, never()).replaceAllDetailed(org.mockito.ArgumentMatchers.anyMap());
+        verify(prices, never()).replaceAllDetailed(ArgumentMatchers.anyMap());
     }
 }

@@ -13,6 +13,8 @@ public final class UpdateCategories {
     public static final String LOYALTY_POINTS = "loyaltyPoints";
     public static final String KILLS = "kills";
     public static final String MINING = "mining";
+    public static final String STANDINGS = "standings";
+    public static final String SKILLS = "skills";
 
     private UpdateCategories() {
     }

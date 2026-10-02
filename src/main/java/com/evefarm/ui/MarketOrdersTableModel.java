@@ -7,6 +7,7 @@ import com.evefarm.util.DateUtil;
 import com.evefarm.util.IskFormatter;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Locale;
 
@@ -92,7 +93,7 @@ public final class MarketOrdersTableModel extends ColumnTableModel<MarketOrderRo
             return "";
         }
         try {
-            Instant expiry = Instant.parse(row.issued()).plus(row.duration(), java.time.temporal.ChronoUnit.DAYS);
+            Instant expiry = Instant.parse(row.issued()).plus(row.duration(), ChronoUnit.DAYS);
             return DateUtil.format(expiry);
         } catch (Exception e) {
             return "";

@@ -10,6 +10,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -38,7 +39,7 @@ class ApplyUpdateScriptTest {
     private int run(Path install, Path staged, Path log, Path workingDirectory, String... extra) throws Exception {
         Process finished = new ProcessBuilder("cmd.exe", "/c", "exit").start();
         finished.waitFor(10, TimeUnit.SECONDS);
-        List<String> command = new java.util.ArrayList<>(List.of("powershell.exe", "-NoProfile", "-ExecutionPolicy",
+        List<String> command = new ArrayList<>(List.of("powershell.exe", "-NoProfile", "-ExecutionPolicy",
                 "Bypass", "-File", script().toString(), "-ProcessId", String.valueOf(finished.pid()),
                 "-InstallDir", install.toString(), "-StagedDir", staged.toString(), "-LogFile", log.toString(),
                 "-NoLaunch"));

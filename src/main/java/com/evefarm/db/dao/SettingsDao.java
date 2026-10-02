@@ -44,6 +44,10 @@ public final class SettingsDao {
     public static final String MINING_REFINE_RATE = "mining_refine_rate";
     public static final String MINING_PERIOD = "mining_period";
     public static final String MINING_GROUP_BY = "mining_group_by";
+    public static final String STANDINGS_DIVIDER = "standings_divider";
+    public static final String SKILL_CATALOG_IMPORTED_AT = "skill_catalog_imported_at";
+    public static final String ACCELERATOR_CATALOG_IMPORTED_AT = "accelerator_catalog_imported_at";
+    public static final String SKILLS_DIVIDER = "skills_divider";
     public static final String ABYSS_CARGO_PREFIX = "abyss_cargo_";
     public static final String MARKET_ORDERS_SHOW_CLOSED = "market_orders_show_closed";
 

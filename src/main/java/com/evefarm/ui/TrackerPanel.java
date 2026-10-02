@@ -4,6 +4,7 @@ import com.evefarm.AppContext;
 import com.evefarm.model.EveCharacter;
 import com.evefarm.model.TrackerSnapshot;
 import com.evefarm.util.DateUtil;
+import com.formdev.flatlaf.FlatLaf;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartMouseEvent;
 import org.jfree.chart.ChartMouseListener;
@@ -13,6 +14,7 @@ import org.jfree.chart.LegendItem;
 import org.jfree.chart.LegendItemCollection;
 import org.jfree.chart.axis.DateAxis;
 import org.jfree.chart.axis.NumberAxis;
+import org.jfree.chart.axis.ValueAxis;
 import org.jfree.chart.entity.LegendItemEntity;
 import org.jfree.chart.plot.CrosshairState;
 import org.jfree.chart.plot.PlotRenderingInfo;
@@ -21,7 +23,6 @@ import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYAreaRenderer;
 import org.jfree.chart.renderer.xy.XYItemRendererState;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
-import org.jfree.chart.axis.ValueAxis;
 import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.data.xy.XYDataset;
@@ -29,16 +30,24 @@ import org.jfree.data.xy.XYDataset;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListModel;
+import javax.swing.GroupLayout;
+import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
+import javax.swing.JScrollPane;
+import javax.swing.JSpinner;
+import javax.swing.LayoutStyle;
 import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerDateModel;
-import javax.swing.JSpinner;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
+import javax.swing.UIManager;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
@@ -70,7 +79,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-public final class TrackerPanel extends javax.swing.JPanel {
+public final class TrackerPanel extends JPanel {
 
     private static final Logger LOG = Logger.getLogger(TrackerPanel.class.getName());
     private static final int POINT_PICK_RADIUS_PX = 8;
@@ -167,12 +176,12 @@ public final class TrackerPanel extends javax.swing.JPanel {
         rangeAxis.setAutoRangeIncludesZero(false);
         rangeAxis.setNumberFormatOverride(new CompactIskNumberFormat());
 
-        boolean dark = com.formdev.flatlaf.FlatLaf.isLafDark();
-        Color background = javax.swing.UIManager.getColor("Panel.background");
+        boolean dark = FlatLaf.isLafDark();
+        Color background = UIManager.getColor("Panel.background");
         if (background == null) {
             background = dark ? new Color(43, 43, 43) : Color.WHITE;
         }
-        Color foreground = javax.swing.UIManager.getColor("Label.foreground");
+        Color foreground = UIManager.getColor("Label.foreground");
         if (foreground == null) {
             foreground = dark ? Color.LIGHT_GRAY : Color.BLACK;
         }
@@ -196,7 +205,7 @@ public final class TrackerPanel extends javax.swing.JPanel {
         Color secondaryInk = dark ? new Color(0xc3, 0xc2, 0xb7) : new Color(0x52, 0x51, 0x4e);
         Color mutedInk = new Color(0x89, 0x87, 0x81);
         Color baselineColor = dark ? new Color(0x38, 0x38, 0x35) : new Color(0xc3, 0xc2, 0xb7);
-        Font uiFont = javax.swing.UIManager.getFont("Label.font");
+        Font uiFont = UIManager.getFont("Label.font");
         if (uiFont == null) {
             uiFont = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
         }
@@ -394,7 +403,7 @@ public final class TrackerPanel extends javax.swing.JPanel {
         boolean newData = !snapshots.equals(shownSnapshots);
         shownSnapshots = snapshots;
         TimeSeriesCollection dataset = chartFactory.buildDataset(snapshots, visibleSeries);
-        boolean dark = com.formdev.flatlaf.FlatLaf.isLafDark();
+        boolean dark = FlatLaf.isLafDark();
         XYPlot plot = (XYPlot) chartPanel.getChart().getPlot();
 
         hoverOverlay.clearHover();
@@ -446,7 +455,7 @@ public final class TrackerPanel extends javax.swing.JPanel {
     }
 
     private LegendItemCollection legendItems(boolean dark) {
-        Color labelColor = javax.swing.UIManager.getColor("Label.foreground");
+        Color labelColor = UIManager.getColor("Label.foreground");
         LegendItemCollection items = new LegendItemCollection();
         for (String name : TrackerChartFactory.SERIES_NAMES) {
             boolean shown = seriesCheckBoxes.get(name).isSelected();
@@ -597,53 +606,54 @@ public final class TrackerPanel extends javax.swing.JPanel {
         }.execute();
     }
 
-    private javax.swing.JCheckBox allProfilesCheckBox;
-    private javax.swing.JLabel charactersLabel;
-    private javax.swing.JList<EveCharacter> characterList;
-    private javax.swing.JScrollPane characterScrollPane;
-    private javax.swing.JPanel chartContainerPanel;
-    private javax.swing.JLabel fromLabel;
-    private javax.swing.JSpinner fromSpinner;
-    private javax.swing.JComboBox<String> quickDateCombo;
-    private javax.swing.JLabel quickDateLabel;
-    private javax.swing.JLabel seriesLabel;
-    private javax.swing.JPanel seriesPanel;
-    private javax.swing.JScrollPane seriesScrollPane;
-    private javax.swing.JButton manageSnapshotsButton;
-    private javax.swing.JButton showButton;
-    private javax.swing.JButton skillPointFiltersButton;
-    private javax.swing.JPanel sidebarPanel;
-    private javax.swing.JLabel toLabel;
-    private javax.swing.JSpinner toSpinner;
+    private JCheckBox allProfilesCheckBox;
+    private JLabel charactersLabel;
+    private JList<EveCharacter> characterList;
+    private JScrollPane characterScrollPane;
+    private JPanel chartContainerPanel;
+    private JLabel fromLabel;
+    private JSpinner fromSpinner;
+    private JComboBox<String> quickDateCombo;
+    private JLabel quickDateLabel;
+    private JLabel seriesLabel;
+    private JPanel seriesPanel;
+    private JScrollPane seriesScrollPane;
+    private JButton manageSnapshotsButton;
+    private JButton showButton;
+    private JButton skillPointFiltersButton;
+    private JPanel sidebarPanel;
+    private JLabel toLabel;
+    private JSpinner toSpinner;
+
     private void initComponents() {
 
-        chartContainerPanel = new javax.swing.JPanel();
-        sidebarPanel = new javax.swing.JPanel();
-        quickDateLabel = new javax.swing.JLabel();
-        quickDateCombo = new javax.swing.JComboBox<>();
-        fromLabel = new javax.swing.JLabel();
-        fromSpinner = new javax.swing.JSpinner();
-        toLabel = new javax.swing.JLabel();
-        toSpinner = new javax.swing.JSpinner();
-        showButton = new javax.swing.JButton();
-        skillPointFiltersButton = new javax.swing.JButton();
-        manageSnapshotsButton = new javax.swing.JButton();
-        seriesLabel = new javax.swing.JLabel();
-        seriesScrollPane = new javax.swing.JScrollPane();
-        seriesPanel = new javax.swing.JPanel();
-        charactersLabel = new javax.swing.JLabel();
-        allProfilesCheckBox = new javax.swing.JCheckBox();
-        characterScrollPane = new javax.swing.JScrollPane();
-        characterList = new javax.swing.JList<>();
+        chartContainerPanel = new JPanel();
+        sidebarPanel = new JPanel();
+        quickDateLabel = new JLabel();
+        quickDateCombo = new JComboBox<>();
+        fromLabel = new JLabel();
+        fromSpinner = new JSpinner();
+        toLabel = new JLabel();
+        toSpinner = new JSpinner();
+        showButton = new JButton();
+        skillPointFiltersButton = new JButton();
+        manageSnapshotsButton = new JButton();
+        seriesLabel = new JLabel();
+        seriesScrollPane = new JScrollPane();
+        seriesPanel = new JPanel();
+        charactersLabel = new JLabel();
+        allProfilesCheckBox = new JCheckBox();
+        characterScrollPane = new JScrollPane();
+        characterList = new JList<>();
 
-        javax.swing.GroupLayout chartContainerPanelLayout = new javax.swing.GroupLayout(chartContainerPanel);
+        GroupLayout chartContainerPanelLayout = new GroupLayout(chartContainerPanel);
         chartContainerPanel.setLayout(chartContainerPanelLayout);
         chartContainerPanelLayout.setHorizontalGroup(
-            chartContainerPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            chartContainerPanelLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
             .addGap(0, 700, Short.MAX_VALUE)
         );
         chartContainerPanelLayout.setVerticalGroup(
-            chartContainerPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            chartContainerPanelLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
             .addGap(0, 500, Short.MAX_VALUE)
         );
 
@@ -661,14 +671,14 @@ public final class TrackerPanel extends javax.swing.JPanel {
 
         seriesLabel.setText("Series");
 
-        javax.swing.GroupLayout seriesPanelLayout = new javax.swing.GroupLayout(seriesPanel);
+        GroupLayout seriesPanelLayout = new GroupLayout(seriesPanel);
         seriesPanel.setLayout(seriesPanelLayout);
         seriesPanelLayout.setHorizontalGroup(
-            seriesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            seriesPanelLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
             .addGap(0, 220, Short.MAX_VALUE)
         );
         seriesPanelLayout.setVerticalGroup(
-            seriesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            seriesPanelLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
             .addGap(0, 150, Short.MAX_VALUE)
         );
 
@@ -681,76 +691,76 @@ public final class TrackerPanel extends javax.swing.JPanel {
 
         characterScrollPane.setViewportView(characterList);
 
-        javax.swing.GroupLayout sidebarPanelLayout = new javax.swing.GroupLayout(sidebarPanel);
+        GroupLayout sidebarPanelLayout = new GroupLayout(sidebarPanel);
         sidebarPanel.setLayout(sidebarPanelLayout);
         sidebarPanelLayout.setHorizontalGroup(
-            sidebarPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            sidebarPanelLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
             .addGroup(sidebarPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(sidebarPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(sidebarPanelLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
                     .addComponent(quickDateLabel)
-                    .addComponent(quickDateCombo, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
+                    .addComponent(quickDateCombo, GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
                     .addComponent(fromLabel)
-                    .addComponent(fromSpinner, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
+                    .addComponent(fromSpinner, GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
                     .addComponent(toLabel)
-                    .addComponent(toSpinner, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
-                    .addComponent(showButton, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
-                    .addComponent(skillPointFiltersButton, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
-                    .addComponent(manageSnapshotsButton, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
+                    .addComponent(toSpinner, GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
+                    .addComponent(showButton, GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
+                    .addComponent(skillPointFiltersButton, GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
+                    .addComponent(manageSnapshotsButton, GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
                     .addComponent(seriesLabel)
-                    .addComponent(seriesScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
+                    .addComponent(seriesScrollPane, GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
                     .addComponent(charactersLabel)
                     .addComponent(allProfilesCheckBox)
-                    .addComponent(characterScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE))
+                    .addComponent(characterScrollPane, GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE))
                 .addContainerGap())
         );
         sidebarPanelLayout.setVerticalGroup(
-            sidebarPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            sidebarPanelLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
             .addGroup(sidebarPanelLayout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(quickDateLabel)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(quickDateCombo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(quickDateCombo, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(fromLabel)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(fromSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(fromSpinner, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(toLabel)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(toSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(toSpinner, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(showButton)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(skillPointFiltersButton)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(manageSnapshotsButton)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addPreferredGap(LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(seriesLabel)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(seriesScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 150, Short.MAX_VALUE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(seriesScrollPane, GroupLayout.DEFAULT_SIZE, 150, Short.MAX_VALUE)
+                .addPreferredGap(LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(charactersLabel)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(allProfilesCheckBox)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(characterScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 150, Short.MAX_VALUE)
+                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(characterScrollPane, GroupLayout.DEFAULT_SIZE, 150, Short.MAX_VALUE)
                 .addContainerGap())
         );
 
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
+        GroupLayout layout = new GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            layout.createParallelGroup(GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addComponent(chartContainerPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 700, Short.MAX_VALUE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(sidebarPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addComponent(chartContainerPanel, GroupLayout.DEFAULT_SIZE, 700, Short.MAX_VALUE)
+                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(sidebarPanel, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
         );
         layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(chartContainerPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 500, Short.MAX_VALUE)
-            .addComponent(sidebarPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 500, Short.MAX_VALUE)
+            layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+            .addComponent(chartContainerPanel, GroupLayout.DEFAULT_SIZE, 500, Short.MAX_VALUE)
+            .addComponent(sidebarPanel, GroupLayout.DEFAULT_SIZE, 500, Short.MAX_VALUE)
         );
     }
 }

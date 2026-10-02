@@ -13,9 +13,12 @@ import com.evefarm.service.AbyssLootService;
 import com.evefarm.service.AbyssStats;
 import com.evefarm.service.AbyssTrackerService;
 import com.evefarm.service.CargoParser;
+import com.evefarm.util.DateUtil;
 import com.evefarm.util.IskFormatter;
+import com.formdev.flatlaf.FlatLaf;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -38,10 +41,10 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.awt.Font;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.time.Duration;
@@ -549,7 +552,7 @@ public final class AbyssPanel extends JPanel {
         }
         int choice = JOptionPane.showConfirmDialog(this,
                 "Delete the " + AbyssRunsTableModel.formatDuration(run.durationSeconds()) + " run of "
-                        + run.characterName() + " from " + com.evefarm.util.DateUtil.format(run.startedAt()) + "?",
+                        + run.characterName() + " from " + DateUtil.format(run.startedAt()) + "?",
                 "Delete Run", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
         if (choice != JOptionPane.YES_OPTION) {
             return;
@@ -596,7 +599,7 @@ public final class AbyssPanel extends JPanel {
     }
 
     static void addStatusRow(JPanel panel, GridBagConstraints c, int row, String title,
-                                     java.awt.Component control, JLabel text) {
+                                     Component control, JLabel text) {
         JLabel heading = new JLabel(title);
         heading.setFont(heading.getFont().deriveFont(Font.BOLD));
         heading.setForeground(UIManager.getColor("Label.disabledForeground"));
@@ -621,16 +624,16 @@ public final class AbyssPanel extends JPanel {
         controls.add(new JLabel("Character:"));
         characterCombo.setPreferredSize(new Dimension(200, characterCombo.getPreferredSize().height));
         controls.add(characterCombo);
-        controls.add(javax.swing.Box.createHorizontalStrut(8));
+        controls.add(Box.createHorizontalStrut(8));
         controls.add(new JLabel("Filament:"));
         controls.add(tierCombo);
         controls.add(weatherCombo);
-        controls.add(javax.swing.Box.createHorizontalStrut(8));
+        controls.add(Box.createHorizontalStrut(8));
         controls.add(new JLabel("Fleet:"));
         controls.add(fleetCombo);
-        controls.add(javax.swing.Box.createHorizontalStrut(8));
+        controls.add(Box.createHorizontalStrut(8));
         controls.add(trackButton);
-        controls.add(javax.swing.Box.createHorizontalStrut(8));
+        controls.add(Box.createHorizontalStrut(8));
         controls.add(lootPromptCheck);
 
         JPanel statusRows = new JPanel(new GridBagLayout());
@@ -659,7 +662,7 @@ public final class AbyssPanel extends JPanel {
 
         JPanel runButtons = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         runButtons.add(ButtonSizing.row(6, addButton, editButton, deleteButton));
-        runButtons.add(javax.swing.Box.createHorizontalStrut(6));
+        runButtons.add(Box.createHorizontalStrut(6));
         runButtons.add(ignoredButton);
         JPanel runsTop = new JPanel(new BorderLayout(0, 6));
         runsTop.add(runButtons, BorderLayout.NORTH);
@@ -712,7 +715,7 @@ public final class AbyssPanel extends JPanel {
 
     static Color resultColor(JTable table, Object value) {
         if (AbyssRunsTableModel.SURVIVED.equals(value)) {
-            return com.formdev.flatlaf.FlatLaf.isLafDark() ? SURVIVED_ON_DARK : SURVIVED_ON_LIGHT;
+            return FlatLaf.isLafDark() ? SURVIVED_ON_DARK : SURVIVED_ON_LIGHT;
         }
         if (value != null && !String.valueOf(value).isBlank()) {
             Color red = UIManager.getColor("Actions.Red");

@@ -1,6 +1,6 @@
 # EVE Farm
 
-EVE Farm is a Windows desktop app that keeps all your EVE Online characters in one place: assets and net worth over time, wallet journal and transactions, market orders, contracts, industry jobs, mining ledger, loyalty points and LP store value, NPC kills from your game logs, officer spawns and drops, agents, and Abyssal Deadspace runs with a timer that starts and stops by itself.
+EVE Farm is a Windows desktop app that keeps all your EVE Online characters in one place: assets and net worth over time, wallet journal and transactions, market orders, contracts, industry jobs, mining ledger, loyalty points and LP store value, standings with factions, corporations and agents, a skill planner, NPC kills from your game logs, officer spawns and drops, agents, and Abyssal Deadspace runs with a timer that starts and stops by itself.
 
 ## Download
 

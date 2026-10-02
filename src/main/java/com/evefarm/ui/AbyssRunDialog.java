@@ -15,12 +15,13 @@ import com.evefarm.util.IskFormatter;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
-import javax.swing.JDialog;
 import javax.swing.JComponent;
+import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
@@ -38,6 +39,7 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.AbstractTableModel;
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -143,7 +145,7 @@ final class AbyssRunDialog extends JDialog {
         addRow(form, c, 1, "Tier:", tierCombo, "Weather:", weatherCombo);
         JPanel shipRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         shipRow.add(shipField);
-        shipRow.add(javax.swing.Box.createHorizontalStrut(10));
+        shipRow.add(Box.createHorizontalStrut(10));
         shipRow.add(lostCheck);
         addRow(form, c, 2, "Fleet:", fleetCombo, "Time (mm:ss):", durationField);
         addRow(form, c, 3, "Ship:", shipRow, "", new JLabel());
@@ -308,7 +310,7 @@ final class AbyssRunDialog extends JDialog {
     }
 
     private static void addRow(JPanel form, GridBagConstraints c, int row, String firstLabel,
-                               java.awt.Component first, String secondLabel, java.awt.Component second) {
+                               Component first, String secondLabel, Component second) {
         c.gridy = row;
         c.gridx = 0;
         form.add(new JLabel(firstLabel), c);

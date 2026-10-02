@@ -2,42 +2,61 @@ package com.evefarm.ui;
 
 import com.evefarm.AppContext;
 import com.evefarm.db.dao.SettingsDao;
+import com.evefarm.service.BackupRestoreService;
 import com.evefarm.update.ReleaseInfo;
 import com.evefarm.update.UpdateInstaller;
 import com.evefarm.util.AppInfo;
 import com.evefarm.util.AppPaths;
+import com.formdev.flatlaf.FlatLaf;
 
+import javax.imageio.ImageIO;
 import javax.swing.Box;
 import javax.swing.Icon;
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
+import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
+import javax.swing.JSeparator;
+import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.Timer;
+import javax.swing.UIManager;
+import javax.swing.WindowConstants;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.AWTException;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Image;
 import java.awt.MenuItem;
 import java.awt.PopupMenu;
 import java.awt.SystemTray;
+import java.awt.Taskbar;
 import java.awt.TrayIcon;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.File;
+import java.io.InputStream;
+import java.net.URI;
+import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public final class MainFrame extends javax.swing.JFrame {
+public final class MainFrame extends JFrame {
 
     private static final Logger LOG = Logger.getLogger(MainFrame.class.getName());
 
@@ -68,6 +87,8 @@ public final class MainFrame extends javax.swing.JFrame {
     private AgentsPanel agentsPanel;
     private AbyssPanel abyssPanel;
     private MiningPanel miningPanel;
+    private StandingsPanel standingsPanel;
+    private SkillsPanel skillsPanel;
 
     public MainFrame(AppContext appContext) {
         initComponents();
@@ -100,6 +121,8 @@ public final class MainFrame extends javax.swing.JFrame {
         agentsPanel = new AgentsPanel(appContext);
         abyssPanel = new AbyssPanel(appContext, this::showTrayNotification);
         miningPanel = new MiningPanel(appContext);
+        standingsPanel = new StandingsPanel(appContext);
+        skillsPanel = new SkillsPanel(appContext);
 
         tabSpecs.put("assets", new TabSpec("Assets", Icons.COIN, assetsPanel));
         tabSpecs.put("tracker", new TabSpec("Tracker", Icons.CHART, trackerPanel));
@@ -114,6 +137,8 @@ public final class MainFrame extends javax.swing.JFrame {
         tabSpecs.put("abyss", new TabSpec("Abyss", Icons.ABYSS, abyssPanel));
         tabSpecs.put("mining", new TabSpec("Mining", Icons.MINING, miningPanel));
         tabSpecs.put("agents", new TabSpec("Agents", Icons.MEDAL, agentsPanel));
+        tabSpecs.put("standings", new TabSpec("Standings", Icons.STANDINGS, standingsPanel));
+        tabSpecs.put("skills", new TabSpec("Skills", Icons.SKILLS, skillsPanel));
 
         rebuildTabs();
 
@@ -145,6 +170,10 @@ public final class MainFrame extends javax.swing.JFrame {
                 abyssPanel.onShown();
             } else if (selected == miningPanel) {
                 miningPanel.onShown();
+            } else if (selected == standingsPanel) {
+                standingsPanel.onShown();
+            } else if (selected == skillsPanel) {
+                skillsPanel.onShown();
             }
         });
 
@@ -175,7 +204,7 @@ public final class MainFrame extends javax.swing.JFrame {
         });
 
         if (appContext.characterService.listCharacters().isEmpty()) {
-            javax.swing.SwingUtilities.invokeLater(() -> charactersItemActionPerformed(null));
+            SwingUtilities.invokeLater(() -> charactersItemActionPerformed(null));
         }
 
         setupUpdates();
@@ -240,7 +269,7 @@ public final class MainFrame extends javax.swing.JFrame {
         updateAvailableButton.setIcon(Icons.REFRESH);
         updateAvailableButton.setFocusable(false);
         updateAvailableButton.setVisible(false);
-        Color accent = javax.swing.UIManager.getColor("Component.accentColor");
+        Color accent = UIManager.getColor("Component.accentColor");
         if (accent != null) {
             updateAvailableButton.setForeground(accent);
         }
@@ -251,7 +280,7 @@ public final class MainFrame extends javax.swing.JFrame {
         });
         jMenuBar1.add(Box.createHorizontalGlue());
         jMenuBar1.add(updateAvailableButton);
-        if (!(javax.swing.UIManager.getLookAndFeel() instanceof com.formdev.flatlaf.FlatLaf)) {
+        if (!(UIManager.getLookAndFeel() instanceof FlatLaf)) {
             WindowChrome.install(this, jMenuBar1);
         }
 
@@ -356,7 +385,7 @@ public final class MainFrame extends javax.swing.JFrame {
                 options, options[1]);
         if (choice == 0) {
             try {
-                java.awt.Desktop.getDesktop().browse(java.net.URI.create(AppInfo.HOME_PAGE));
+                Desktop.getDesktop().browse(URI.create(AppInfo.HOME_PAGE));
             } catch (Exception e) {
                 LOG.log(Level.INFO, "Couldn't open the GitHub page", e);
             }
@@ -364,18 +393,18 @@ public final class MainFrame extends javax.swing.JFrame {
     }
 
     private Image loadAppIcon() {
-        try (java.io.InputStream in = getClass().getResourceAsStream("/icons/app-icon.png")) {
+        try (InputStream in = getClass().getResourceAsStream("/icons/app-icon.png")) {
             if (in == null) {
                 return null;
             }
-            Image icon = javax.imageio.ImageIO.read(in);
+            Image icon = ImageIO.read(in);
             if (icon == null) {
                 return null;
             }
             setIconImage(icon);
-            if (java.awt.Taskbar.isTaskbarSupported()) {
-                java.awt.Taskbar taskbar = java.awt.Taskbar.getTaskbar();
-                if (taskbar.isSupported(java.awt.Taskbar.Feature.ICON_IMAGE)) {
+            if (Taskbar.isTaskbarSupported()) {
+                Taskbar taskbar = Taskbar.getTaskbar();
+                if (taskbar.isSupported(Taskbar.Feature.ICON_IMAGE)) {
                     taskbar.setIconImage(icon);
                 }
             }
@@ -483,6 +512,8 @@ public final class MainFrame extends javax.swing.JFrame {
         killsPanel.refreshCharacterFilter();
         abyssPanel.refreshCharacterFilter();
         miningPanel.refreshCharacterFilter();
+        standingsPanel.refreshCharacterFilter();
+        skillsPanel.refreshCharacterFilter();
     }
 
     private Map<String, TabSpec> orderedTabSpecs() {
@@ -500,46 +531,47 @@ public final class MainFrame extends javax.swing.JFrame {
         return ordered;
     }
 
-    private javax.swing.JMenuItem charactersItem;
-    private javax.swing.JMenuItem exitItem;
-    private javax.swing.JMenu fileMenu;
-    private javax.swing.JMenuBar jMenuBar1;
-    private javax.swing.JSeparator jSeparator1;
-    private javax.swing.JMenu optionsMenu;
-    private javax.swing.JMenuItem settingsItem;
-    private javax.swing.JMenuItem showTabsItem;
-    private javax.swing.JSeparator jSeparator2;
-    private javax.swing.JMenuItem backupItem;
-    private javax.swing.JMenuItem restoreItem;
-    private javax.swing.JTabbedPane tabbedPane;
-    private javax.swing.JMenu updateMenu;
-    private javax.swing.JMenuItem updateItem;
+    private JMenuItem charactersItem;
+    private JMenuItem exitItem;
+    private JMenu fileMenu;
+    private JMenuBar jMenuBar1;
+    private JSeparator jSeparator1;
+    private JMenu optionsMenu;
+    private JMenuItem settingsItem;
+    private JMenuItem showTabsItem;
+    private JSeparator jSeparator2;
+    private JMenuItem backupItem;
+    private JMenuItem restoreItem;
+    private JTabbedPane tabbedPane;
+    private JMenu updateMenu;
+    private JMenuItem updateItem;
+
     private void initComponents() {
 
-        tabbedPane = new javax.swing.JTabbedPane();
-        jMenuBar1 = new javax.swing.JMenuBar();
-        fileMenu = new javax.swing.JMenu();
-        charactersItem = new javax.swing.JMenuItem();
-        jSeparator1 = new javax.swing.JSeparator();
-        exitItem = new javax.swing.JMenuItem();
-        updateMenu = new javax.swing.JMenu();
-        updateItem = new javax.swing.JMenuItem();
-        optionsMenu = new javax.swing.JMenu();
-        settingsItem = new javax.swing.JMenuItem();
-        showTabsItem = new javax.swing.JMenuItem();
-        jSeparator2 = new javax.swing.JSeparator();
-        backupItem = new javax.swing.JMenuItem();
-        restoreItem = new javax.swing.JMenuItem();
+        tabbedPane = new JTabbedPane();
+        jMenuBar1 = new JMenuBar();
+        fileMenu = new JMenu();
+        charactersItem = new JMenuItem();
+        jSeparator1 = new JSeparator();
+        exitItem = new JMenuItem();
+        updateMenu = new JMenu();
+        updateItem = new JMenuItem();
+        optionsMenu = new JMenu();
+        settingsItem = new JMenuItem();
+        showTabsItem = new JMenuItem();
+        jSeparator2 = new JSeparator();
+        backupItem = new JMenuItem();
+        restoreItem = new JMenuItem();
 
-        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         setTitle("EVE Farm");
-        setMinimumSize(new java.awt.Dimension(1000, 650));
+        setMinimumSize(new Dimension(1000, 650));
 
         fileMenu.setText("File");
 
         charactersItem.setText("Characters...");
-        charactersItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+        charactersItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent evt) {
                 charactersItemActionPerformed(evt);
             }
         });
@@ -547,8 +579,8 @@ public final class MainFrame extends javax.swing.JFrame {
         fileMenu.add(jSeparator1);
 
         exitItem.setText("Exit");
-        exitItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+        exitItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent evt) {
                 exitItemActionPerformed(evt);
             }
         });
@@ -559,8 +591,8 @@ public final class MainFrame extends javax.swing.JFrame {
         updateMenu.setText("Update");
 
         updateItem.setText("Update...");
-        updateItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+        updateItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent evt) {
                 updateItemActionPerformed(evt);
             }
         });
@@ -571,16 +603,16 @@ public final class MainFrame extends javax.swing.JFrame {
         optionsMenu.setText("Options");
 
         settingsItem.setText("Settings...");
-        settingsItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+        settingsItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent evt) {
                 settingsItemActionPerformed(evt);
             }
         });
         optionsMenu.add(settingsItem);
 
         showTabsItem.setText("Show Tabs...");
-        showTabsItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+        showTabsItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent evt) {
                 showTabsItemActionPerformed(evt);
             }
         });
@@ -588,16 +620,16 @@ public final class MainFrame extends javax.swing.JFrame {
         optionsMenu.add(jSeparator2);
 
         backupItem.setText("Backup Data...");
-        backupItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+        backupItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent evt) {
                 backupItemActionPerformed(evt);
             }
         });
         optionsMenu.add(backupItem);
 
         restoreItem.setText("Restore Data...");
-        restoreItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+        restoreItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent evt) {
                 restoreItemActionPerformed(evt);
             }
         });
@@ -615,17 +647,17 @@ public final class MainFrame extends javax.swing.JFrame {
         pack();
     }
 
-    private void charactersItemActionPerformed(java.awt.event.ActionEvent evt) {
+    private void charactersItemActionPerformed(ActionEvent evt) {
         CharactersDialog dialog = new CharactersDialog(this, appContext, this::onCharactersChanged);
         dialog.setVisible(true);
     }
 
-    private void settingsItemActionPerformed(java.awt.event.ActionEvent evt) {
+    private void settingsItemActionPerformed(ActionEvent evt) {
         SettingsDialog dialog = new SettingsDialog(this, appContext.settingsDao);
         dialog.setVisible(true);
     }
 
-    private void showTabsItemActionPerformed(java.awt.event.ActionEvent evt) {
+    private void showTabsItemActionPerformed(ActionEvent evt) {
         Map<String, String> labels = new LinkedHashMap<>();
         for (Map.Entry<String, TabSpec> entry : orderedTabSpecs().entrySet()) {
             labels.put(entry.getKey(), entry.getValue().label());
@@ -634,77 +666,77 @@ public final class MainFrame extends javax.swing.JFrame {
         dialog.setVisible(true);
     }
 
-    private void backupItemActionPerformed(java.awt.event.ActionEvent evt) {
-        javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+    private void backupItemActionPerformed(ActionEvent evt) {
+        JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle("Backup Data");
-        chooser.setSelectedFile(new java.io.File(com.evefarm.service.BackupRestoreService.defaultBackupFileName()));
-        chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("EVE Farm database (*.db)", "db"));
-        if (chooser.showSaveDialog(this) != javax.swing.JFileChooser.APPROVE_OPTION) {
+        chooser.setSelectedFile(new File(BackupRestoreService.defaultBackupFileName()));
+        chooser.setFileFilter(new FileNameExtensionFilter("EVE Farm database (*.db)", "db"));
+        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
             return;
         }
-        java.io.File target = chooser.getSelectedFile();
-        if (!target.getName().toLowerCase(java.util.Locale.ROOT).endsWith(".db")) {
-            target = new java.io.File(target.getParentFile(), target.getName() + ".db");
+        File target = chooser.getSelectedFile();
+        if (!target.getName().toLowerCase(Locale.ROOT).endsWith(".db")) {
+            target = new File(target.getParentFile(), target.getName() + ".db");
         }
         try {
             appContext.backupRestoreService.backupTo(target.toPath());
-            javax.swing.JOptionPane.showMessageDialog(this, "Backup saved to:\n" + target,
-                    "Backup Data", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Backup saved to:\n" + target,
+                    "Backup Data", JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception e) {
-            javax.swing.JOptionPane.showMessageDialog(this, "Backup failed: " + e.getMessage(),
-                    "Backup Data", javax.swing.JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Backup failed: " + e.getMessage(),
+                    "Backup Data", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    private void restoreItemActionPerformed(java.awt.event.ActionEvent evt) {
-        int confirm = javax.swing.JOptionPane.showConfirmDialog(this,
+    private void restoreItemActionPerformed(ActionEvent evt) {
+        int confirm = JOptionPane.showConfirmDialog(this,
                 "Restoring will replace ALL current data with the chosen backup, and the app will "
                         + "close so the restore can be applied on next launch.\n\n"
                         + "Your current data is backed up automatically before the swap.\n\n"
                         + "Continue?",
-                "Restore Data", javax.swing.JOptionPane.YES_NO_OPTION, javax.swing.JOptionPane.WARNING_MESSAGE);
-        if (confirm != javax.swing.JOptionPane.YES_OPTION) {
+                "Restore Data", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION) {
             return;
         }
 
-        javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+        JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle("Restore Data");
-        chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("EVE Farm database (*.db)", "db"));
-        java.io.File autoBackups = com.evefarm.util.AppPaths.backupDir().toFile();
+        chooser.setFileFilter(new FileNameExtensionFilter("EVE Farm database (*.db)", "db"));
+        File autoBackups = AppPaths.backupDir().toFile();
         if (autoBackups.isDirectory()) {
             chooser.setCurrentDirectory(autoBackups);
         }
-        if (chooser.showOpenDialog(this) != javax.swing.JFileChooser.APPROVE_OPTION) {
+        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
             return;
         }
-        java.nio.file.Path source = chooser.getSelectedFile().toPath();
+        Path source = chooser.getSelectedFile().toPath();
 
         String error = appContext.backupRestoreService.validateBackupFile(source);
         if (error != null) {
-            javax.swing.JOptionPane.showMessageDialog(this, "Can't restore this file:\n" + error,
-                    "Restore Data", javax.swing.JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Can't restore this file:\n" + error,
+                    "Restore Data", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
         try {
             appContext.backupRestoreService.stageRestore(source);
         } catch (Exception e) {
-            javax.swing.JOptionPane.showMessageDialog(this, "Failed to stage the restore: " + e.getMessage(),
-                    "Restore Data", javax.swing.JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Failed to stage the restore: " + e.getMessage(),
+                    "Restore Data", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        javax.swing.JOptionPane.showMessageDialog(this,
+        JOptionPane.showMessageDialog(this,
                 "Restore staged. The app will now close - reopen it to finish the restore.",
-                "Restore Data", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+                "Restore Data", JOptionPane.INFORMATION_MESSAGE);
         dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
     }
 
-    private void exitItemActionPerformed(java.awt.event.ActionEvent evt) {
+    private void exitItemActionPerformed(ActionEvent evt) {
         dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
     }
 
-    private void updateItemActionPerformed(java.awt.event.ActionEvent evt) {
+    private void updateItemActionPerformed(ActionEvent evt) {
         UpdateDialog dialog = new UpdateDialog(this, appContext, this::onDataUpdated);
         dialog.setVisible(true);
     }
@@ -721,5 +753,7 @@ public final class MainFrame extends javax.swing.JFrame {
         lpStorePanel.onShown();
         killsPanel.onShown();
         miningPanel.onShown();
+        standingsPanel.onShown();
+        skillsPanel.onShown();
     }
 }

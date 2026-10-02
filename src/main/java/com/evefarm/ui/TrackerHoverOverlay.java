@@ -1,6 +1,7 @@
 package com.evefarm.ui;
 
 import com.evefarm.util.DateUtil;
+import com.formdev.flatlaf.FlatLaf;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.panel.AbstractOverlay;
 import org.jfree.chart.panel.Overlay;
@@ -105,7 +106,7 @@ final class TrackerHoverOverlay extends AbstractOverlay implements Overlay {
         if (x < area.getMinX() || x > area.getMaxX()) {
             return;
         }
-        boolean dark = com.formdev.flatlaf.FlatLaf.isLafDark();
+        boolean dark = FlatLaf.isLafDark();
         Color background = plot.getBackgroundPaint() instanceof Color color ? color : Color.WHITE;
         Color foreground = uiColor("Label.foreground", dark ? Color.LIGHT_GRAY : Color.BLACK);
 

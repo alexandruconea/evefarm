@@ -50,6 +50,8 @@ public final class UpdateDialog extends JDialog {
     private static final Duration LOYALTY_POINTS_COOLDOWN = Duration.ofHours(1);
     private static final Duration KILLS_COOLDOWN = Duration.ofHours(1);
     private static final Duration MINING_COOLDOWN = Duration.ofMinutes(10);
+    private static final Duration STANDINGS_COOLDOWN = Duration.ofHours(1);
+    private static final Duration SKILLS_COOLDOWN = Duration.ofMinutes(5);
 
     private static final Dimension NOW_BUTTON_SIZE = new Dimension(100, 26);
     private static final Dimension BOTTOM_BUTTON_SIZE = new Dimension(130, 28);
@@ -88,6 +90,8 @@ public final class UpdateDialog extends JDialog {
     private final JCheckBox loyaltyPointsBox = new JCheckBox("Loyalty Points", true);
     private final JCheckBox killsBox = new JCheckBox("NPC Kills", true);
     private final JCheckBox miningBox = new JCheckBox("Mining Ledger", true);
+    private final JCheckBox standingsBox = new JCheckBox("Standings", true);
+    private final JCheckBox skillsBox = new JCheckBox("Skills", true);
 
     private final JButton updateButton = new JButton("Update", Icons.REFRESH);
 
@@ -128,9 +132,11 @@ public final class UpdateDialog extends JDialog {
         rows.add(row(UpdateCategories.LOYALTY_POINTS, loyaltyPointsBox, LOYALTY_POINTS_COOLDOWN, this::runLoyaltyPoints));
         rows.add(row(UpdateCategories.KILLS, killsBox, KILLS_COOLDOWN, this::runKills));
         rows.add(row(UpdateCategories.MINING, miningBox, MINING_COOLDOWN, this::runMining));
+        rows.add(row(UpdateCategories.STANDINGS, standingsBox, STANDINGS_COOLDOWN, this::runStandings));
+        rows.add(row(UpdateCategories.SKILLS, skillsBox, SKILLS_COOLDOWN, this::runSkills));
 
         for (String label : new String[]{
-                "Blueprints", "Skills", "NPC Standing"}) {
+                "Blueprints"}) {
             rows.add(disabledRow(label));
         }
 
@@ -412,5 +418,13 @@ public final class UpdateDialog extends JDialog {
 
     private void runMining(List<String> failures) {
         forEachCharacter(failures, appContext.miningService::refreshLedgerForCharacter);
+    }
+
+    private void runStandings(List<String> failures) {
+        forEachCharacter(failures, appContext.standingService::refreshStandingsForCharacter);
+    }
+
+    private void runSkills(List<String> failures) {
+        forEachCharacter(failures, appContext.skillService::refreshSkillsForCharacter);
     }
 }

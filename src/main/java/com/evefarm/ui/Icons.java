@@ -241,6 +241,19 @@ public final class Icons {
         g.draw(line(7.5, 7.5, 7, 13.35));
     });
 
+    public static final Icon STANDINGS = icon(Tone.NEUTRAL, g -> {
+        g.draw(line(8, 2.5, 8, 13.5));
+        g.draw(line(5, 13.5, 11, 13.5));
+        g.draw(line(3, 4.5, 13, 4.5));
+        g.draw(closed(3, 4.5, 1.5, 9, 4.5, 9));
+        g.draw(closed(13, 4.5, 11.5, 9, 14.5, 9));
+    });
+
+    public static final Icon SKILLS = icon(Tone.NEUTRAL, g -> {
+        g.draw(closed(8, 4, 2, 2.5, 2, 12, 8, 13.5));
+        g.draw(closed(8, 4, 14, 2.5, 14, 12, 8, 13.5));
+    });
+
     public static Icon disabled(Icon icon) {
         if (icon instanceof LineIcon line) {
             return new LineIcon(line.tone, line.painter, true);

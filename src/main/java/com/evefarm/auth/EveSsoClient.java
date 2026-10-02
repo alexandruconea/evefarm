@@ -2,6 +2,7 @@ package com.evefarm.auth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -60,7 +61,7 @@ public final class EveSsoClient {
                 throw new IllegalStateException("EVE SSO token request failed: HTTP " + response.statusCode());
             }
             return objectMapper.readValue(response.body(), TokenResponse.class);
-        } catch (java.io.IOException | InterruptedException e) {
+        } catch (IOException | InterruptedException e) {
             if (e instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }

@@ -1,5 +1,7 @@
 package com.evefarm.ui.filter;
 
+import com.evefarm.ui.ButtonSizing;
+
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -38,7 +40,7 @@ final class FilterRow extends JPanel {
         add(columnCombo);
         add(operatorCombo);
         add(valueField);
-        add(com.evefarm.ui.ButtonSizing.row(2, addButton, removeButton));
+        add(ButtonSizing.row(2, addButton, removeButton));
 
         enabledBox.addActionListener(e -> onChange.run());
         logicCombo.addActionListener(e -> onChange.run());

@@ -22,12 +22,14 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingWorker;
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Window;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -38,9 +40,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 public final class EveSettingsCopyDialog extends JDialog {
 
@@ -156,7 +158,7 @@ public final class EveSettingsCopyDialog extends JDialog {
     }
 
     private static void addRow(JPanel panel, GridBagConstraints constraints, int row, String label,
-                               java.awt.Component field, java.awt.Component trailing) {
+                               Component field, Component trailing) {
         constraints.gridy = row;
         constraints.gridx = 0;
         constraints.weightx = 0;
@@ -390,7 +392,7 @@ public final class EveSettingsCopyDialog extends JDialog {
         paths.entrySet().stream()
                 .filter(entry -> source == null || entry.getKey() != source.id())
                 .map(entry -> new CharacterChoice(entry.getKey(), characterName(entry.getKey()), entry.getValue(),
-                        java.nio.file.Files.exists(entry.getValue())))
+                        Files.exists(entry.getValue())))
                 .sorted(Comparator.comparing(CharacterChoice::toString, String.CASE_INSENSITIVE_ORDER))
                 .forEach(targetCharacter::addItem);
         if (previous != null) {

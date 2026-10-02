@@ -4,12 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -51,7 +53,7 @@ public final class EsiHttpClient {
 
     public List<String> getAllPages(String path, String accessTokenOrNull, Map<String, String> query) {
         List<String> pages = new ArrayList<>();
-        Map<String, String> pageQuery = new java.util.HashMap<>(query);
+        Map<String, String> pageQuery = new HashMap<>(query);
         pageQuery.put("page", "1");
         HttpResponse<String> first = sendRaw(buildRequest("GET", path, accessTokenOrNull, pageQuery, null));
         pages.add(first.body());
@@ -166,6 +168,6 @@ public final class EsiHttpClient {
     }
 
     private static String encode(String value) {
-        return java.net.URLEncoder.encode(value, StandardCharsets.UTF_8);
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 }

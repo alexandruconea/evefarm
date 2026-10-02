@@ -22,6 +22,7 @@ import com.evefarm.model.TrackerSnapshot;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 public final class TrackerSnapshotService {
 
@@ -142,7 +143,7 @@ public final class TrackerSnapshotService {
         }
 
         double bestIskPerLp = lpOfferPricingService.listPricedOffers(corporationId).stream()
-                .flatMap(offer -> java.util.stream.Stream.of(
+                .flatMap(offer -> Stream.of(
                         liquidIskPerLp(offer.iskPerLpSell(), offer.fivePercentSellVolume(), offer.quantity()),
                         liquidIskPerLp(offer.iskPerLpBuy(), offer.fivePercentBuyVolume(), offer.quantity())))
                 .filter(Objects::nonNull)

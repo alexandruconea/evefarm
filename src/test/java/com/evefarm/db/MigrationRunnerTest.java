@@ -5,12 +5,12 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -57,7 +57,10 @@ class MigrationRunnerTest {
             Map.entry(28, "246da738044d74d8eec88492f9d0d3146d193eaa18e4f08a707d03c81f65ba8a"),
             Map.entry(29, "9d44e7f398d3669ffcf779fc7639a017d31cc3c74a299248e431275c70d027e2"),
             Map.entry(30, "ca44eef80c21580da0dc1d303634ecd77af48d47af51e0b6c6463f6fe48199d8"),
-            Map.entry(31, "6bc5423cb5202b94d411928f221669ed98c2b5df1c3098d2dd6eb75fc4801570"));
+            Map.entry(31, "6bc5423cb5202b94d411928f221669ed98c2b5df1c3098d2dd6eb75fc4801570"),
+            Map.entry(32, "a6412fc1f9793de81a95d0385845c74e0babef8f8af55ea676029283fd4d0fec"),
+            Map.entry(33, "a751538802791a7fc885032048e44203b9dc623c380f1547543b339ddfcf1092"),
+            Map.entry(34, "5731f48f1f1ac52fe0b7b03832d1f82355a3d5d3825f61568bc752ed40b4f90a"));
 
     @Test
     void semicolonInsideQuotedStringDoesNotSplit() {

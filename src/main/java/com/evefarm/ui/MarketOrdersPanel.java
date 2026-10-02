@@ -3,17 +3,25 @@ package com.evefarm.ui;
 import com.evefarm.AppContext;
 import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.model.MarketOrderRow;
+import com.evefarm.ui.column.ColumnCopySupport;
 import com.evefarm.ui.column.ColumnSorting;
 import com.evefarm.ui.column.ColumnVisibilitySupport;
 import com.evefarm.ui.filter.FilterBarPanel;
 import com.evefarm.util.IskFormatter;
 
+import javax.swing.GroupLayout;
+import javax.swing.JCheckBox;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.LayoutStyle;
 import javax.swing.table.TableRowSorter;
 import java.awt.BorderLayout;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public final class MarketOrdersPanel extends javax.swing.JPanel {
+public final class MarketOrdersPanel extends JPanel {
 
     private static final String PANEL_KEY = "marketOrders";
 
@@ -36,7 +44,7 @@ public final class MarketOrdersPanel extends javax.swing.JPanel {
         table.setRowSorter(sorter);
         TableStyler.style(table);
         ColumnVisibilitySupport.install(table, tableModel, PANEL_KEY, appContext.tableColumnStateDao);
-        com.evefarm.ui.column.ColumnCopySupport.install(table, tableModel);
+        ColumnCopySupport.install(table, tableModel);
 
         filterBarPanel = new FilterBarPanel(PANEL_KEY, tableModel.columnNames(), appContext.savedFilterDao);
         filterBarPanel.setOnFilterChanged(this::applyFilter);
@@ -116,31 +124,32 @@ public final class MarketOrdersPanel extends javax.swing.JPanel {
         filterBarPanel.setRowCounts(table.getRowCount(), tableModel.getRowCount());
     }
 
-    private javax.swing.JPanel filterBarContainer;
-    private javax.swing.JScrollPane jScrollPane2;
-    private javax.swing.JLabel orderCountLabel;
-    private javax.swing.JCheckBox showClosedCheckBox;
-    private javax.swing.JPanel bottomBar;
-    private javax.swing.JTable table;
+    private JPanel filterBarContainer;
+    private JScrollPane jScrollPane2;
+    private JLabel orderCountLabel;
+    private JCheckBox showClosedCheckBox;
+    private JPanel bottomBar;
+    private JTable table;
+
     private void initComponents() {
 
-        filterBarContainer = new javax.swing.JPanel();
-        jScrollPane2 = new javax.swing.JScrollPane();
-        table = new javax.swing.JTable();
-        orderCountLabel = new javax.swing.JLabel();
-        showClosedCheckBox = new javax.swing.JCheckBox("Show closed orders");
-        bottomBar = new javax.swing.JPanel(new BorderLayout(12, 0));
+        filterBarContainer = new JPanel();
+        jScrollPane2 = new JScrollPane();
+        table = new JTable();
+        orderCountLabel = new JLabel();
+        showClosedCheckBox = new JCheckBox("Show closed orders");
+        bottomBar = new JPanel(new BorderLayout(12, 0));
         bottomBar.add(orderCountLabel, BorderLayout.CENTER);
         bottomBar.add(showClosedCheckBox, BorderLayout.EAST);
 
-        javax.swing.GroupLayout filterBarContainerLayout = new javax.swing.GroupLayout(filterBarContainer);
+        GroupLayout filterBarContainerLayout = new GroupLayout(filterBarContainer);
         filterBarContainer.setLayout(filterBarContainerLayout);
         filterBarContainerLayout.setHorizontalGroup(
-            filterBarContainerLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            filterBarContainerLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
             .addGap(0, 880, Short.MAX_VALUE)
         );
         filterBarContainerLayout.setVerticalGroup(
-            filterBarContainerLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            filterBarContainerLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
             .addGap(0, 60, Short.MAX_VALUE)
         );
 
@@ -148,27 +157,27 @@ public final class MarketOrdersPanel extends javax.swing.JPanel {
 
         orderCountLabel.setText("0 orders");
 
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
+        GroupLayout layout = new GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            layout.createParallelGroup(GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(filterBarContainer, javax.swing.GroupLayout.DEFAULT_SIZE, 880, Short.MAX_VALUE)
-                    .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 880, Short.MAX_VALUE)
-                    .addComponent(bottomBar, javax.swing.GroupLayout.DEFAULT_SIZE, 880, Short.MAX_VALUE))
+                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+                    .addComponent(filterBarContainer, GroupLayout.DEFAULT_SIZE, 880, Short.MAX_VALUE)
+                    .addComponent(jScrollPane2, GroupLayout.DEFAULT_SIZE, 880, Short.MAX_VALUE)
+                    .addComponent(bottomBar, GroupLayout.DEFAULT_SIZE, 880, Short.MAX_VALUE))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            layout.createParallelGroup(GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(filterBarContainer, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 380, Short.MAX_VALUE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(bottomBar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(filterBarContainer, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jScrollPane2, GroupLayout.DEFAULT_SIZE, 380, Short.MAX_VALUE)
+                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(bottomBar, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
         );
     }

@@ -6,6 +6,7 @@ import com.evefarm.db.dao.SettingsDao;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -131,12 +132,12 @@ class BackupRestoreServiceTest {
         Path live = directory.resolve("evefarm.db");
         Path pending = directory.resolve("pending-restore.db");
 
-        assertThrows(java.io.IOException.class,
+        assertThrows(IOException.class,
                 () -> BackupRestoreService.ensureSafeBackupTarget(live, live, pending));
-        assertThrows(java.io.IOException.class,
+        assertThrows(IOException.class,
                 () -> BackupRestoreService.ensureSafeBackupTarget(
                         directory.resolve("evefarm.db-wal"), live, pending));
-        assertThrows(java.io.IOException.class,
+        assertThrows(IOException.class,
                 () -> BackupRestoreService.ensureSafeBackupTarget(pending, live, pending));
     }
 }

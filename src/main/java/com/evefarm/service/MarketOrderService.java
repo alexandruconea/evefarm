@@ -10,6 +10,7 @@ import com.evefarm.model.MarketOrderRow;
 import com.evefarm.model.PriceMode;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -109,7 +110,7 @@ public final class MarketOrderService {
         Map<Long, List<MarketOrderRow>> byCharacter = rows.stream()
                 .collect(Collectors.groupingBy(MarketOrderRow::characterId));
 
-        Map<Long, Double> feesByOrderId = new java.util.HashMap<>();
+        Map<Long, Double> feesByOrderId = new HashMap<>();
         for (Map.Entry<Long, List<MarketOrderRow>> entry : byCharacter.entrySet()) {
             feesByOrderId.putAll(brokerFeeMatcher.matchFees(entry.getKey(), entry.getValue()));
         }

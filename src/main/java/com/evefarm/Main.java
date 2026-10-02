@@ -12,8 +12,8 @@ import com.evefarm.ui.UnderlineTabbedPaneUI;
 import com.evefarm.util.AppLogging;
 import com.evefarm.util.AppPaths;
 import com.evefarm.util.SingleInstance;
-import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.FlatDarkLaf;
+import com.formdev.flatlaf.FlatLaf;
 
 import javax.swing.JDialog;
 import javax.swing.JFrame;

@@ -1,5 +1,7 @@
 package com.evefarm.ui.column;
 
+import com.evefarm.ui.ButtonSizing;
+
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
@@ -9,9 +11,6 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-
-import com.evefarm.ui.ButtonSizing;
-
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.Window;

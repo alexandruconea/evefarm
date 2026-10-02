@@ -6,6 +6,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HashSet;
@@ -87,7 +88,7 @@ public final class LocationCacheDao {
                 if (systemId != null) {
                     ps.setLong(4, systemId);
                 } else {
-                    ps.setNull(4, java.sql.Types.INTEGER);
+                    ps.setNull(4, Types.INTEGER);
                 }
                 ps.setString(5, Instant.now().toString());
                 ps.executeUpdate();

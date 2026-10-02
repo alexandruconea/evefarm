@@ -4,10 +4,18 @@ import com.evefarm.AppContext;
 import com.evefarm.model.EveCharacter;
 import com.evefarm.model.ValueSummary;
 
+import javax.swing.BorderFactory;
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.GroupLayout;
+import javax.swing.JComboBox;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.LayoutStyle;
 import java.awt.GridLayout;
 import java.util.List;
 
-public final class ValuesPanel extends javax.swing.JPanel {
+public final class ValuesPanel extends JPanel {
 
     private final AppContext appContext;
     private final ValueColumnPanel grandTotalColumn = new ValueColumnPanel();
@@ -23,8 +31,8 @@ public final class ValuesPanel extends javax.swing.JPanel {
 
     private void postInit() {
         columnsContainer.setLayout(new GridLayout(1, 2, 20, 0));
-        columnsContainer.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
-        columnsScrollPane.setBorder(javax.swing.BorderFactory.createEmptyBorder());
+        columnsContainer.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        columnsScrollPane.setBorder(BorderFactory.createEmptyBorder());
         columnsContainer.add(grandTotalColumn);
         columnsContainer.add(characterColumn);
 
@@ -51,7 +59,7 @@ public final class ValuesPanel extends javax.swing.JPanel {
                 .findFirst().orElse(null);
         String previouslySelected = (String) characterCombo.getSelectedItem();
 
-        javax.swing.DefaultComboBoxModel<String> model = new javax.swing.DefaultComboBoxModel<>();
+        DefaultComboBoxModel<String> model = new DefaultComboBoxModel<>();
         for (EveCharacter character : characters) {
             model.addElement(character.characterName());
         }
@@ -84,55 +92,56 @@ public final class ValuesPanel extends javax.swing.JPanel {
         characterColumn.setSummary(selected.characterName(), summary);
     }
 
-    private javax.swing.JLabel characterLabel;
-    private javax.swing.JComboBox<String> characterCombo;
-    private javax.swing.JPanel columnsContainer;
-    private javax.swing.JScrollPane columnsScrollPane;
+    private JLabel characterLabel;
+    private JComboBox<String> characterCombo;
+    private JPanel columnsContainer;
+    private JScrollPane columnsScrollPane;
+
     private void initComponents() {
 
-        characterLabel = new javax.swing.JLabel();
-        characterCombo = new javax.swing.JComboBox<>();
-        columnsScrollPane = new javax.swing.JScrollPane();
-        columnsContainer = new javax.swing.JPanel();
+        characterLabel = new JLabel();
+        characterCombo = new JComboBox<>();
+        columnsScrollPane = new JScrollPane();
+        columnsContainer = new JPanel();
 
         characterLabel.setText("Character:");
 
-        javax.swing.GroupLayout columnsContainerLayout = new javax.swing.GroupLayout(columnsContainer);
+        GroupLayout columnsContainerLayout = new GroupLayout(columnsContainer);
         columnsContainer.setLayout(columnsContainerLayout);
         columnsContainerLayout.setHorizontalGroup(
-            columnsContainerLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            columnsContainerLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
             .addGap(0, 860, Short.MAX_VALUE)
         );
         columnsContainerLayout.setVerticalGroup(
-            columnsContainerLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            columnsContainerLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
             .addGap(0, 460, Short.MAX_VALUE)
         );
 
         columnsScrollPane.setViewportView(columnsContainer);
 
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
+        GroupLayout layout = new GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            layout.createParallelGroup(GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(columnsScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 880, Short.MAX_VALUE)
+                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+                    .addComponent(columnsScrollPane, GroupLayout.DEFAULT_SIZE, 880, Short.MAX_VALUE)
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(characterLabel)
                         .addGap(18, 18, 18)
-                        .addComponent(characterCombo, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addComponent(characterCombo, GroupLayout.PREFERRED_SIZE, 220, GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            layout.createParallelGroup(GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
                     .addComponent(characterLabel)
-                    .addComponent(characterCombo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(columnsScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 480, Short.MAX_VALUE)
+                    .addComponent(characterCombo, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(columnsScrollPane, GroupLayout.DEFAULT_SIZE, 480, Short.MAX_VALUE)
                 .addContainerGap())
         );
     }

@@ -7,6 +7,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -97,13 +98,13 @@ public final class TypeCacheDao {
                 if (groupId != null) {
                     ps.setInt(3, groupId);
                 } else {
-                    ps.setNull(3, java.sql.Types.INTEGER);
+                    ps.setNull(3, Types.INTEGER);
                 }
                 ps.setString(4, type.groupName());
                 if (categoryId != null) {
                     ps.setInt(5, categoryId);
                 } else {
-                    ps.setNull(5, java.sql.Types.INTEGER);
+                    ps.setNull(5, Types.INTEGER);
                 }
                 ps.setString(6, type.categoryName());
                 ps.setDouble(7, type.volume());

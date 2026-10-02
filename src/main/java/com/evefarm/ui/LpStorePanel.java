@@ -13,19 +13,32 @@ import com.evefarm.ui.column.ColumnSorting;
 import com.evefarm.ui.column.ColumnVisibilitySupport;
 import com.evefarm.ui.filter.FilterBarPanel;
 import com.evefarm.util.IskFormatter;
+import com.formdev.flatlaf.FlatLaf;
 
 import javax.swing.DefaultComboBoxModel;
+import javax.swing.GroupLayout;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.LayoutStyle;
+import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableRowSorter;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Font;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
-public final class LpStorePanel extends javax.swing.JPanel {
+public final class LpStorePanel extends JPanel {
 
     private static final String PANEL_KEY = "lpStore";
 
@@ -65,7 +78,7 @@ public final class LpStorePanel extends javax.swing.JPanel {
         filterBarContainer.add(filterBarPanel, BorderLayout.CENTER);
 
         setTargetButton.setIcon(Icons.TARGET);
-        yourLpLabel.setFont(yourLpLabel.getFont().deriveFont(java.awt.Font.BOLD));
+        yourLpLabel.setFont(yourLpLabel.getFont().deriveFont(Font.BOLD));
         ColumnCopySupport.install(table, tableModel, this::copyLpColumn);
 
         characterCombo.addActionListener(e -> updateYourLpLabel());
@@ -76,7 +89,7 @@ public final class LpStorePanel extends javax.swing.JPanel {
         setTargetButton.addActionListener(e -> openTargetDialog());
         historyButton.setIcon(Icons.CHART);
         historyButton.addActionListener(e -> LoyaltyPointHistoryDialog.open(
-                javax.swing.SwingUtilities.getWindowAncestor(this), appContext));
+                SwingUtilities.getWindowAncestor(this), appContext));
 
         loadTargetIskPerLp();
         reloadCharacters(true);
@@ -94,7 +107,7 @@ public final class LpStorePanel extends javax.swing.JPanel {
 
     private void openTargetDialog() {
         LpTargetDialog dialog = new LpTargetDialog(
-                javax.swing.SwingUtilities.getWindowAncestor(this), appContext.settingsDao, () -> {
+                SwingUtilities.getWindowAncestor(this), appContext.settingsDao, () -> {
                     loadTargetIskPerLp();
                     updateWealthLabel();
                     table.repaint();
@@ -126,7 +139,7 @@ public final class LpStorePanel extends javax.swing.JPanel {
         if (iskPerLp == null) {
             return null;
         }
-        boolean dark = com.formdev.flatlaf.FlatLaf.isLafDark();
+        boolean dark = FlatLaf.isLafDark();
         if (iskPerLp >= targetIskPerLp) {
             return dark ? new Color(27, 94, 32) : new Color(200, 230, 201);
         }
@@ -315,7 +328,7 @@ public final class LpStorePanel extends javax.swing.JPanel {
         return null;
     }
 
-    private String formatAsMultibuy(List<LpOfferRow> selectedRows, java.util.function.Function<LpOfferRow, List<LpRequiredItem>> items) {
+    private String formatAsMultibuy(List<LpOfferRow> selectedRows, Function<LpOfferRow, List<LpRequiredItem>> items) {
         Map<String, Long> merged = new LinkedHashMap<>();
         for (LpOfferRow row : selectedRows) {
             for (LpRequiredItem item : items.apply(row)) {
@@ -334,36 +347,37 @@ public final class LpStorePanel extends javax.swing.JPanel {
         filterBarPanel.setRowCounts(table.getRowCount(), tableModel.getRowCount());
     }
 
-    private javax.swing.JComboBox<String> characterCombo;
-    private javax.swing.JLabel characterLabel;
-    private javax.swing.JComboBox<String> corporationCombo;
-    private javax.swing.JLabel corporationLabel;
-    private javax.swing.JCheckBox favoriteCheckBox;
-    private javax.swing.JPanel filterBarContainer;
-    private javax.swing.JScrollPane jScrollPane2;
-    private javax.swing.JLabel offerCountLabel;
-    private javax.swing.JButton refreshOffersButton;
-    private javax.swing.JButton setTargetButton;
-    private javax.swing.JButton historyButton;
-    private javax.swing.JTable table;
-    private javax.swing.JLabel wealthLabel;
-    private javax.swing.JLabel yourLpLabel;
+    private JComboBox<String> characterCombo;
+    private JLabel characterLabel;
+    private JComboBox<String> corporationCombo;
+    private JLabel corporationLabel;
+    private JCheckBox favoriteCheckBox;
+    private JPanel filterBarContainer;
+    private JScrollPane jScrollPane2;
+    private JLabel offerCountLabel;
+    private JButton refreshOffersButton;
+    private JButton setTargetButton;
+    private JButton historyButton;
+    private JTable table;
+    private JLabel wealthLabel;
+    private JLabel yourLpLabel;
+
     private void initComponents() {
 
-        characterLabel = new javax.swing.JLabel();
-        characterCombo = new javax.swing.JComboBox<>();
-        corporationLabel = new javax.swing.JLabel();
-        corporationCombo = new javax.swing.JComboBox<>();
-        favoriteCheckBox = new javax.swing.JCheckBox();
-        yourLpLabel = new javax.swing.JLabel();
-        wealthLabel = new javax.swing.JLabel();
-        refreshOffersButton = new javax.swing.JButton();
-        setTargetButton = new javax.swing.JButton();
-        historyButton = new javax.swing.JButton("LP History...");
-        filterBarContainer = new javax.swing.JPanel();
-        jScrollPane2 = new javax.swing.JScrollPane();
-        table = new javax.swing.JTable();
-        offerCountLabel = new javax.swing.JLabel();
+        characterLabel = new JLabel();
+        characterCombo = new JComboBox<>();
+        corporationLabel = new JLabel();
+        corporationCombo = new JComboBox<>();
+        favoriteCheckBox = new JCheckBox();
+        yourLpLabel = new JLabel();
+        wealthLabel = new JLabel();
+        refreshOffersButton = new JButton();
+        setTargetButton = new JButton();
+        historyButton = new JButton("LP History...");
+        filterBarContainer = new JPanel();
+        jScrollPane2 = new JScrollPane();
+        table = new JTable();
+        offerCountLabel = new JLabel();
 
         characterLabel.setText("Character:");
 
@@ -379,14 +393,14 @@ public final class LpStorePanel extends javax.swing.JPanel {
 
         setTargetButton.setText("Set ISK/LP Target...");
 
-        javax.swing.GroupLayout filterBarContainerLayout = new javax.swing.GroupLayout(filterBarContainer);
+        GroupLayout filterBarContainerLayout = new GroupLayout(filterBarContainer);
         filterBarContainer.setLayout(filterBarContainerLayout);
         filterBarContainerLayout.setHorizontalGroup(
-            filterBarContainerLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            filterBarContainerLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
             .addGap(0, 0, Short.MAX_VALUE)
         );
         filterBarContainerLayout.setVerticalGroup(
-            filterBarContainerLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            filterBarContainerLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
             .addGap(0, 60, Short.MAX_VALUE)
         );
 
@@ -394,61 +408,61 @@ public final class LpStorePanel extends javax.swing.JPanel {
 
         offerCountLabel.setText("0 offers");
 
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
+        GroupLayout layout = new GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            layout.createParallelGroup(GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(filterBarContainer, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+                    .addComponent(filterBarContainer, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(jScrollPane2)
                     .addGroup(layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
                             .addGroup(layout.createSequentialGroup()
                                 .addComponent(offerCountLabel)
                                 .addGap(18, 18, 18)
                                 .addComponent(yourLpLabel)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(wealthLabel))
                             .addGroup(layout.createSequentialGroup()
                                 .addComponent(characterLabel)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(characterCombo, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(characterCombo, GroupLayout.PREFERRED_SIZE, 160, GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(corporationLabel)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(corporationCombo, javax.swing.GroupLayout.PREFERRED_SIZE, 260, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(corporationCombo, GroupLayout.PREFERRED_SIZE, 260, GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(favoriteCheckBox)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                .addPreferredGap(LayoutStyle.ComponentPlacement.UNRELATED)
                                 .addComponent(refreshOffersButton)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(setTargetButton)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(historyButton)))
                         .addGap(0, 167, Short.MAX_VALUE)))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            layout.createParallelGroup(GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
                     .addComponent(characterLabel)
-                    .addComponent(characterCombo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(characterCombo, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
                     .addComponent(corporationLabel)
-                    .addComponent(corporationCombo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(corporationCombo, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
                     .addComponent(favoriteCheckBox)
                     .addComponent(refreshOffersButton)
                     .addComponent(setTargetButton)
                     .addComponent(historyButton))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(filterBarContainer, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 365, Short.MAX_VALUE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(filterBarContainer, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jScrollPane2, GroupLayout.DEFAULT_SIZE, 365, Short.MAX_VALUE)
+                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
                     .addComponent(offerCountLabel)
                     .addComponent(yourLpLabel)
                     .addComponent(wealthLabel))

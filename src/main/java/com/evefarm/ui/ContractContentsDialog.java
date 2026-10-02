@@ -19,6 +19,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.SwingWorker;
+import javax.swing.UIManager;
 import javax.swing.table.AbstractTableModel;
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -135,7 +136,7 @@ final class ContractContentsDialog extends JDialog {
             c.gridx = i < half ? 0 : 2;
             c.gridy = i < half ? i : i - half;
             JLabel label = new JLabel(fields.get(i)[0] + ":");
-            label.setForeground(javax.swing.UIManager.getColor("Label.disabledForeground"));
+            label.setForeground(UIManager.getColor("Label.disabledForeground"));
             panel.add(label, c);
             c.gridx++;
             JLabel value = new JLabel(fields.get(i)[1]);
