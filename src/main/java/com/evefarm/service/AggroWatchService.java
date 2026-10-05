@@ -19,7 +19,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -47,10 +46,6 @@ public final class AggroWatchService {
         void onAggro(Alert alert);
     }
 
-    public interface RoomListener {
-        void onRoom(AbyssSpawnCatalog.RoomReport report);
-    }
-
     private static final class TailedLog {
         final long characterId;
         final Path file;
@@ -68,8 +63,6 @@ public final class AggroWatchService {
     private final Supplier<Map<Long, String>> characters;
     private final Clock clock;
     private final List<Listener> listeners = new CopyOnWriteArrayList<>();
-    private final List<RoomListener> roomListeners = new CopyOnWriteArrayList<>();
-    private final AbyssRoomWatcher rooms = new AbyssRoomWatcher();
     private final Map<Long, TailedLog> logs = new HashMap<>();
     private final Map<Long, Instant> lastHostile = new HashMap<>();
     private ScheduledExecutorService executor;
@@ -95,14 +88,6 @@ public final class AggroWatchService {
 
     public void addListener(Listener listener) {
         listeners.add(listener);
-    }
-
-    public void addRoomListener(RoomListener listener) {
-        roomListeners.add(listener);
-    }
-
-    public synchronized void resetRooms() {
-        rooms.reset();
     }
 
     public synchronized void start() {
@@ -131,7 +116,6 @@ public final class AggroWatchService {
     synchronized void reset() {
         logs.clear();
         lastHostile.clear();
-        rooms.reset();
         lastScan = null;
         firstScan = true;
     }
@@ -146,7 +130,6 @@ public final class AggroWatchService {
 
     void tick() {
         List<Alert> alerts = new ArrayList<>();
-        Optional<AbyssSpawnCatalog.RoomReport> room;
         synchronized (this) {
             Instant now = clock.instant();
             if (lastScan == null || Duration.between(lastScan, now).compareTo(RESCAN_INTERVAL) >= 0) {
@@ -161,10 +144,8 @@ public final class AggroWatchService {
                             alerts.add(new Alert(log.characterId, nameOf(log.characterId), attacker, now));
                         }
                     });
-                    AggroLineParser.opponent(line).ifPresent(npc -> rooms.observe(npc, now));
                 }
             }
-            room = rooms.poll(now);
         }
         for (Alert alert : alerts) {
             for (Listener listener : listeners) {
@@ -175,15 +156,6 @@ public final class AggroWatchService {
                 }
             }
         }
-        room.ifPresent(report -> {
-            for (RoomListener listener : roomListeners) {
-                try {
-                    listener.onRoom(report);
-                } catch (RuntimeException e) {
-                    LOG.log(Level.WARNING, "Room listener failed", e);
-                }
-            }
-        });
     }
 
     private String nameOf(long characterId) {

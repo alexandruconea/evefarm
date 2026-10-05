@@ -101,13 +101,8 @@ public final class MiningPanel extends JPanel {
     }
 
     private double savedRefineRate() {
-        try {
-            double rate = Double.parseDouble(appContext.settingsDao.getOrDefault(SettingsDao.MINING_REFINE_RATE,
-                    String.valueOf(DEFAULT_REFINE_RATE)));
-            return Math.max(0, Math.min(100, rate));
-        } catch (NumberFormatException e) {
-            return DEFAULT_REFINE_RATE;
-        }
+        double rate = appContext.settingsDao.getDouble(SettingsDao.MINING_REFINE_RATE, DEFAULT_REFINE_RATE);
+        return Math.clamp(rate, 0, 100);
     }
 
     private void choiceChanged(String key, String value) {

@@ -1,5 +1,7 @@
 package com.evefarm.service;
 
+import com.evefarm.util.AppPaths;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -92,7 +94,7 @@ public final class VoiceService {
 
     static List<String> command() {
         String encoded = Base64.getEncoder().encodeToString(SCRIPT.getBytes(StandardCharsets.UTF_16LE));
-        return List.of("powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+        return List.of(AppPaths.powerShell(), "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
                 "-WindowStyle", "Hidden", "-EncodedCommand", encoded);
     }
 

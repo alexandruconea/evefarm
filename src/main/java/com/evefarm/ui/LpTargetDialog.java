@@ -25,7 +25,7 @@ public final class LpTargetDialog extends JDialog {
         this.settingsDao = settingsDao;
         this.onSaved = onSaved;
 
-        double current = Double.parseDouble(settingsDao.getOrDefault(SettingsDao.LP_STORE_TARGET_ISK_PER_LP, "500"));
+        double current = settingsDao.getDouble(SettingsDao.LP_STORE_TARGET_ISK_PER_LP, 500);
         targetSpinner.setValue(current);
 
         JPanel form = new JPanel(new GridLayout(0, 2, 8, 8));

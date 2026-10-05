@@ -102,26 +102,6 @@ class AggroWatchServiceTest {
                 alerts);
     }
 
-    @Test
-    void theSpawnOfARoomIsReportedFromTheWholeFleetsLogs() throws IOException {
-        List<AbyssSpawnCatalog.RoomReport> rooms = new ArrayList<>();
-        watch.addRoomListener(rooms::add);
-        Path nozeu = log("20260928_111429_" + NOZEU, header("Nozeu"));
-        Path barset = log("20260928_111419_" + BARSET, header("Barset"));
-        watch.tick();
-
-        append(nozeu, HIT);
-        append(barset, OWN_SHOT);
-        tickAt(1);
-        tickAt(4);
-        assertEquals(List.of(), rooms, "the spawn is gathered for a few seconds first");
-
-        tickAt(7);
-
-        assertEquals(1, rooms.size());
-        assertEquals("Room 1: Angels. Watch for scrams and webs.", rooms.getFirst().speech());
-    }
-
     private void tickAt(long secondsAfterStart) {
         clock.set(START.plusSeconds(secondsAfterStart));
         watch.tick();

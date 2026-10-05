@@ -37,7 +37,6 @@ public final class SettingsDao {
     public static final String ABYSS_FLEET = "abyss_fleet";
     public static final String ABYSS_LOOT_PROMPT = "abyss_loot_prompt";
     public static final String ABYSS_AGGRO_VOICE = "abyss_aggro_voice";
-    public static final String ABYSS_ROOM_VOICE = "abyss_room_voice";
     public static final String VOICE_VOLUME = "voice_volume";
     public static final String ORE_CATALOG_IMPORTED_AT = "ore_catalog_imported_at";
     public static final String MINING_VALUATION = "mining_valuation";
@@ -88,6 +87,27 @@ public final class SettingsDao {
 
     public String getOrDefault(String key, String defaultValue) {
         return get(key).orElse(defaultValue);
+    }
+
+    public int getInt(String key, int defaultValue) {
+        return get(key).map(value -> {
+            try {
+                return Integer.parseInt(value.strip());
+            } catch (NumberFormatException e) {
+                return defaultValue;
+            }
+        }).orElse(defaultValue);
+    }
+
+    public double getDouble(String key, double defaultValue) {
+        return get(key).map(value -> {
+            try {
+                double number = Double.parseDouble(value.strip());
+                return Double.isFinite(number) ? number : defaultValue;
+            } catch (NumberFormatException e) {
+                return defaultValue;
+            }
+        }).orElse(defaultValue);
     }
 
     public <E extends Enum<E>> Optional<E> getEnum(String key, Class<E> type) {

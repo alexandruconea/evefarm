@@ -38,7 +38,7 @@ EVE Farm has no telemetry and sends nothing to its developer. It only connects t
 
 A character's location and ship are only read while you track Abyss runs for it in the **Abyss** tab, every 10 seconds. EVE Farm saves the runs it detects (start, length and ship), not where the character has been. While tracking, it also checks the clipboard every second, so that a cargo list you copy in EVE counts as the cargo before or after a run. Anything that isn't a list of EVE items is ignored and never saved.
 
-The aggro voice and the room announcements in the **Abyss** tab read your characters' Gamelogs on this computer and speak with Windows' own voice. A few seconds into each Abyss room, EVE Farm can say which NPCs are there, what e-war to expect and how to fight them. It only plays a sound; it never sends anything or acts in the game for you.
+The aggro voice in the **Abyss** tab reads your characters' Gamelogs on this computer and speaks with Windows' own voice when NPCs start shooting at one of your characters. It only plays a sound; it never sends anything or acts in the game for you.
 
 ## Uninstalling
 

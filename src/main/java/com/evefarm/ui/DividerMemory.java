@@ -12,7 +12,7 @@ final class DividerMemory {
     private static final int SAVE_DELAY_MILLIS = 500;
 
     static void install(JSplitPane split, SettingsDao settingsDao, String key, double defaultLocation) {
-        int saved = savedLocation(settingsDao, key);
+        int saved = settingsDao.getInt(key, 0);
         if (saved > 0) {
             split.setDividerLocation(saved);
         } else if (defaultLocation >= 1) {
@@ -36,14 +36,6 @@ final class DividerMemory {
                 saver.restart();
             }
         });
-    }
-
-    private static int savedLocation(SettingsDao settingsDao, String key) {
-        try {
-            return Integer.parseInt(settingsDao.getOrDefault(key, "0"));
-        } catch (NumberFormatException e) {
-            return 0;
-        }
     }
 
     private DividerMemory() {

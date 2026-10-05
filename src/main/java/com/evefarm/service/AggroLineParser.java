@@ -13,8 +13,6 @@ final class AggroLineParser {
     private static final Pattern WARP_ATTEMPT =
             Pattern.compile("^Warp (?:scramble|disruption) attempt from (.+?) to\\s*you!?$");
     private static final Pattern ENERGY_TAKEN = Pattern.compile("^\\d+ GJ energy (?:neutralized|drained) (.+?) - (.+)$");
-    private static final Pattern DAMAGE_TO = Pattern.compile("^\\d+ to (.+?) - \\S.*$");
-    private static final Pattern WE_MISS = Pattern.compile("^.+? misses (.+?) completely\\b.*$");
 
     private AggroLineParser() {
     }
@@ -33,21 +31,6 @@ final class AggroLineParser {
         Matcher energy = ENERGY_TAKEN.matcher(text);
         if (energy.matches() && energy.group(1).strip().equals(energy.group(2).strip())) {
             return Optional.of(energy.group(1).strip());
-        }
-        return Optional.empty();
-    }
-
-    static Optional<String> opponent(String line) {
-        String text = combatText(line);
-        if (text == null) {
-            return Optional.empty();
-        }
-        for (Pattern pattern : new Pattern[]{DAMAGE_FROM, DAMAGE_TO, MISSES_YOU, WE_MISS, WARP_ATTEMPT,
-                ENERGY_TAKEN}) {
-            Matcher matcher = pattern.matcher(text);
-            if (matcher.matches()) {
-                return Optional.of(matcher.group(1).strip());
-            }
         }
         return Optional.empty();
     }

@@ -136,7 +136,7 @@ public final class UpdateInstaller {
 
     static ProcessBuilder swapProcess(Path script, Path workingDirectory, PreparedUpdate update, Path log,
                                       long processId) {
-        return new ProcessBuilder(List.of("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
+        return new ProcessBuilder(List.of(AppPaths.powerShell(), "-NoProfile", "-ExecutionPolicy", "Bypass",
                 "-WindowStyle", "Hidden", "-File", script.toString(),
                 "-ProcessId", String.valueOf(processId),
                 "-InstallDir", update.installDir().toString(),

@@ -218,20 +218,11 @@ public final class IndustryPanel extends JPanel {
     }
 
     private int savedLevel(String key, int fallback, int max) {
-        try {
-            return Math.clamp(Integer.parseInt(appContext.settingsDao.getOrDefault(key, String.valueOf(fallback))), 0,
-                    max);
-        } catch (NumberFormatException e) {
-            return fallback;
-        }
+        return Math.clamp(appContext.settingsDao.getInt(key, fallback), 0, max);
     }
 
     private double savedPercent(String key, double fallback) {
-        try {
-            return Double.parseDouble(appContext.settingsDao.getOrDefault(key, String.valueOf(fallback)));
-        } catch (NumberFormatException e) {
-            return fallback;
-        }
+        return Math.clamp(appContext.settingsDao.getDouble(key, fallback), 0, 100);
     }
 
     public void onShown() {
@@ -601,8 +592,8 @@ public final class IndustryPanel extends JPanel {
         JPanel shoppingPanel = new JPanel(new BorderLayout(0, 4));
         shoppingPanel.add(shoppingHeader, BorderLayout.NORTH);
         shoppingPanel.add(new JScrollPane(shoppingTable), BorderLayout.CENTER);
-        JLabel inventionHint = UiColors.mutedLabel("Click a decryptor to see its materials and numbers. The most profitable "
-                + "one is chosen for you.");
+        JLabel inventionHint = UiColors.mutedLabel("Click a decryptor to see its materials and numbers. "
+                + "The most profitable one is chosen for you.");
         inventionHint.setBorder(BorderFactory.createEmptyBorder(4, 8, 2, 2));
         inventionPanel.add(inventionHint, BorderLayout.NORTH);
         inventionPanel.add(new JScrollPane(decryptorTable), BorderLayout.CENTER);

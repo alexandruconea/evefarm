@@ -97,12 +97,7 @@ public final class LpStorePanel extends JPanel {
     }
 
     private void loadTargetIskPerLp() {
-        try {
-            targetIskPerLp = Double.parseDouble(
-                    appContext.settingsDao.getOrDefault(SettingsDao.LP_STORE_TARGET_ISK_PER_LP, "500"));
-        } catch (NumberFormatException e) {
-            targetIskPerLp = 500;
-        }
+        targetIskPerLp = appContext.settingsDao.getDouble(SettingsDao.LP_STORE_TARGET_ISK_PER_LP, 500);
     }
 
     private void openTargetDialog() {

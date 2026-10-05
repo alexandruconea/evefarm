@@ -232,11 +232,10 @@ While tracking, EVE Farm reads the clipboard every second, but only a list of EV
 
 **Voice**
 
-These read your characters' Gamelogs and speak with Windows' own voice. They only play a sound; they never send anything or act in the game.
+It reads your characters' Gamelogs and speaks with Windows' own voice. It only plays a sound; it never sends anything or acts in the game.
 
 - **Say who gets aggro** says a character's name as soon as NPCs start shooting at it.
-- **Say the spawn and tips in each room**: a few seconds into each Abyss room, EVE Farm says which NPCs are there (Drifters, Triglavians, Rogue drones, Sleepers, Angels, Sansha or EDENCOM), the ships to watch out for, the e-war to expect and tips on how to fight them. Ships that join the fight later are announced on their own.
-- **Volume** sets how loud both are.
+- **Volume** sets how loud it is.
 
 ### Mining
 

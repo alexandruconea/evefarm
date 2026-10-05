@@ -1,5 +1,6 @@
 package com.evefarm.service;
 
+import com.evefarm.util.AppPaths;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
@@ -22,6 +23,7 @@ class VoiceServiceTest {
     void theSpokenTextIsReadAsDataNotRunAsACommand() {
         List<String> command = VoiceService.command();
 
+        assertEquals(AppPaths.powerShell(), command.getFirst());
         assertEquals("-EncodedCommand", command.get(command.size() - 2));
         String script = new String(Base64.getDecoder().decode(command.getLast()), StandardCharsets.UTF_16LE);
         assertTrue(script.contains("[Console]::In.ReadLine()"));

@@ -1,5 +1,6 @@
 package com.evefarm.util;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -21,6 +22,20 @@ public final class AppPaths {
     public static Path defaultGameLogDirectory() {
         String home = System.getProperty("user.home");
         return Paths.get(home, "Documents", "EVE", "logs", "Gamelogs");
+    }
+
+    public static String powerShell() {
+        return powerShell(System.getenv("SystemRoot"));
+    }
+
+    static String powerShell(String systemRoot) {
+        if (systemRoot != null && !systemRoot.isBlank()) {
+            Path path = Paths.get(systemRoot, "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
+            if (Files.isRegularFile(path)) {
+                return path.toString();
+            }
+        }
+        return "powershell.exe";
     }
 
     public static Path backupDir() {

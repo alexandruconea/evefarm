@@ -4,6 +4,7 @@ import com.evefarm.db.Database;
 import com.evefarm.db.MigrationRunner;
 import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.service.BackupRestoreService;
+import com.evefarm.util.AppPaths;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -205,6 +206,7 @@ class UpdateInstallerTest {
         ProcessBuilder swap = UpdateInstaller.swapProcess(script, script.getParent(), update,
                 temp.resolve("updater.log"), 42);
 
+        assertEquals(AppPaths.powerShell(), swap.command().getFirst());
         assertEquals(script.getParent().toFile(), swap.directory());
         assertFalse(swap.directory().toPath().startsWith(install));
     }

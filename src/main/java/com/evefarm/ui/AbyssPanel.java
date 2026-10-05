@@ -119,7 +119,7 @@ public final class AbyssPanel extends JPanel {
     public AbyssPanel(AppContext appContext, BiConsumer<String, String> notifier) {
         this.appContext = appContext;
         this.notifier = notifier;
-        this.voicePanel = new AbyssVoicePanel(appContext, this::trackerPhase);
+        this.voicePanel = new AbyssVoicePanel(appContext);
         initComponents();
         postInit();
     }
@@ -168,10 +168,6 @@ public final class AbyssPanel extends JPanel {
         appContext.abyssTrackerService.addListener(event -> SwingUtilities.invokeLater(() -> onTrackerEvent(event)));
         reloadCharacters();
         clock.start();
-    }
-
-    private AbyssTrackerService.Phase trackerPhase() {
-        return trackerStatus == null ? null : trackerStatus.phase();
     }
 
     public void onShown() {
@@ -267,20 +263,15 @@ public final class AbyssPanel extends JPanel {
                 cargoRouter.reset();
                 cargoNote = null;
                 clipboardWatcher.start();
-                voicePanel.trackingStarted();
             }
             case ENTERED_ABYSS -> {
-                voicePanel.enteredAbyss();
                 if (status.fleet() != null && status.fleet() != fleetCombo.getSelectedItem()) {
                     fleetCombo.setSelectedItem(status.fleet());
                 }
                 notifier.accept("Entered the Abyss",
                         status.characterName() + " entered the Abyss. The 20 minute timer is running.");
             }
-            case LEFT_ABYSS -> {
-                voicePanel.leftAbyss();
-                runFinished(event.run());
-            }
+            case LEFT_ABYSS -> runFinished(event.run());
             case STOPPED -> {
                 clipboardWatcher.stop();
                 cargoRouter.reset();

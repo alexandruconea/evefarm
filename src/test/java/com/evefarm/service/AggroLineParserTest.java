@@ -33,24 +33,6 @@ class AggroLineParserTest {
     }
 
     @Test
-    void theNpcOnTheOtherSideOfAnyCombatLineIsFound() {
-        assertEquals(Optional.of("Lucifer Dramiel"), AggroLineParser.opponent(
-                "[ 2026.09.28 11:21:44 ] (combat) 212 to Lucifer Dramiel - Small Focused Beam Laser II - Penetrates"));
-        assertEquals(Optional.of("Lucifer Dramiel"), AggroLineParser.opponent(
-                "[ 2026.09.28 11:21:43 ] (combat) 13 from Lucifer Dramiel - Hits"));
-        assertEquals(Optional.of("Renewing Rodiva"), AggroLineParser.opponent("[ 2026.09.28 11:21:44 ] (combat) "
-                + "Malpais Legate misses Renewing Rodiva completely - Small Focused Beam Laser II"));
-        assertEquals(Optional.of("Lucifer Swordspine"), AggroLineParser.opponent(
-                "[ 2026.09.28 11:21:37 ] (combat) Lucifer Swordspine misses you completely"));
-        assertEquals(Optional.of("Lucid Sentinel"), AggroLineParser.opponent(
-                "[ 2026.09.28 11:21:45 ] (combat) 30 GJ energy neutralized Lucid Sentinel - Small Energy Neutralizer II"));
-        assertEquals(Optional.empty(), AggroLineParser.opponent(
-                "[ 2026.09.28 11:21:45 ] (combat) 64 remote armor repaired by Nozeu - Small Remote Armor Repairer II"));
-        assertEquals(Optional.empty(), AggroLineParser.opponent(
-                "[ 2026.09.28 11:21:46 ] (notify) The target Lucid Preserver is too far away."));
-    }
-
-    @Test
     void ourOwnShotsRepairsAndOtherLinesAreNotAggro() {
         assertEquals(Optional.empty(), AggroLineParser.attacker(
                 "[ 2026.09.28 11:21:44 ] (combat) 212 to Lucifer Dramiel - Small Focused Beam Laser II - Penetrates"));
