@@ -47,6 +47,17 @@ public final class SettingsDao {
     public static final String STANDINGS_DIVIDER = "standings_divider";
     public static final String SKILL_CATALOG_IMPORTED_AT = "skill_catalog_imported_at";
     public static final String ACCELERATOR_CATALOG_IMPORTED_AT = "accelerator_catalog_imported_at";
+    public static final String INDUSTRY_CATALOG_IMPORTED_AT = "industry_catalog_imported_at";
+    public static final String INDUSTRY_BLUEPRINT = "industry_blueprint";
+    public static final String INDUSTRY_SYSTEM = "industry_system";
+    public static final String INDUSTRY_STRUCTURE = "industry_structure";
+    public static final String INDUSTRY_ME_RIG = "industry_me_rig";
+    public static final String INDUSTRY_TE_RIG = "industry_te_rig";
+    public static final String INDUSTRY_FACILITY_TAX = "industry_facility_tax";
+    public static final String INDUSTRY_BROKER_FEE = "industry_broker_fee";
+    public static final String INDUSTRY_BUILD_COMPONENTS = "industry_build_components";
+    public static final String INDUSTRY_COMPONENT_ME = "industry_component_me";
+    public static final String INDUSTRY_COMPONENT_TE = "industry_component_te";
     public static final String SKILLS_DIVIDER = "skills_divider";
     public static final String ABYSS_CARGO_PREFIX = "abyss_cargo_";
     public static final String MARKET_ORDERS_SHOW_CLOSED = "market_orders_show_closed";

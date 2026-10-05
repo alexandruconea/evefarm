@@ -12,6 +12,7 @@ import com.evefarm.db.dao.ContractDao;
 import com.evefarm.db.dao.EncounterDao;
 import com.evefarm.db.dao.EntityNameCacheDao;
 import com.evefarm.db.dao.ImplantBonusDao;
+import com.evefarm.db.dao.IndustryCatalogDao;
 import com.evefarm.db.dao.IndustryJobDao;
 import com.evefarm.db.dao.ItemTypeDao;
 import com.evefarm.db.dao.KillDao;
@@ -42,6 +43,7 @@ import com.evefarm.esi.ContractsApi;
 import com.evefarm.esi.EsiHttpClient;
 import com.evefarm.esi.FuzzworkApi;
 import com.evefarm.esi.IndustryApi;
+import com.evefarm.esi.IndustryIndexApi;
 import com.evefarm.esi.JaniceApi;
 import com.evefarm.esi.LocationApi;
 import com.evefarm.esi.LoyaltyApi;
@@ -62,7 +64,10 @@ import com.evefarm.service.CharacterService;
 import com.evefarm.service.ContractService;
 import com.evefarm.service.EntityNameCacheService;
 import com.evefarm.service.EveSettingsService;
+import com.evefarm.service.IndustryCatalogService;
 import com.evefarm.service.IndustryJobService;
+import com.evefarm.service.IndustryMarketService;
+import com.evefarm.service.IndustryService;
 import com.evefarm.service.ItemIconService;
 import com.evefarm.service.JournalService;
 import com.evefarm.service.KillService;
@@ -129,6 +134,8 @@ public final class AppContext {
     public final StandingService standingService;
     public final SkillCatalogService skillCatalogService;
     public final SkillService skillService;
+    public final IndustryCatalogService industryCatalogService;
+    public final IndustryService industryService;
     public final LoyaltyPointService loyaltyPointService;
     public final NpcCatalogService npcCatalogService;
     public final KillService killService;
@@ -236,10 +243,15 @@ public final class AppContext {
         this.standingService = new StandingService(authService, characterDao, new StandingsApi(esiHttpClient),
                 entityNameCacheService, new StandingDao(database));
         AcceleratorDao acceleratorDao = new AcceleratorDao(database);
-        this.skillCatalogService = new SkillCatalogService(new SkillCatalogApi(esiHttpClient),
+        SkillCatalogApi skillCatalogApi = new SkillCatalogApi(esiHttpClient);
+        this.skillCatalogService = new SkillCatalogService(skillCatalogApi,
                 new SkillCatalogDao(database), new ImplantBonusDao(database), acceleratorDao, settingsDao);
         this.skillService = new SkillService(authService, characterDao, skillsApi, clonesApi, skillCatalogService,
                 new CharacterSkillDao(database), new SkillPlanDao(database), acceleratorDao);
+        this.industryCatalogService = new IndustryCatalogService(fuzzworkApi, skillCatalogApi,
+                new IndustryCatalogDao(database), settingsDao);
+        this.industryService = new IndustryService(industryCatalogService,
+                new IndustryMarketService(new IndustryIndexApi(esiHttpClient), marketsApi), priceService, skillService);
         this.valueSummaryService = new ValueSummaryService(snapshotDao, assetDao, characterService);
         this.backupRestoreService = new BackupRestoreService(database, settingsDao);
         this.eveSettingsService = new EveSettingsService(settingsDao);

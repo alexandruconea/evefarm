@@ -2,7 +2,6 @@ package com.evefarm.ui;
 
 import com.evefarm.model.ValueSummary;
 import com.evefarm.util.IskFormatter;
-import com.formdev.flatlaf.ui.FlatLineBorder;
 
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
@@ -14,12 +13,11 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.awt.Insets;
 
 final class ValueColumnPanel extends JPanel {
 
     private final JLabel titleLabel = new JLabel(" ");
-    private final JPanel card = new JPanel(new GridBagLayout());
+    private final CardPanel card = new CardPanel(new GridBagLayout());
 
     ValueColumnPanel() {
         super(new BorderLayout(0, 8));
@@ -33,17 +31,8 @@ final class ValueColumnPanel extends JPanel {
         add(holder, BorderLayout.CENTER);
     }
 
-    @Override
-    public void updateUI() {
-        super.updateUI();
-        if (card != null) {
-            styleCard();
-        }
-    }
-
     void setSummary(String title, ValueSummary summary) {
         titleLabel.setText(title);
-        styleCard();
         card.removeAll();
         int row = 0;
         addRow(row++, "Total", isk(summary == null ? 0 : summary.total()), true);
@@ -61,19 +50,13 @@ final class ValueColumnPanel extends JPanel {
         repaint();
     }
 
-    private void styleCard() {
-        card.setBackground(UIManager.getColor("Table.background"));
-        Color border = UIManager.getColor("Component.borderColor");
-        card.setBorder(new FlatLineBorder(new Insets(4, 14, 4, 14), border == null ? Color.LIGHT_GRAY : border, 1, 12));
-    }
-
     private void addRow(int row, String label, String value, boolean emphasized) {
         JLabel name = new JLabel(label);
-        name.setForeground(mutedColor());
+        name.setForeground(UiColors.muted());
         JLabel amount = new JLabel(value == null ? "—" : value);
         amount.setHorizontalAlignment(SwingConstants.RIGHT);
         if (value == null) {
-            amount.setForeground(mutedColor());
+            amount.setForeground(UiColors.muted());
         }
         if (emphasized) {
             name.setFont(name.getFont().deriveFont(Font.BOLD));
@@ -97,11 +80,6 @@ final class ValueColumnPanel extends JPanel {
         c.fill = GridBagConstraints.HORIZONTAL;
         c.anchor = GridBagConstraints.NORTH;
         card.add(line, c);
-    }
-
-    private static Color mutedColor() {
-        Color themed = UIManager.getColor("Label.disabledForeground");
-        return themed != null ? themed : Color.GRAY;
     }
 
     private static String isk(double value) {

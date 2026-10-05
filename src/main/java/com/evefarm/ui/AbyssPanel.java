@@ -602,7 +602,7 @@ public final class AbyssPanel extends JPanel {
                                      Component control, JLabel text) {
         JLabel heading = new JLabel(title);
         heading.setFont(heading.getFont().deriveFont(Font.BOLD));
-        heading.setForeground(UIManager.getColor("Label.disabledForeground"));
+        heading.setForeground(UiColors.muted());
         c.gridy = row;
         c.gridx = 0;
         c.weightx = 0;

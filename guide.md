@@ -25,6 +25,7 @@ This guide walks through every part of the app. Menu and button names are writte
    - [Agents](#agents)
    - [Standings](#standings)
    - [Skills](#skills)
+   - [Industry Calculator](#industry-calculator)
 5. [Working with tables](#working-with-tables)
 6. [Settings](#settings)
 7. [Copy EVE Settings](#copy-eve-settings)
@@ -300,6 +301,34 @@ Run **Update > Skills** first. The first time, it also downloads the list of EVE
 Training times use the character's attributes as of the last update and assume an Omega clone. Levels you have trained leave the plan by themselves after the next update.
 
 A character added before EVE Farm 1.0.16 must be added again (**File > Characters... > Add Character...**) so EVE Farm may read its skill queue.
+
+### Industry Calculator
+
+Works out what it costs to build an item and what you make selling it. The first time you open the tab, EVE Farm downloads EVE's blueprint and solar system data (about 27 MB, refreshed once a month).
+
+1. Click **Choose...** and search for what you want to build, for example `Jaguar`.
+2. Pick the **Character:** whose skills count, the number of **Runs:**, and the blueprint's **ME:** and **TE:**.
+3. Type the **System:** you build in. As you type, EVE Farm suggests matching systems with their security and region; pick one with the arrow keys and Enter, or click it. EVE Farm then shows the system's security and its manufacturing cost index, refreshed every hour.
+4. Choose where you build: an NPC station, or a Raitaru, Azbel or Sotiyo with no rig, a T1 rig or a T2 rig for material (ME) and time (TE), and the structure's **Facility tax %**. The rig bonus grows in low-sec and null-sec, as in the game.
+5. Set the **Broker fee %** you pay: in an NPC station it is 3% less 0.3% for each level of Broker Relations, and less again with good standings; in a player structure it is the owner's fee plus 0.5%. Set it to 0 if you sell to buy orders. The **Sales tax** comes from the character's Accounting skill: 7.5% less 11% for each level.
+
+On the left, **Materials** lists what the job uses, with the price you pay for each and whether you build it or buy it. On the right you see what the product sells for, the sales tax and broker fee, the materials, the job fee, the total cost, the profit (also per unit), the build time and the ISK per hour.
+
+**Building components.** With **Build components when cheaper** ticked, EVE Farm works out what each component would cost you to make, all the way down: Tech II components from their blueprints, advanced materials from reactions, fuel blocks from their blueprints. Whatever costs less to make than to buy is built; the rest is bought. The **Build or buy** tab lists every item you could make with its market price, build cost, saving and job time; tick or clear **Build** to decide yourself. Set the ME and TE of your component blueprints above the table (reactions have none). Reactions run in a refinery and only in low-sec, null-sec or a wormhole, so in high-sec their products are bought. The **Shopping list** tab shows everything left to buy, and its **Copy for Multibuy** button copies it to paste into Multibuy in EVE. The time of the component and reaction jobs is shown as **Component time** and counts in the ISK per hour, using the character's manufacturing and reaction lines.
+
+The numbers follow EVE's rules:
+
+- each material is the base quantity times the runs, less the blueprint's ME and the structure's bonus, never less than one per run;
+- the build time is cut by the blueprint's TE, the structure, Industry (4% a level), Advanced Industry (3% a level), every skill the blueprint needs that speeds up building, such as Advanced Small Ship Construction or Mechanical Engineering (1% a level; Mutagenic Stabilization 2% a level), and a Zainou 'Beancounter' Industry implant (1%, 2% or 4%);
+- the job fee is the estimated item value (from EVE's adjusted prices) times the system's cost index, less the structure's bonus, plus the facility tax and the 4% SCC surcharge;
+- invention and copying jobs pay the same fee on 2% of the item value;
+- a system's security counts as in the game: anything above 0.0 is at least 0.1, low-sec;
+- the broker fee is at least 100 ISK;
+- prices come from your price provider.
+
+**Tech II items.** With **Include invention** ticked, the cost of inventing the blueprint copies is added: datacores, the decryptor, and the copying and invention job fees, spread over the runs of a successful copy. The **Invention** tab compares building without a decryptor and with each decryptor: the chance of success with your skills (base chance × (1 + science skill levels / 30 + encryption skill level / 40) × the decryptor's bonus), the runs, ME and TE of the invented copy, the invention cost per run, the cost and profit per unit, and the ISK per hour. Each invented copy has only a few runs, so every copy is a job of its own: the materials are rounded job by job, and the jobs run side by side on the character's manufacturing lines (1 + Mass Production + Advanced Mass Production). The build time and the ISK per hour use that time, and the Result shows how many jobs run at once. The most profitable choice is selected; click another row to see its materials and numbers. While it is ticked, **ME:** and **TE:** show the invented copy's values for the chosen row and can't be changed. Clear **Include invention** if you already have the copy, and set its ME and TE yourself. The box is greyed out for blueprints that can't be invented.
+
+If the character's skills aren't saved yet, they count as level IV; run **Update > Skills** for the real ones. If the character lacks a skill needed to build or invent the item, a note under the settings says so.
 
 ## Working with tables
 

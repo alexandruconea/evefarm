@@ -10,6 +10,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -272,7 +273,7 @@ public final class PriceCacheDao {
         }
     }
 
-    public Set<Integer> findMissingTypeIds(Collection<Integer> typeIds) {
+    public Set<Integer> findStaleTypeIds(Collection<Integer> typeIds, Instant freshSince) {
         List<Integer> distinct = typeIds.stream().distinct().toList();
         Set<Integer> known = new HashSet<>();
         int chunkSize = 500;
@@ -281,7 +282,7 @@ public final class PriceCacheDao {
             for (int start = 0; start < distinct.size(); start += chunkSize) {
                 List<Integer> chunk = distinct.subList(start, Math.min(start + chunkSize, distinct.size()));
                 String placeholders = chunk.stream().map(id -> "?").collect(Collectors.joining(","));
-                String sql = "SELECT type_id FROM price_cache WHERE type_id IN (" + placeholders + ")";
+                String sql = "SELECT type_id, updated_at FROM price_cache WHERE type_id IN (" + placeholders + ")";
                 try (PreparedStatement ps = connection.prepareStatement(sql)) {
                     int index = 1;
                     for (Integer id : chunk) {
@@ -289,7 +290,9 @@ public final class PriceCacheDao {
                     }
                     try (ResultSet rs = ps.executeQuery()) {
                         while (rs.next()) {
-                            known.add(rs.getInt("type_id"));
+                            if (isFresh(rs.getString("updated_at"), freshSince)) {
+                                known.add(rs.getInt("type_id"));
+                            }
                         }
                     }
                 } catch (SQLException e) {
@@ -297,8 +300,16 @@ public final class PriceCacheDao {
                 }
             }
         }
-        Set<Integer> missing = new HashSet<>(distinct);
-        missing.removeAll(known);
-        return missing;
+        Set<Integer> stale = new HashSet<>(distinct);
+        stale.removeAll(known);
+        return stale;
+    }
+
+    private static boolean isFresh(String updatedAt, Instant freshSince) {
+        try {
+            return updatedAt != null && !Instant.parse(updatedAt).isBefore(freshSince);
+        } catch (DateTimeParseException e) {
+            return false;
+        }
     }
 }

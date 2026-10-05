@@ -14,6 +14,8 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -58,7 +60,7 @@ class PriceServiceTest {
         PriceCacheDao prices = mock(PriceCacheDao.class);
         when(settings.getOrDefault(SettingsDao.PRICE_PROVIDER, PriceService.PROVIDER_CCP))
                 .thenReturn(PriceService.PROVIDER_FUZZWORK);
-        when(prices.findMissingTypeIds(List.of(34, 35))).thenReturn(Set.of(35));
+        when(prices.findStaleTypeIds(eq(List.of(34, 35)), any())).thenReturn(Set.of(35));
         when(fuzzwork.fetchAggregates(List.of(35))).thenThrow(new IllegalStateException("network down"));
         PriceService service = new PriceService(mock(MarketsApi.class), fuzzwork, mock(JaniceApi.class),
                 prices, mock(TypeCacheDao.class), settings);

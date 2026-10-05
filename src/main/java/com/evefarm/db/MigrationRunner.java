@@ -56,7 +56,9 @@ public final class MigrationRunner {
             "db/migrations/V31__mining_ledger.sql",
             "db/migrations/V32__character_standings.sql",
             "db/migrations/V33__skill_planner.sql",
-            "db/migrations/V34__cerebral_accelerators.sql"
+            "db/migrations/V34__cerebral_accelerators.sql",
+            "db/migrations/V35__industry_catalog.sql",
+            "db/migrations/V36__solar_systems.sql"
     );
 
     public static void run(Database database) {

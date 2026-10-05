@@ -254,6 +254,16 @@ public final class Icons {
         g.draw(closed(8, 4, 14, 2.5, 14, 12, 8, 13.5));
     });
 
+    public static final Icon CALCULATOR = icon(Tone.NEUTRAL, g -> {
+        g.draw(closed(3.5, 1.5, 12.5, 1.5, 12.5, 14.5, 3.5, 14.5));
+        g.draw(closed(5.5, 3.5, 10.5, 3.5, 10.5, 6, 5.5, 6));
+        for (double y : new double[]{8.75, 11.75}) {
+            g.draw(line(5.75, y, 6.25, y));
+            g.draw(line(7.75, y, 8.25, y));
+            g.draw(line(9.75, y, 10.25, y));
+        }
+    });
+
     public static Icon disabled(Icon icon) {
         if (icon instanceof LineIcon line) {
             return new LineIcon(line.tone, line.painter, true);
@@ -283,7 +293,7 @@ public final class Icons {
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
             g2.translate(x, y);
-            g2.setColor(alwaysDisabled || (c != null && !c.isEnabled()) ? disabledColor() : tone.color());
+            g2.setColor(alwaysDisabled || (c != null && !c.isEnabled()) ? UiColors.muted() : tone.color());
             g2.setStroke(new BasicStroke(STROKE, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             painter.accept(g2);
             g2.dispose();
@@ -303,11 +313,6 @@ public final class Icons {
         public String toString() {
             return "";
         }
-    }
-
-    private static Color disabledColor() {
-        Color themed = UIManager.getColor("Label.disabledForeground");
-        return themed != null ? themed : Color.GRAY;
     }
 
     private static Shape line(double x1, double y1, double x2, double y2) {

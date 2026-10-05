@@ -44,7 +44,7 @@ final class LegalFooter {
     }
 
     static JPanel create() {
-        Color muted = UIManager.getColor("Label.disabledForeground");
+        Color muted = UiColors.muted();
         Color separator = UIManager.getColor("Separator.foreground");
 
         JLabel notice = new JLabel(SHORT_NOTICE);

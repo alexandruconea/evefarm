@@ -89,6 +89,7 @@ public final class MainFrame extends JFrame {
     private MiningPanel miningPanel;
     private StandingsPanel standingsPanel;
     private SkillsPanel skillsPanel;
+    private IndustryPanel industryPanel;
 
     public MainFrame(AppContext appContext) {
         initComponents();
@@ -123,6 +124,7 @@ public final class MainFrame extends JFrame {
         miningPanel = new MiningPanel(appContext);
         standingsPanel = new StandingsPanel(appContext);
         skillsPanel = new SkillsPanel(appContext);
+        industryPanel = new IndustryPanel(appContext);
 
         tabSpecs.put("assets", new TabSpec("Assets", Icons.COIN, assetsPanel));
         tabSpecs.put("tracker", new TabSpec("Tracker", Icons.CHART, trackerPanel));
@@ -139,6 +141,7 @@ public final class MainFrame extends JFrame {
         tabSpecs.put("agents", new TabSpec("Agents", Icons.MEDAL, agentsPanel));
         tabSpecs.put("standings", new TabSpec("Standings", Icons.STANDINGS, standingsPanel));
         tabSpecs.put("skills", new TabSpec("Skills", Icons.SKILLS, skillsPanel));
+        tabSpecs.put("industry", new TabSpec("Industry Calculator", Icons.CALCULATOR, industryPanel));
 
         rebuildTabs();
 
@@ -174,6 +177,8 @@ public final class MainFrame extends JFrame {
                 standingsPanel.onShown();
             } else if (selected == skillsPanel) {
                 skillsPanel.onShown();
+            } else if (selected == industryPanel) {
+                industryPanel.onShown();
             }
         });
 
@@ -514,6 +519,7 @@ public final class MainFrame extends JFrame {
         miningPanel.refreshCharacterFilter();
         standingsPanel.refreshCharacterFilter();
         skillsPanel.refreshCharacterFilter();
+        industryPanel.refreshCharacterFilter();
     }
 
     private Map<String, TabSpec> orderedTabSpecs() {

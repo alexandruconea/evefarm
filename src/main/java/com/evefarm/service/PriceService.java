@@ -13,6 +13,8 @@ import com.evefarm.esi.dto.MarketPriceDto;
 import com.evefarm.model.PriceBreakdown;
 import com.evefarm.model.PriceMode;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -25,6 +27,7 @@ import java.util.logging.Logger;
 public final class PriceService {
 
     private static final Logger LOG = Logger.getLogger(PriceService.class.getName());
+    private static final Duration MAX_AGE = Duration.ofHours(1);
 
     public static final String PROVIDER_CCP = "ccp";
     public static final String PROVIDER_FUZZWORK = "fuzzwork";
@@ -174,18 +177,18 @@ public final class PriceService {
         if (!PROVIDER_FUZZWORK.equals(provider) && !PROVIDER_JANICE.equals(provider)) {
             return;
         }
-        Set<Integer> missing = priceCacheDao.findMissingTypeIds(typeIds);
-        if (missing.isEmpty()) {
+        Set<Integer> stale = priceCacheDao.findStaleTypeIds(typeIds, Instant.now().minus(MAX_AGE));
+        if (stale.isEmpty()) {
             return;
         }
         try {
             if (PROVIDER_FUZZWORK.equals(provider)) {
-                refreshFuzzworkPrices(List.copyOf(missing));
+                refreshFuzzworkPrices(List.copyOf(stale));
             } else {
-                refreshJanicePrices(List.copyOf(missing));
+                refreshJanicePrices(List.copyOf(stale));
             }
         } catch (RuntimeException e) {
-            LOG.log(Level.WARNING, "Couldn't fetch prices for " + missing.size()
+            LOG.log(Level.WARNING, "Couldn't fetch prices for " + stale.size()
                     + " item types; continuing with the prices already saved", e);
         }
     }

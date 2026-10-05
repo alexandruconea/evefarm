@@ -34,7 +34,6 @@ import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 import javax.swing.SwingWorker;
 import javax.swing.Timer;
-import javax.swing.UIManager;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.AbstractTableModel;
@@ -167,7 +166,7 @@ final class AbyssRunDialog extends JDialog {
         cargo.add(cargoSection("Cargo after the run", afterArea));
         JLabel cargoHint = new JLabel("In EVE open the cargo hold, select all items (Ctrl+A), copy (Ctrl+C) "
                 + "and paste here. Only what you gained is counted as loot.");
-        cargoHint.setForeground(UIManager.getColor("Label.disabledForeground"));
+        cargoHint.setForeground(UiColors.muted());
 
         TableStyler.style(lootTable);
         lootTable.setRowHeight(Math.max(lootTable.getRowHeight(), ItemIconService.RENDER_SIZE + 6));
@@ -176,7 +175,7 @@ final class AbyssRunDialog extends JDialog {
 
         installLootMenu();
         JLabel lootHint = new JLabel("Right-click an item that isn't loot, such as your own ammo");
-        lootHint.setForeground(UIManager.getColor("Label.disabledForeground"));
+        lootHint.setForeground(UiColors.muted());
         JButton ignoredButton = new JButton("Ignored Items...");
         ignoredButton.addActionListener(e -> manageIgnoredItems());
         JPanel lootTools = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
