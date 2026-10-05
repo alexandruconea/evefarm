@@ -13,19 +13,37 @@ public final class BuildOrBuyTableModel extends ColumnTableModel<BuildOrBuyTable
 
     private static final String BUILD = "build";
 
-    public record Row(int typeId, String name, boolean reaction, long needed, int runs, double marketPrice,
-                      double buildPrice, double saving, boolean built, Duration time) {
+    public record Row(int typeId, String name, boolean reaction, long needed, int runs, long surplus,
+                      double marketPrice, double buildPrice, boolean built, Duration time) {
+
+        private boolean onMarket() {
+            return marketPrice > 0;
+        }
+
+        private String moreProfitable() {
+            if (!onMarket()) {
+                return "Build (not on the market)";
+            }
+            return buildPrice < marketPrice ? "Build" : "Buy";
+        }
+
+        private String saving() {
+            return onMarket() ? IskFormatter.format(Math.abs(marketPrice - buildPrice) * needed) : "";
+        }
     }
 
     private static final List<ColumnDef<Row>> COLUMNS = List.of(
             new ColumnDef<>(BUILD, "Build", Boolean.class, Row::built),
+            new ColumnDef<>("best", "More Profitable", String.class, Row::moreProfitable),
             new ColumnDef<>("item", "Item", String.class, Row::name),
             new ColumnDef<>("kind", "Made by", String.class, r -> r.reaction() ? "Reaction" : "Manufacturing"),
             new ColumnDef<>("quantity", "Quantity", String.class, r -> String.format(Locale.US, "%,d", r.needed())),
             new ColumnDef<>("runs", "Runs", Integer.class, Row::runs),
+            new ColumnDef<>("surplus", "Surplus", String.class,
+                    r -> r.surplus() > 0 ? String.format(Locale.US, "%,d", r.surplus()) : ""),
             new ColumnDef<>("market", "Market Price", String.class, r -> IskFormatter.format(r.marketPrice())),
             new ColumnDef<>("buildCost", "Build Cost", String.class, r -> IskFormatter.format(r.buildPrice())),
-            new ColumnDef<>("saving", "Saving", String.class, r -> IskFormatter.format(r.saving())),
+            new ColumnDef<>("saving", "Saving", String.class, Row::saving),
             new ColumnDef<>("time", "Job Time", String.class, r -> PlanTableModel.formatDuration(r.time())),
             new ColumnDef<>("typeId", "Type ID", Integer.class, false, Row::typeId)
     );

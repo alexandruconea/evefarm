@@ -4,6 +4,7 @@ import com.evefarm.model.IndustryActivity;
 import com.evefarm.model.TypeQuantity;
 import com.evefarm.service.BuildPlanner.Plan;
 import com.evefarm.service.BuildPlanner.Setup;
+import com.evefarm.service.BuildPlanner.Surplus;
 import com.evefarm.service.IndustryCalculator.Facility;
 import com.evefarm.service.IndustryCalculator.MaterialLine;
 import com.evefarm.service.IndustryCalculator.Rig;
@@ -39,13 +40,18 @@ class BuildPlannerTest {
     private static final Facility FREE = new Facility(Structure.REFINERY, Rig.NONE, Rig.NONE, Security.NULL, 0);
     private static final List<MaterialLine> THREE_COMPONENTS = List.of(new MaterialLine(COMPONENT, 3, 1000));
 
-    private static Setup setup(boolean reactions, boolean buildWhenCheaper, Map<Integer, Boolean> choices) {
+    private static Setup setup(boolean reactions, boolean buildWhenCheaper, Map<Integer, Boolean> choices,
+                               Surplus surplus) {
         return new Setup(type -> Optional.ofNullable(PRODUCERS.get(type)), PRICES, Map.of(), FREE, FREE, 0, 0, 0, 0,
-                skill -> 0, reactions, buildWhenCheaper, choices);
+                skill -> 0, reactions, buildWhenCheaper, choices, surplus, 0.1);
+    }
+
+    private static Setup setup(boolean reactions, boolean buildWhenCheaper, Map<Integer, Boolean> choices) {
+        return setup(reactions, buildWhenCheaper, choices, Surplus.KEEP);
     }
 
     @Test
-    void cheaperItemsAreBuiltAllTheWayDown() {
+    void cheaperItemsAreBuiltAllTheWayDownInSteps() {
         Plan plan = BuildPlanner.plan(THREE_COMPONENTS, setup(true, true, Map.of()), 1, 1);
 
         assertEquals(30, plan.materialsCost(), 1e-9);
@@ -53,9 +59,35 @@ class BuildPlannerTest {
         assertEquals(List.of(new MaterialLine(MOON_GOO, 50, 1.0), new MaterialLine(FUEL, 5, 10.0)), plan.shopping());
         assertTrue(plan.component(COMPONENT).orElseThrow().built());
         assertTrue(plan.component(ALLOY).orElseThrow().reaction());
+        assertEquals(70, plan.component(ALLOY).orElseThrow().surplus());
+        assertEquals(List.of(List.of(ALLOY), List.of(COMPONENT)), plan.steps().stream()
+                .map(step -> step.jobs().stream().map(BuildPlanner.Component::typeId).toList()).toList());
+        assertEquals(Duration.ofSeconds(3600), plan.steps().getFirst().time());
+        assertEquals(Duration.ofSeconds(3780), plan.extraTime());
+    }
+
+    @Test
+    void theSurplusIsKeptSoldOrWasted() {
+        Plan kept = BuildPlanner.plan(THREE_COMPONENTS, setup(true, true, Map.of(), Surplus.KEEP), 1, 1);
+        Plan sold = BuildPlanner.plan(THREE_COMPONENTS, setup(true, true, Map.of(), Surplus.SELL), 1, 1);
+        Plan wasted = BuildPlanner.plan(THREE_COMPONENTS, setup(true, true, Map.of(), Surplus.WASTE), 1, 1);
+
+        assertEquals(70, kept.surplusValue(), 1e-9);
+        assertEquals(0, kept.surplusCost(), 1e-9);
+        assertEquals(70 - 70 * 5 * 0.9, sold.surplusCost(), 1e-9);
+        assertEquals(100, wasted.materialsCost(), 1e-9);
+    }
+
+    @Test
+    void whatTheChainNeedsOfOneItemIsMadeInOneJob() {
+        Plan plan = BuildPlanner.plan(List.of(new MaterialLine(COMPONENT, 3, 1000), new MaterialLine(ALLOY, 50, 5)),
+                setup(true, true, Map.of()), 1, 1);
+
+        assertEquals(80, plan.component(ALLOY).orElseThrow().needed());
         assertEquals(1, plan.component(ALLOY).orElseThrow().runs());
-        assertEquals(Duration.ofSeconds(180), plan.componentTime());
-        assertEquals(Duration.ofSeconds(3600), plan.reactionTime());
+        assertEquals(20, plan.component(ALLOY).orElseThrow().surplus());
+        assertEquals(List.of(new MaterialLine(MOON_GOO, 50, 1.0), new MaterialLine(FUEL, 5, 10.0)), plan.shopping());
+        assertEquals(80, plan.keptCost(), 1e-9);
     }
 
     @Test
@@ -64,7 +96,7 @@ class BuildPlannerTest {
 
         assertEquals(150, plan.materialsCost(), 1e-9);
         assertEquals(List.of(new MaterialLine(ALLOY, 30, 5.0)), plan.shopping());
-        assertEquals(Duration.ZERO, plan.reactionTime());
+        assertEquals(Duration.ofSeconds(180), plan.extraTime());
     }
 
     @Test
@@ -75,7 +107,8 @@ class BuildPlannerTest {
         assertEquals(List.of(new MaterialLine(COMPONENT, 3, 1000.0)), plan.shopping());
         assertEquals(1, plan.components().size());
         assertFalse(plan.component(COMPONENT).orElseThrow().built());
-        assertEquals(50, plan.component(COMPONENT).orElseThrow().buildPrice(), 1e-9);
+        assertEquals(10, plan.component(COMPONENT).orElseThrow().buildPrice(), 1e-9);
+        assertTrue(plan.steps().isEmpty());
     }
 
     @Test

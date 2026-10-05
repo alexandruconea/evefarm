@@ -40,9 +40,14 @@ final class IndustryResultCard {
                 each(result.productPrice()), null, false));
         lines.add(new Line("Sales tax and broker", IskFormatter.format(option.sale().fees()), null, null, false));
         long built = option.plan().components().stream().filter(BuildPlanner.Component::built).count();
-        lines.add(new Line("Materials", IskFormatter.format(option.plan().materialsCost()),
+        BuildPlanner.Plan plan = option.plan();
+        lines.add(new Line("Materials", IskFormatter.format(plan.keptCost()),
                 built > 0 ? String.format(Locale.US, "%d item%s built", built, built == 1 ? "" : "s") : null, null,
                 false));
+        if (plan.surplusValue() > 0) {
+            lines.add(new Line("Surplus", IskFormatter.format(plan.surplusCost()), surplusDetail(plan), null,
+                    false));
+        }
         lines.add(new Line("Job fee", IskFormatter.format(option.manufacturing().jobFee()), null, null, false));
         if (option.invention() != null) {
             lines.add(new Line("Invention", IskFormatter.format(option.inventionCost()),
@@ -73,6 +78,16 @@ final class IndustryResultCard {
         card.add(Box.createVerticalGlue(), filler);
         card.revalidate();
         card.repaint();
+    }
+
+    private static String surplusDetail(BuildPlanner.Plan plan) {
+        String worth = IskFormatter.format(plan.surplusValue());
+        return switch (plan.surplus()) {
+            case KEEP -> "worth " + worth + ", kept for later builds";
+            case SELL -> "worth " + worth + ", sold for "
+                    + IskFormatter.format(plan.surplusValue() - plan.surplusCost());
+            case WASTE -> "worth " + worth + ", counted as waste";
+        };
     }
 
     private static String jobs(int jobs, int lines) {

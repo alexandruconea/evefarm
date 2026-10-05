@@ -57,6 +57,7 @@ public final class SettingsDao {
     public static final String INDUSTRY_BUILD_COMPONENTS = "industry_build_components";
     public static final String INDUSTRY_COMPONENT_ME = "industry_component_me";
     public static final String INDUSTRY_COMPONENT_TE = "industry_component_te";
+    public static final String INDUSTRY_SURPLUS = "industry_surplus";
     public static final String SKILLS_DIVIDER = "skills_divider";
     public static final String ABYSS_CARGO_PREFIX = "abyss_cargo_";
     public static final String MARKET_ORDERS_SHOW_CLOSED = "market_orders_show_closed";
