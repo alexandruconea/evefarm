@@ -8,18 +8,23 @@ import com.evefarm.util.AppInfo;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
+import javax.swing.JEditorPane;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
 import javax.swing.SwingWorker;
+import javax.swing.UIManager;
+import javax.swing.event.HyperlinkEvent;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.Frame;
+import java.awt.Insets;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.List;
@@ -64,9 +69,23 @@ final class AppUpdateDialog extends JDialog {
                 + "<br>You have " + AppInfo.version() + ". Your data isn't touched by updating, and it's backed up "
                 + "first anyway.</html>");
 
-        JTextArea notes = new JTextArea(release.notes().isBlank() ? "No release notes." : release.notes());
-        TextAreaStyler.scrollable(notes);
+        JEditorPane notes = new JEditorPane();
+        notes.setEditable(false);
+        notes.setContentType("text/html");
+        notes.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
+        Font font = UIManager.getFont("Label.font");
+        if (font != null) {
+            notes.setFont(font);
+        }
+        notes.setMargin(new Insets(6, 8, 6, 8));
+        notes.setText(MarkdownHtml.page(release.notes().isBlank() ? "No release notes." : release.notes(),
+                notes.getFont(), linkColor()));
         notes.setCaretPosition(0);
+        notes.addHyperlinkListener(e -> {
+            if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
+                openLink(e.getDescription());
+            }
+        });
         JScrollPane notesScroll = new JScrollPane(notes);
         notesScroll.setPreferredSize(new Dimension(560, 260));
 
@@ -101,6 +120,27 @@ final class AppUpdateDialog extends JDialog {
         content.add(south, BorderLayout.SOUTH);
         setContentPane(content);
         getRootPane().setDefaultButton(updateButton);
+    }
+
+    private static Color linkColor() {
+        for (String key : new String[]{"Hyperlink.linkColor", "Component.linkColor"}) {
+            Color color = UIManager.getColor(key);
+            if (color != null) {
+                return color;
+            }
+        }
+        return null;
+    }
+
+    private static void openLink(String url) {
+        if (url == null || !MarkdownHtml.isWebUrl(url)) {
+            return;
+        }
+        try {
+            Desktop.getDesktop().browse(URI.create(url));
+        } catch (Exception e) {
+            LOG.log(Level.INFO, "Couldn't open a link from the release notes", e);
+        }
     }
 
     private void openReleasePage() {
