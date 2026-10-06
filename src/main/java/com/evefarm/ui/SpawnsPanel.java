@@ -9,16 +9,26 @@ import com.evefarm.util.IskFormatter;
 
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingWorker;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Font;
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -29,12 +39,14 @@ public final class SpawnsPanel extends JPanel {
 
     private static final Logger LOG = Logger.getLogger(SpawnsPanel.class.getName());
     private static final String PANEL_KEY = "spawns";
+    private static final String SAVE_TITLE = "Save Spawns Report";
 
     private final AppContext appContext;
     private final SpawnsTableModel tableModel = new SpawnsTableModel();
     private final JTable table = new JTable();
     private final JPanel filterBarContainer = new JPanel();
     private final JLabel countLabel = new JLabel("0 spawns");
+    private final JButton saveButton = new JButton("Save as .txt...", Icons.DOCUMENT);
     private final SpawnTableModel detailModel = new SpawnTableModel();
     private final JTable detailTable = new JTable(detailModel);
     private final JLabel detailHeader = new JLabel("Select a spawn to see its NPCs.");
@@ -47,6 +59,7 @@ public final class SpawnsPanel extends JPanel {
         buildUi();
         support = new DataTablePanelSupport<>(appContext, PANEL_KEY, tableModel, table, filterBarContainer,
                 countLabel, "spawns", appContext.officerService::listAllSpawns);
+        support.setOnRowsShown(() -> saveButton.setEnabled(table.getRowCount() > 0));
         support.init();
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.getSelectionModel().addListSelectionListener(e -> {
@@ -66,7 +79,14 @@ public final class SpawnsPanel extends JPanel {
         JPanel listPanel = new JPanel(new BorderLayout());
         listPanel.add(filterBarContainer, BorderLayout.NORTH);
         listPanel.add(new JScrollPane(table), BorderLayout.CENTER);
-        listPanel.add(countLabel, BorderLayout.SOUTH);
+        saveButton.setEnabled(false);
+        saveButton.setToolTipText("Save the spawns shown in the list, each with its NPCs, to a text file");
+        saveButton.addActionListener(e -> saveReport());
+        JPanel footer = new JPanel(new BorderLayout());
+        footer.setBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0));
+        footer.add(countLabel, BorderLayout.WEST);
+        footer.add(saveButton, BorderLayout.EAST);
+        listPanel.add(footer, BorderLayout.SOUTH);
 
         detailHeader.setFont(detailHeader.getFont().deriveFont(Font.BOLD));
         detailHeader.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -89,6 +109,14 @@ public final class SpawnsPanel extends JPanel {
         add(split, BorderLayout.CENTER);
     }
 
+    static String headline(SpawnRow spawn) {
+        return DateUtil.formatEveMinute(spawn.startedAt()) + " EVE  ·  "
+                + (spawn.solarSystem() == null ? "Unknown system" : spawn.solarSystem()) + "  ·  "
+                + spawn.kind() + "  ·  " + spawn.killed() + " killed"
+                + (spawn.bounty() > 0 ? "  ·  " + IskFormatter.format(spawn.bounty()) : "")
+                + "  ·  " + SpawnsTableModel.duration(spawn.durationSeconds());
+    }
+
     static String fightersDescription(List<CharacterContribution> contributions) {
         StringBuilder text = new StringBuilder("Fought by ");
         for (int i = 0; i < contributions.size(); i++) {
@@ -106,6 +134,52 @@ public final class SpawnsPanel extends JPanel {
         return text.toString();
     }
 
+    private void saveReport() {
+        List<SpawnRow> spawns = support.visibleRows();
+        if (spawns.isEmpty()) {
+            return;
+        }
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle(SAVE_TITLE);
+        chooser.setSelectedFile(new File("spawns-" + LocalDate.now() + ".txt"));
+        chooser.setFileFilter(new FileNameExtensionFilter("Text file (*.txt)", "txt"));
+        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        File chosen = chooser.getSelectedFile();
+        Path target = chosen.getName().toLowerCase(Locale.ROOT).endsWith(".txt") ? chosen.toPath()
+                : chosen.toPath().resolveSibling(chosen.getName() + ".txt");
+        if (Files.exists(target) && JOptionPane.showConfirmDialog(this, target.getFileName()
+                + " already exists. Replace it?", SAVE_TITLE, JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) {
+            return;
+        }
+        saveButton.setEnabled(false);
+        new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                Files.write(target, SpawnReport.lines(spawns,
+                        spawn -> appContext.officerService.listSpawn(spawn.encounterIds()), Instant.now()),
+                        StandardCharsets.UTF_8);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                saveButton.setEnabled(table.getRowCount() > 0);
+                try {
+                    get();
+                    JOptionPane.showMessageDialog(SpawnsPanel.this, "Report saved to:\n" + target, SAVE_TITLE,
+                            JOptionPane.INFORMATION_MESSAGE);
+                } catch (Exception e) {
+                    LOG.log(Level.WARNING, "Failed to save the spawns report", e);
+                    Throwable cause = e.getCause() == null ? e : e.getCause();
+                    JOptionPane.showMessageDialog(SpawnsPanel.this, "Couldn't save the report: "
+                            + cause.getMessage(), SAVE_TITLE, JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }.execute();
+    }
+
     private SpawnRow selectedRow() {
         int viewRow = table.getSelectedRow();
         return viewRow < 0 ? null : tableModel.rowAt(table.convertRowIndexToModel(viewRow));
@@ -121,11 +195,7 @@ public final class SpawnsPanel extends JPanel {
         }
         fightersLabel.setText(fightersDescription(spawn.contributions()));
         fightersLabel.setVisible(spawn.contributions().size() > 1);
-        detailHeader.setText(DateUtil.formatEveMinute(spawn.startedAt()) + " EVE  ·  "
-                + (spawn.solarSystem() == null ? "Unknown system" : spawn.solarSystem()) + "  ·  "
-                + spawn.kind() + "  ·  " + spawn.killed() + " killed"
-                + (spawn.bounty() > 0 ? "  ·  " + IskFormatter.format(spawn.bounty()) : "")
-                + "  ·  " + SpawnsTableModel.duration(spawn.durationSeconds()));
+        detailHeader.setText(headline(spawn));
         new SwingWorker<List<SpawnMember>, Void>() {
             @Override
             protected List<SpawnMember> doInBackground() {

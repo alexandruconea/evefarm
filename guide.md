@@ -196,7 +196,7 @@ The tab has three parts.
 - **Drops** records what it dropped. Click **Add...**, search for the item, set the quantity and check the price; EVE Farm suggests the market price, and you can type the price you actually sold it for.
 - **Scan Gamelogs** checks the logs right away instead of waiting. The first scan also downloads EVE's NPC list, which needs the internet.
 
-**Spawns** groups the NPCs you fought into spawns: when and where, how long the fight took, how many NPCs were killed, the bounty and which characters fought them. Select a spawn to see each NPC with the damage dealt and taken.
+**Spawns** groups the NPCs you fought into spawns: when and where, how long the fight took, how many NPCs were killed, the bounty and which characters fought them. Select a spawn to see each NPC with the damage dealt and taken. **Save as .txt...** saves the spawns shown in the list to a text file, each with its NPCs; use the filter to choose which spawns go in.
 
 Every 1,000 NPCs your characters kill in asteroid belts, EVE Farm shows a notification.
 
