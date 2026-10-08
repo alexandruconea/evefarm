@@ -3,7 +3,6 @@ package com.evefarm.model;
 import java.time.Instant;
 
 public record TokenRecord(
-        long characterId,
         String refreshToken,
         String accessToken,
         Instant accessTokenExpiresAt

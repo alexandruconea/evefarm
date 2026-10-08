@@ -20,7 +20,7 @@ class SkillCatalogServiceTest {
     @Test
     void aSkillIsReadFromItsDogmaAttributes() {
         TypeDetailsDto type = new TypeDetailsDto(3304, "Medium Hybrid Turret",
-                "Operation of <b>medium</b> hybrid turrets.<br>5% bonus.", 255, true, List.of(
+                "Operation of <b>medium</b> hybrid turrets.<br>5% bonus.", true, List.of(
                 attribute(275, 3), attribute(180, 167), attribute(181, 168),
                 attribute(182, 3301), attribute(277, 3), attribute(183, 3300), attribute(278, 2)));
 

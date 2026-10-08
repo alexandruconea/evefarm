@@ -12,7 +12,6 @@ public record TypeDetailsDto(
         @JsonProperty("type_id") int typeId,
         @JsonProperty("name") String name,
         @JsonProperty("description") String description,
-        @JsonProperty("group_id") int groupId,
         @JsonProperty("published") Boolean published,
         @JsonProperty("dogma_attributes") List<DogmaAttribute> dogmaAttributes
 ) {

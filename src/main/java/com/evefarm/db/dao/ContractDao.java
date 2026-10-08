@@ -28,63 +28,47 @@ public final class ContractDao {
     }
 
     public void saveForCharacter(long characterId, List<ContractEntry> entries) {
-        synchronized (database) {
-            Connection connection = database.connection();
-            String insertSql = """
-                    INSERT INTO character_contract(
-                      character_id, contract_id, type, status, title, collateral, price, reward, volume,
-                      date_issued, date_expired, date_completed, for_corporation, issuer_id, assignee_id,
-                      acceptor_id, start_location_id, end_location_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(character_id, contract_id) DO UPDATE SET
-                      type = excluded.type, status = excluded.status, title = excluded.title,
-                      collateral = excluded.collateral, price = excluded.price, reward = excluded.reward,
-                      volume = excluded.volume, date_issued = excluded.date_issued,
-                      date_expired = excluded.date_expired, date_completed = excluded.date_completed,
-                      for_corporation = excluded.for_corporation, issuer_id = excluded.issuer_id,
-                      assignee_id = excluded.assignee_id, acceptor_id = excluded.acceptor_id,
-                      start_location_id = excluded.start_location_id, end_location_id = excluded.end_location_id
-                    """;
-            try {
-                connection.setAutoCommit(false);
-                try (PreparedStatement ps = connection.prepareStatement(insertSql)) {
-                    for (ContractEntry entry : entries) {
-                        ps.setLong(1, characterId);
-                        ps.setLong(2, entry.contractId());
-                        ps.setString(3, entry.type());
-                        ps.setString(4, entry.status());
-                        ps.setString(5, entry.title());
-                        JdbcUtil.setNullable(ps, 6, entry.collateral());
-                        JdbcUtil.setNullable(ps, 7, entry.price());
-                        JdbcUtil.setNullable(ps, 8, entry.reward());
-                        JdbcUtil.setNullable(ps, 9, entry.volume());
-                        ps.setString(10, entry.dateIssued());
-                        ps.setString(11, entry.dateExpired());
-                        ps.setString(12, entry.dateCompleted());
-                        ps.setInt(13, entry.forCorporation() ? 1 : 0);
-                        JdbcUtil.setNullable(ps, 14, entry.issuerId());
-                        JdbcUtil.setNullable(ps, 15, entry.assigneeId());
-                        JdbcUtil.setNullable(ps, 16, entry.acceptorId());
-                        JdbcUtil.setNullable(ps, 17, entry.startLocationId());
-                        JdbcUtil.setNullable(ps, 18, entry.endLocationId());
-                        ps.addBatch();
-                    }
-                    ps.executeBatch();
+        String insertSql = """
+                INSERT INTO character_contract(
+                  character_id, contract_id, type, status, title, collateral, price, reward, volume,
+                  date_issued, date_expired, date_completed, for_corporation, issuer_id, assignee_id,
+                  acceptor_id, start_location_id, end_location_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(character_id, contract_id) DO UPDATE SET
+                  type = excluded.type, status = excluded.status, title = excluded.title,
+                  collateral = excluded.collateral, price = excluded.price, reward = excluded.reward,
+                  volume = excluded.volume, date_issued = excluded.date_issued,
+                  date_expired = excluded.date_expired, date_completed = excluded.date_completed,
+                  for_corporation = excluded.for_corporation, issuer_id = excluded.issuer_id,
+                  assignee_id = excluded.assignee_id, acceptor_id = excluded.acceptor_id,
+                  start_location_id = excluded.start_location_id, end_location_id = excluded.end_location_id
+                """;
+        database.transaction("Failed to save contracts for character " + characterId, connection -> {
+            try (PreparedStatement ps = connection.prepareStatement(insertSql)) {
+                for (ContractEntry entry : entries) {
+                    ps.setLong(1, characterId);
+                    ps.setLong(2, entry.contractId());
+                    ps.setString(3, entry.type());
+                    ps.setString(4, entry.status());
+                    ps.setString(5, entry.title());
+                    JdbcUtil.setNullable(ps, 6, entry.collateral());
+                    JdbcUtil.setNullable(ps, 7, entry.price());
+                    JdbcUtil.setNullable(ps, 8, entry.reward());
+                    JdbcUtil.setNullable(ps, 9, entry.volume());
+                    ps.setString(10, entry.dateIssued());
+                    ps.setString(11, entry.dateExpired());
+                    ps.setString(12, entry.dateCompleted());
+                    ps.setInt(13, entry.forCorporation() ? 1 : 0);
+                    JdbcUtil.setNullable(ps, 14, entry.issuerId());
+                    JdbcUtil.setNullable(ps, 15, entry.assigneeId());
+                    JdbcUtil.setNullable(ps, 16, entry.acceptorId());
+                    JdbcUtil.setNullable(ps, 17, entry.startLocationId());
+                    JdbcUtil.setNullable(ps, 18, entry.endLocationId());
+                    ps.addBatch();
                 }
-                connection.commit();
-            } catch (SQLException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException ignored) {
-                }
-                throw new IllegalStateException("Failed to save contracts for character " + characterId, e);
-            } finally {
-                try {
-                    connection.setAutoCommit(true);
-                } catch (SQLException ignored) {
-                }
+                ps.executeBatch();
             }
-        }
+        });
     }
 
     public List<Long> contractsWithoutItems(long characterId) {
@@ -111,48 +95,32 @@ public final class ContractDao {
     }
 
     public void saveItems(long characterId, long contractId, List<ContractItemEntry> items) {
-        synchronized (database) {
-            Connection connection = database.connection();
-            try {
-                connection.setAutoCommit(false);
-                try (PreparedStatement del = connection.prepareStatement(
-                        "DELETE FROM character_contract_item WHERE character_id = ? AND contract_id = ?")) {
-                    del.setLong(1, characterId);
-                    del.setLong(2, contractId);
-                    del.executeUpdate();
-                }
-                try (PreparedStatement ps = connection.prepareStatement("""
-                        INSERT INTO character_contract_item(
-                          character_id, contract_id, record_id, type_id, quantity, raw_quantity, is_included)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
-                        """)) {
-                    for (ContractItemEntry item : items) {
-                        ps.setLong(1, characterId);
-                        ps.setLong(2, contractId);
-                        ps.setLong(3, item.recordId());
-                        ps.setInt(4, item.typeId());
-                        ps.setLong(5, item.quantity());
-                        JdbcUtil.setNullable(ps, 6, item.rawQuantity());
-                        ps.setInt(7, item.included() ? 1 : 0);
-                        ps.addBatch();
-                    }
-                    ps.executeBatch();
-                }
-                setItemsStatus(connection, characterId, contractId, ITEMS_SAVED);
-                connection.commit();
-            } catch (SQLException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException ignored) {
-                }
-                throw new IllegalStateException("Failed to save the items of contract " + contractId, e);
-            } finally {
-                try {
-                    connection.setAutoCommit(true);
-                } catch (SQLException ignored) {
-                }
+        database.transaction("Failed to save the items of contract " + contractId, connection -> {
+            try (PreparedStatement del = connection.prepareStatement(
+                    "DELETE FROM character_contract_item WHERE character_id = ? AND contract_id = ?")) {
+                del.setLong(1, characterId);
+                del.setLong(2, contractId);
+                del.executeUpdate();
             }
-        }
+            try (PreparedStatement ps = connection.prepareStatement("""
+                    INSERT INTO character_contract_item(
+                      character_id, contract_id, record_id, type_id, quantity, raw_quantity, is_included)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """)) {
+                for (ContractItemEntry item : items) {
+                    ps.setLong(1, characterId);
+                    ps.setLong(2, contractId);
+                    ps.setLong(3, item.recordId());
+                    ps.setInt(4, item.typeId());
+                    ps.setLong(5, item.quantity());
+                    JdbcUtil.setNullable(ps, 6, item.rawQuantity());
+                    ps.setInt(7, item.included() ? 1 : 0);
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+            setItemsStatus(connection, characterId, contractId, ITEMS_SAVED);
+        });
     }
 
     public void markItemsUnavailable(long characterId, long contractId) {

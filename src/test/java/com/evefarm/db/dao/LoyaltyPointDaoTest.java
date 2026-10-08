@@ -24,7 +24,7 @@ class LoyaltyPointDaoTest {
     void setUp() {
         Database database = new Database(":memory:");
         MigrationRunner.run(database);
-        new CharacterDao(database).upsert(PILOT, "Mission Runner", null, List.of(), "owner");
+        new CharacterDao(database).upsert(PILOT, "Mission Runner", List.of(), "owner");
         points = new LoyaltyPointDao(database);
     }
 

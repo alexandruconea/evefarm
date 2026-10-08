@@ -23,62 +23,46 @@ public final class IndustryJobDao {
     }
 
     public void saveForCharacter(long characterId, List<IndustryJobEntry> entries) {
-        synchronized (database) {
-            Connection connection = database.connection();
-            String deleteSql = """
-                    DELETE FROM industry_job
-                    WHERE character_id = ? AND (status IS NULL OR status NOT IN ('delivered', 'cancelled', 'reverted'))
-                    """;
-            String insertSql = """
-                    INSERT INTO industry_job(
-                      character_id, job_id, activity_id, status, blueprint_type_id, product_type_id,
-                      runs, cost, facility_id, output_location_id, start_date, end_date)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(character_id, job_id) DO UPDATE SET
-                      activity_id = excluded.activity_id, status = excluded.status,
-                      blueprint_type_id = excluded.blueprint_type_id, product_type_id = excluded.product_type_id,
-                      runs = excluded.runs, cost = excluded.cost, facility_id = excluded.facility_id,
-                      output_location_id = excluded.output_location_id, start_date = excluded.start_date,
-                      end_date = excluded.end_date
-                    """;
-            try {
-                connection.setAutoCommit(false);
-                try (PreparedStatement del = connection.prepareStatement(deleteSql)) {
-                    del.setLong(1, characterId);
-                    del.executeUpdate();
-                }
-                try (PreparedStatement ps = connection.prepareStatement(insertSql)) {
-                    for (IndustryJobEntry entry : entries) {
-                        ps.setLong(1, characterId);
-                        ps.setLong(2, entry.jobId());
-                        ps.setInt(3, entry.activityId());
-                        ps.setString(4, entry.status());
-                        ps.setInt(5, entry.blueprintTypeId());
-                        JdbcUtil.setNullable(ps, 6, entry.productTypeId());
-                        JdbcUtil.setNullable(ps, 7, entry.runs());
-                        JdbcUtil.setNullable(ps, 8, entry.cost());
-                        JdbcUtil.setNullable(ps, 9, entry.facilityId());
-                        JdbcUtil.setNullable(ps, 10, entry.outputLocationId());
-                        ps.setString(11, entry.startDate());
-                        ps.setString(12, entry.endDate());
-                        ps.addBatch();
-                    }
-                    ps.executeBatch();
-                }
-                connection.commit();
-            } catch (SQLException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException ignored) {
-                }
-                throw new IllegalStateException("Failed to save industry jobs for character " + characterId, e);
-            } finally {
-                try {
-                    connection.setAutoCommit(true);
-                } catch (SQLException ignored) {
-                }
+        String deleteSql = """
+                DELETE FROM industry_job
+                WHERE character_id = ? AND (status IS NULL OR status NOT IN ('delivered', 'cancelled', 'reverted'))
+                """;
+        String insertSql = """
+                INSERT INTO industry_job(
+                  character_id, job_id, activity_id, status, blueprint_type_id, product_type_id,
+                  runs, cost, facility_id, output_location_id, start_date, end_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(character_id, job_id) DO UPDATE SET
+                  activity_id = excluded.activity_id, status = excluded.status,
+                  blueprint_type_id = excluded.blueprint_type_id, product_type_id = excluded.product_type_id,
+                  runs = excluded.runs, cost = excluded.cost, facility_id = excluded.facility_id,
+                  output_location_id = excluded.output_location_id, start_date = excluded.start_date,
+                  end_date = excluded.end_date
+                """;
+        database.transaction("Failed to save industry jobs for character " + characterId, connection -> {
+            try (PreparedStatement del = connection.prepareStatement(deleteSql)) {
+                del.setLong(1, characterId);
+                del.executeUpdate();
             }
-        }
+            try (PreparedStatement ps = connection.prepareStatement(insertSql)) {
+                for (IndustryJobEntry entry : entries) {
+                    ps.setLong(1, characterId);
+                    ps.setLong(2, entry.jobId());
+                    ps.setInt(3, entry.activityId());
+                    ps.setString(4, entry.status());
+                    ps.setInt(5, entry.blueprintTypeId());
+                    JdbcUtil.setNullable(ps, 6, entry.productTypeId());
+                    JdbcUtil.setNullable(ps, 7, entry.runs());
+                    JdbcUtil.setNullable(ps, 8, entry.cost());
+                    JdbcUtil.setNullable(ps, 9, entry.facilityId());
+                    JdbcUtil.setNullable(ps, 10, entry.outputLocationId());
+                    ps.setString(11, entry.startDate());
+                    ps.setString(12, entry.endDate());
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+        });
     }
 
     public List<IndustryJobRow> listRows(Set<Long> characterIdFilter) {

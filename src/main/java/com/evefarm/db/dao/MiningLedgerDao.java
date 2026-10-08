@@ -4,7 +4,6 @@ import com.evefarm.db.Database;
 import com.evefarm.model.MiningEntry;
 import com.evefarm.model.MiningLedgerRow;
 
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -21,43 +20,27 @@ public final class MiningLedgerDao {
     }
 
     public void saveForCharacter(long characterId, List<MiningEntry> entries) {
-        synchronized (database) {
-            Connection connection = database.connection();
-            String sql = """
-                    INSERT INTO mining_ledger(character_id, date, solar_system_id, type_id, quantity, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(character_id, date, solar_system_id, type_id) DO UPDATE SET
-                      quantity = excluded.quantity, updated_at = excluded.updated_at
-                    """;
-            String now = Instant.now().toString();
-            try {
-                connection.setAutoCommit(false);
-                try (PreparedStatement ps = connection.prepareStatement(sql)) {
-                    for (MiningEntry entry : entries) {
-                        ps.setLong(1, characterId);
-                        ps.setString(2, entry.date());
-                        ps.setLong(3, entry.solarSystemId());
-                        ps.setInt(4, entry.typeId());
-                        ps.setLong(5, entry.quantity());
-                        ps.setString(6, now);
-                        ps.addBatch();
-                    }
-                    ps.executeBatch();
+        String sql = """
+                INSERT INTO mining_ledger(character_id, date, solar_system_id, type_id, quantity, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(character_id, date, solar_system_id, type_id) DO UPDATE SET
+                  quantity = excluded.quantity, updated_at = excluded.updated_at
+                """;
+        String now = Instant.now().toString();
+        database.transaction("Failed to save the mining ledger of character " + characterId, connection -> {
+            try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                for (MiningEntry entry : entries) {
+                    ps.setLong(1, characterId);
+                    ps.setString(2, entry.date());
+                    ps.setLong(3, entry.solarSystemId());
+                    ps.setInt(4, entry.typeId());
+                    ps.setLong(5, entry.quantity());
+                    ps.setString(6, now);
+                    ps.addBatch();
                 }
-                connection.commit();
-            } catch (SQLException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException ignored) {
-                }
-                throw new IllegalStateException("Failed to save the mining ledger of character " + characterId, e);
-            } finally {
-                try {
-                    connection.setAutoCommit(true);
-                } catch (SQLException ignored) {
-                }
+                ps.executeBatch();
             }
-        }
+        });
     }
 
     public List<MiningLedgerRow> listRows(String fromDate) {

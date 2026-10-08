@@ -11,8 +11,7 @@ public record JaniceItemDto(
 ) {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record ItemType(
-            @JsonProperty("eid") int eid,
-            @JsonProperty("name") String name
+            @JsonProperty("eid") int eid
     ) {
     }
 

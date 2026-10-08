@@ -25,37 +25,21 @@ public final class ItemTypeDao {
     }
 
     public void replaceAll(List<ItemType> items) {
-        synchronized (database) {
-            Connection connection = database.connection();
-            String insertSql = "INSERT INTO sde_item_type(type_id, type_name, is_officer) VALUES (?, ?, ?)";
-            try {
-                connection.setAutoCommit(false);
-                try (Statement statement = connection.createStatement()) {
-                    statement.execute("DELETE FROM sde_item_type");
-                }
-                try (PreparedStatement ps = connection.prepareStatement(insertSql)) {
-                    for (ItemType item : items) {
-                        ps.setInt(1, item.typeId());
-                        ps.setString(2, item.typeName());
-                        ps.setInt(3, item.officer() ? 1 : 0);
-                        ps.addBatch();
-                    }
-                    ps.executeBatch();
-                }
-                connection.commit();
-            } catch (SQLException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException ignored) {
-                }
-                throw new IllegalStateException("Failed to replace the item catalog", e);
-            } finally {
-                try {
-                    connection.setAutoCommit(true);
-                } catch (SQLException ignored) {
-                }
+        String insertSql = "INSERT INTO sde_item_type(type_id, type_name, is_officer) VALUES (?, ?, ?)";
+        database.transaction("Failed to replace the item catalog", connection -> {
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("DELETE FROM sde_item_type");
             }
-        }
+            try (PreparedStatement ps = connection.prepareStatement(insertSql)) {
+                for (ItemType item : items) {
+                    ps.setInt(1, item.typeId());
+                    ps.setString(2, item.typeName());
+                    ps.setInt(3, item.officer() ? 1 : 0);
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+        });
     }
 
     public int count() {

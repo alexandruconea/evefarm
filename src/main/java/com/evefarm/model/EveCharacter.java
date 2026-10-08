@@ -6,9 +6,7 @@ import java.util.List;
 public record EveCharacter(
         long characterId,
         String characterName,
-        Long corporationId,
         List<String> scopes,
-        Instant addedAt,
-        boolean enabled
+        Instant addedAt
 ) {
 }

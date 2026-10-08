@@ -7,7 +7,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Types;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,14 +20,12 @@ public final class CharacterDao {
         this.database = database;
     }
 
-    public void upsert(long characterId, String characterName, Long corporationId, List<String> scopes,
-                        String ownerHash) {
+    public void upsert(long characterId, String characterName, List<String> scopes, String ownerHash) {
         String sql = """
-                INSERT INTO characters(character_id, character_name, corporation_id, scopes, added_at, enabled, owner_hash)
-                VALUES (?, ?, ?, ?, ?, 1, ?)
+                INSERT INTO characters(character_id, character_name, scopes, added_at, enabled, owner_hash)
+                VALUES (?, ?, ?, ?, 1, ?)
                 ON CONFLICT(character_id) DO UPDATE SET
                   character_name = excluded.character_name,
-                  corporation_id = excluded.corporation_id,
                   scopes = excluded.scopes,
                   owner_hash = excluded.owner_hash,
                   removed_at = NULL
@@ -37,14 +34,9 @@ public final class CharacterDao {
             try (PreparedStatement ps = database.connection().prepareStatement(sql)) {
                 ps.setLong(1, characterId);
                 ps.setString(2, characterName);
-                if (corporationId != null) {
-                    ps.setLong(3, corporationId);
-                } else {
-                    ps.setNull(3, Types.INTEGER);
-                }
-                ps.setString(4, String.join(" ", scopes));
-                ps.setString(5, Instant.now().toString());
-                ps.setString(6, ownerHash);
+                ps.setString(3, String.join(" ", scopes));
+                ps.setString(4, Instant.now().toString());
+                ps.setString(5, ownerHash);
                 ps.executeUpdate();
             } catch (SQLException e) {
                 throw new IllegalStateException("Failed to upsert character " + characterId, e);
@@ -74,37 +66,21 @@ public final class CharacterDao {
             "character_skill", "character_attributes");
 
     public void remove(long characterId) {
-        synchronized (database) {
-            Connection connection = database.connection();
-            try {
-                connection.setAutoCommit(false);
+        database.transaction("Failed to remove character " + characterId, connection -> {
+            try (PreparedStatement ps = connection.prepareStatement(
+                    "UPDATE characters SET removed_at = ? WHERE character_id = ?")) {
+                ps.setString(1, Instant.now().toString());
+                ps.setLong(2, characterId);
+                ps.executeUpdate();
+            }
+            for (String table : CURRENT_STATE_TABLES) {
                 try (PreparedStatement ps = connection.prepareStatement(
-                        "UPDATE characters SET removed_at = ? WHERE character_id = ?")) {
-                    ps.setString(1, Instant.now().toString());
-                    ps.setLong(2, characterId);
+                        "DELETE FROM " + table + " WHERE character_id = ?")) {
+                    ps.setLong(1, characterId);
                     ps.executeUpdate();
                 }
-                for (String table : CURRENT_STATE_TABLES) {
-                    try (PreparedStatement ps = connection.prepareStatement(
-                            "DELETE FROM " + table + " WHERE character_id = ?")) {
-                        ps.setLong(1, characterId);
-                        ps.executeUpdate();
-                    }
-                }
-                connection.commit();
-            } catch (SQLException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException ignored) {
-                }
-                throw new IllegalStateException("Failed to remove character " + characterId, e);
-            } finally {
-                try {
-                    connection.setAutoCommit(true);
-                } catch (SQLException ignored) {
-                }
             }
-        }
+        });
     }
 
     public List<EveCharacter> listAll() {
@@ -129,15 +105,11 @@ public final class CharacterDao {
         List<String> scopes = scopesRaw == null || scopesRaw.isBlank()
                 ? List.of()
                 : List.of(scopesRaw.split(" "));
-        long corpIdRaw = rs.getLong("corporation_id");
-        Long corporationId = rs.wasNull() ? null : corpIdRaw;
         return new EveCharacter(
                 rs.getLong("character_id"),
                 rs.getString("character_name"),
-                corporationId,
                 scopes,
-                Instant.parse(rs.getString("added_at")),
-                rs.getInt("enabled") == 1
+                Instant.parse(rs.getString("added_at"))
         );
     }
 }

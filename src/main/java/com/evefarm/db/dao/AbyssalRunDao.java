@@ -34,54 +34,38 @@ public final class AbyssalRunDao {
     }
 
     public long save(AbyssalRun run, List<AbyssalLoot> loot, AbyssalCargo cargo) {
-        synchronized (database) {
-            Connection connection = database.connection();
-            try {
-                connection.setAutoCommit(false);
-                long id = run.id() > 0 ? update(connection, run) : insert(connection, run);
-                try (PreparedStatement delete = connection.prepareStatement(
-                        "DELETE FROM abyssal_run_loot WHERE run_id = ?")) {
-                    delete.setLong(1, id);
-                    delete.executeUpdate();
+        return database.transactionResult("Failed to save the Abyssal run", connection -> {
+            long id = run.id() > 0 ? update(connection, run) : insert(connection, run);
+            try (PreparedStatement delete = connection.prepareStatement(
+                    "DELETE FROM abyssal_run_loot WHERE run_id = ?")) {
+                delete.setLong(1, id);
+                delete.executeUpdate();
+            }
+            try (PreparedStatement insert = connection.prepareStatement(
+                    "INSERT INTO abyssal_run_loot(run_id, type_id, type_name, quantity, unit_price) "
+                            + "VALUES (?, ?, ?, ?, ?)")) {
+                for (AbyssalLoot item : loot) {
+                    insert.setLong(1, id);
+                    insert.setInt(2, item.typeId());
+                    insert.setString(3, item.typeName());
+                    insert.setLong(4, item.quantity());
+                    JdbcUtil.setNullable(insert, 5, item.unitPrice());
+                    insert.addBatch();
                 }
-                try (PreparedStatement insert = connection.prepareStatement(
-                        "INSERT INTO abyssal_run_loot(run_id, type_id, type_name, quantity, unit_price) "
-                                + "VALUES (?, ?, ?, ?, ?)")) {
-                    for (AbyssalLoot item : loot) {
-                        insert.setLong(1, id);
-                        insert.setInt(2, item.typeId());
-                        insert.setString(3, item.typeName());
-                        insert.setLong(4, item.quantity());
-                        JdbcUtil.setNullable(insert, 5, item.unitPrice());
-                        insert.addBatch();
-                    }
-                    insert.executeBatch();
-                }
-                if (cargo != null) {
-                    try (PreparedStatement upsert = connection.prepareStatement(
-                            "INSERT OR REPLACE INTO abyssal_run_cargo(run_id, cargo_before, cargo_after) "
-                                    + "VALUES (?, ?, ?)")) {
-                        upsert.setLong(1, id);
-                        upsert.setString(2, cargo.before());
-                        upsert.setString(3, cargo.after());
-                        upsert.executeUpdate();
-                    }
-                }
-                connection.commit();
-                return id;
-            } catch (SQLException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException ignored) {
-                }
-                throw new IllegalStateException("Failed to save the Abyssal run", e);
-            } finally {
-                try {
-                    connection.setAutoCommit(true);
-                } catch (SQLException ignored) {
+                insert.executeBatch();
+            }
+            if (cargo != null) {
+                try (PreparedStatement upsert = connection.prepareStatement(
+                        "INSERT OR REPLACE INTO abyssal_run_cargo(run_id, cargo_before, cargo_after) "
+                                + "VALUES (?, ?, ?)")) {
+                    upsert.setLong(1, id);
+                    upsert.setString(2, cargo.before());
+                    upsert.setString(3, cargo.after());
+                    upsert.executeUpdate();
                 }
             }
-        }
+            return id;
+        });
     }
 
     private static long insert(Connection connection, AbyssalRun run) throws SQLException {

@@ -25,7 +25,7 @@ public record OfficerSighting(
         List<Member> members
 ) {
     public record Member(long characterId, String characterName, long encounterId, Instant firstSeenAt,
-                         Instant killedAt, double bounty, long damageDealt) {
+                         Instant killedAt, long damageDealt) {
         public boolean killed() {
             return killedAt != null;
         }

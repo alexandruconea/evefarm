@@ -383,7 +383,7 @@ public final class EveSettingsService {
 
     private static void addSettingsFile(Map<Long, SettingsFile> target, long id, Path file) throws IOException {
         target.put(id, new SettingsFile(id, file.toAbsolutePath().normalize(),
-                Files.getLastModifiedTime(file, LinkOption.NOFOLLOW_LINKS).toInstant(), Files.size(file)));
+                Files.getLastModifiedTime(file, LinkOption.NOFOLLOW_LINKS).toInstant()));
     }
 
     private static Optional<Path> realPath(Path path) {
@@ -527,7 +527,7 @@ public final class EveSettingsService {
     private record FileCopy(Path source, Path target) {
     }
 
-    public record SettingsFile(long id, Path path, Instant modifiedAt, long size) {
+    public record SettingsFile(long id, Path path, Instant modifiedAt) {
     }
 
     public record Profile(String name, Path directory, List<SettingsFile> characterFiles,

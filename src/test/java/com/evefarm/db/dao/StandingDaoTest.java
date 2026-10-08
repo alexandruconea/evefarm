@@ -30,7 +30,7 @@ class StandingDaoTest {
         database = new Database(":memory:");
         MigrationRunner.run(database);
         characters = new CharacterDao(database);
-        characters.upsert(PILOT, "Pilot", null, List.of(), "owner");
+        characters.upsert(PILOT, "Pilot", List.of(), "owner");
         standings = new StandingDao(database);
         try (Statement statement = database.connection().createStatement()) {
             statement.execute("INSERT INTO entity_name_cache(entity_id, name, category, cached_at) VALUES "
@@ -105,7 +105,7 @@ class StandingDaoTest {
         characters.remove(PILOT);
         assertEquals(List.of(), standings.listRows());
 
-        characters.upsert(PILOT, "Pilot", null, List.of(), "owner");
+        characters.upsert(PILOT, "Pilot", List.of(), "owner");
         assertEquals(List.of(), standings.listRows());
     }
 }

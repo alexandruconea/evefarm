@@ -35,8 +35,8 @@ class AbyssalRunDaoTest {
         database = new Database(":memory:");
         MigrationRunner.run(database);
         characters = new CharacterDao(database);
-        characters.upsert(PILOT, "Abyss Runner", null, List.of(), "owner-1");
-        characters.upsert(ALT, "Alt Runner", null, List.of(), "owner-2");
+        characters.upsert(PILOT, "Abyss Runner", List.of(), "owner-1");
+        characters.upsert(ALT, "Alt Runner", List.of(), "owner-2");
         runs = new AbyssalRunDao(database);
     }
 
@@ -126,7 +126,7 @@ class AbyssalRunDaoTest {
         characters.remove(ALT);
         assertEquals(List.of(), runs.listRuns());
 
-        characters.upsert(ALT, "Alt Runner", null, List.of(), "owner-2");
+        characters.upsert(ALT, "Alt Runner", List.of(), "owner-2");
         assertEquals(1, runs.listRuns().size());
     }
 

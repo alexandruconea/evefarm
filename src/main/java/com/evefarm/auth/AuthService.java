@@ -50,7 +50,7 @@ public final class AuthService {
             CharacterIdentity identity = jwtValidator.validate(tokenResponse.accessToken(), config.clientId());
             checkOwnerNotChanged(identity);
 
-            characterDao.upsert(identity.characterId(), identity.characterName(), null, identity.scopes(),
+            characterDao.upsert(identity.characterId(), identity.characterName(), identity.scopes(),
                     identity.ownerHash());
             Instant expiresAt = Instant.now().plusSeconds(tokenResponse.expiresIn());
             tokenDao.upsert(identity.characterId(), tokenResponse.refreshToken(), tokenResponse.accessToken(), expiresAt);

@@ -34,7 +34,7 @@ class AuthServiceTest {
         JwtValidator jwt = mock(JwtValidator.class);
         AuthService service = new AuthService(characters, tokens, sso, jwt);
 
-        TokenRecord expired = new TokenRecord(characterId, "old-refresh", "old-access", Instant.EPOCH);
+        TokenRecord expired = new TokenRecord("old-refresh", "old-access", Instant.EPOCH);
         AtomicReference<TokenRecord> stored = new AtomicReference<>(expired);
         AtomicInteger reads = new AtomicInteger();
         CountDownLatch initialReads = new CountDownLatch(2);
@@ -50,7 +50,7 @@ class AuthServiceTest {
         when(sso.refreshAccessToken(any(), eq("old-refresh")))
                 .thenReturn(new TokenResponse("new-access", "new-refresh", 3600));
         doAnswer(invocation -> {
-            stored.set(new TokenRecord(characterId, invocation.getArgument(1), invocation.getArgument(2),
+            stored.set(new TokenRecord(invocation.getArgument(1), invocation.getArgument(2),
                     invocation.getArgument(3)));
             return null;
         }).when(tokens).upsert(eq(characterId), any(), any(), any());
@@ -73,7 +73,7 @@ class AuthServiceTest {
         EveSsoClient sso = mock(EveSsoClient.class);
         AuthService service = new AuthService(mock(CharacterDao.class), tokens, sso, mock(JwtValidator.class));
         when(tokens.find(anyLong())).thenReturn(Optional.of(
-                new TokenRecord(42L, "refresh", "access", Instant.now().plusSeconds(3600))));
+                new TokenRecord("refresh", "access", Instant.now().plusSeconds(3600))));
 
         assertEquals("access", service.getValidAccessToken(42L));
 

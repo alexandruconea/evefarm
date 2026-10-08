@@ -25,8 +25,8 @@ class IndustryJobDaoTest {
         Database database = new Database(":memory:");
         MigrationRunner.run(database);
         CharacterDao characters = new CharacterDao(database);
-        characters.upsert(PILOT, "Industrialist", null, List.of(), "owner-1");
-        characters.upsert(ALT, "Alt", null, List.of(), "owner-2");
+        characters.upsert(PILOT, "Industrialist", List.of(), "owner-1");
+        characters.upsert(ALT, "Alt", List.of(), "owner-2");
         jobs = new IndustryJobDao(database);
     }
 

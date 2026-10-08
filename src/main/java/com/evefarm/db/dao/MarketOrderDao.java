@@ -24,65 +24,49 @@ public final class MarketOrderDao {
     }
 
     public void saveForCharacter(long characterId, List<MarketOrderEntry> entries) {
-        synchronized (database) {
-            Connection connection = database.connection();
-            String closeSql = "UPDATE market_order_current SET state = ? WHERE character_id = ? AND state = ?";
-            String insertSql = """
-                    INSERT INTO market_order_current(
-                      character_id, order_id, type_id, is_buy_order, price, volume_remain, volume_total,
-                      escrow, location_id, issued, duration, state, range, min_volume, fetched_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(character_id, order_id) DO UPDATE SET
-                      type_id = excluded.type_id, is_buy_order = excluded.is_buy_order, price = excluded.price,
-                      volume_remain = excluded.volume_remain, volume_total = excluded.volume_total,
-                      escrow = excluded.escrow, location_id = excluded.location_id, issued = excluded.issued,
-                      duration = excluded.duration, state = excluded.state, range = excluded.range,
-                      min_volume = excluded.min_volume, fetched_at = excluded.fetched_at
-                    """;
-            String now = Instant.now().toString();
-            try {
-                connection.setAutoCommit(false);
-                try (PreparedStatement close = connection.prepareStatement(closeSql)) {
-                    close.setString(1, MarketOrderRow.CLOSED);
-                    close.setLong(2, characterId);
-                    close.setString(3, MarketOrderRow.ACTIVE);
-                    close.executeUpdate();
-                }
-                try (PreparedStatement ps = connection.prepareStatement(insertSql)) {
-                    for (MarketOrderEntry entry : entries) {
-                        ps.setLong(1, characterId);
-                        ps.setLong(2, entry.orderId());
-                        ps.setInt(3, entry.typeId());
-                        ps.setInt(4, entry.isBuyOrder() ? 1 : 0);
-                        ps.setDouble(5, entry.price());
-                        ps.setLong(6, entry.volumeRemain());
-                        ps.setLong(7, entry.volumeTotal());
-                        JdbcUtil.setNullable(ps, 8, entry.escrow());
-                        ps.setLong(9, entry.locationId());
-                        ps.setString(10, entry.issued());
-                        JdbcUtil.setNullable(ps, 11, entry.duration());
-                        ps.setString(12, entry.state());
-                        ps.setString(13, entry.range());
-                        JdbcUtil.setNullable(ps, 14, entry.minVolume());
-                        ps.setString(15, now);
-                        ps.addBatch();
-                    }
-                    ps.executeBatch();
-                }
-                connection.commit();
-            } catch (SQLException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException ignored) {
-                }
-                throw new IllegalStateException("Failed to save market orders for character " + characterId, e);
-            } finally {
-                try {
-                    connection.setAutoCommit(true);
-                } catch (SQLException ignored) {
-                }
+        String closeSql = "UPDATE market_order_current SET state = ? WHERE character_id = ? AND state = ?";
+        String insertSql = """
+                INSERT INTO market_order_current(
+                  character_id, order_id, type_id, is_buy_order, price, volume_remain, volume_total,
+                  escrow, location_id, issued, duration, state, range, min_volume, fetched_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(character_id, order_id) DO UPDATE SET
+                  type_id = excluded.type_id, is_buy_order = excluded.is_buy_order, price = excluded.price,
+                  volume_remain = excluded.volume_remain, volume_total = excluded.volume_total,
+                  escrow = excluded.escrow, location_id = excluded.location_id, issued = excluded.issued,
+                  duration = excluded.duration, state = excluded.state, range = excluded.range,
+                  min_volume = excluded.min_volume, fetched_at = excluded.fetched_at
+                """;
+        String now = Instant.now().toString();
+        database.transaction("Failed to save market orders for character " + characterId, connection -> {
+            try (PreparedStatement close = connection.prepareStatement(closeSql)) {
+                close.setString(1, MarketOrderRow.CLOSED);
+                close.setLong(2, characterId);
+                close.setString(3, MarketOrderRow.ACTIVE);
+                close.executeUpdate();
             }
-        }
+            try (PreparedStatement ps = connection.prepareStatement(insertSql)) {
+                for (MarketOrderEntry entry : entries) {
+                    ps.setLong(1, characterId);
+                    ps.setLong(2, entry.orderId());
+                    ps.setInt(3, entry.typeId());
+                    ps.setInt(4, entry.isBuyOrder() ? 1 : 0);
+                    ps.setDouble(5, entry.price());
+                    ps.setLong(6, entry.volumeRemain());
+                    ps.setLong(7, entry.volumeTotal());
+                    JdbcUtil.setNullable(ps, 8, entry.escrow());
+                    ps.setLong(9, entry.locationId());
+                    ps.setString(10, entry.issued());
+                    JdbcUtil.setNullable(ps, 11, entry.duration());
+                    ps.setString(12, entry.state());
+                    ps.setString(13, entry.range());
+                    JdbcUtil.setNullable(ps, 14, entry.minVolume());
+                    ps.setString(15, now);
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+        });
     }
 
     public List<MarketOrderRow> listRows(Set<Long> characterIdFilter, boolean includeClosed) {

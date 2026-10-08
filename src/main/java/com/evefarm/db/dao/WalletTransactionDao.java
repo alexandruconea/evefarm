@@ -23,57 +23,41 @@ public final class WalletTransactionDao {
     }
 
     public void saveForCharacter(long characterId, List<TransactionEntry> entries) {
-        synchronized (database) {
-            Connection connection = database.connection();
-            String insertSql = """
-                    INSERT INTO wallet_transaction(
-                      character_id, transaction_id, date, type_id, quantity, price, client_id,
-                      location_id, is_buy, is_personal, journal_ref_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(character_id, transaction_id) DO UPDATE SET
-                      date = excluded.date,
-                      type_id = excluded.type_id,
-                      quantity = excluded.quantity,
-                      price = excluded.price,
-                      client_id = excluded.client_id,
-                      location_id = excluded.location_id,
-                      is_buy = excluded.is_buy,
-                      is_personal = excluded.is_personal,
-                      journal_ref_id = excluded.journal_ref_id
-                    """;
-            try {
-                connection.setAutoCommit(false);
-                try (PreparedStatement ps = connection.prepareStatement(insertSql)) {
-                    for (TransactionEntry entry : entries) {
-                        ps.setLong(1, characterId);
-                        ps.setLong(2, entry.transactionId());
-                        ps.setString(3, entry.date());
-                        ps.setInt(4, entry.typeId());
-                        ps.setLong(5, entry.quantity());
-                        ps.setDouble(6, entry.price());
-                        JdbcUtil.setNullable(ps, 7, entry.clientId());
-                        ps.setLong(8, entry.locationId());
-                        ps.setInt(9, entry.isBuy() ? 1 : 0);
-                        ps.setInt(10, entry.isPersonal() ? 1 : 0);
-                        ps.setLong(11, entry.journalRefId());
-                        ps.addBatch();
-                    }
-                    ps.executeBatch();
+        String insertSql = """
+                INSERT INTO wallet_transaction(
+                  character_id, transaction_id, date, type_id, quantity, price, client_id,
+                  location_id, is_buy, is_personal, journal_ref_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(character_id, transaction_id) DO UPDATE SET
+                  date = excluded.date,
+                  type_id = excluded.type_id,
+                  quantity = excluded.quantity,
+                  price = excluded.price,
+                  client_id = excluded.client_id,
+                  location_id = excluded.location_id,
+                  is_buy = excluded.is_buy,
+                  is_personal = excluded.is_personal,
+                  journal_ref_id = excluded.journal_ref_id
+                """;
+        database.transaction("Failed to save wallet transactions for character " + characterId, connection -> {
+            try (PreparedStatement ps = connection.prepareStatement(insertSql)) {
+                for (TransactionEntry entry : entries) {
+                    ps.setLong(1, characterId);
+                    ps.setLong(2, entry.transactionId());
+                    ps.setString(3, entry.date());
+                    ps.setInt(4, entry.typeId());
+                    ps.setLong(5, entry.quantity());
+                    ps.setDouble(6, entry.price());
+                    JdbcUtil.setNullable(ps, 7, entry.clientId());
+                    ps.setLong(8, entry.locationId());
+                    ps.setInt(9, entry.isBuy() ? 1 : 0);
+                    ps.setInt(10, entry.isPersonal() ? 1 : 0);
+                    ps.setLong(11, entry.journalRefId());
+                    ps.addBatch();
                 }
-                connection.commit();
-            } catch (SQLException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException ignored) {
-                }
-                throw new IllegalStateException("Failed to save wallet transactions for character " + characterId, e);
-            } finally {
-                try {
-                    connection.setAutoCommit(true);
-                } catch (SQLException ignored) {
-                }
+                ps.executeBatch();
             }
-        }
+        });
     }
 
     public List<TransactionRow> listRows(Set<Long> characterIdFilter) {

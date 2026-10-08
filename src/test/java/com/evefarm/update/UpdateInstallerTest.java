@@ -200,7 +200,7 @@ class UpdateInstallerTest {
     void theSwapScriptDoesNotRunInsideTheFolderItReplaces() throws Exception {
         Path install = installedOldVersion();
         Path script = temp.resolve("work").resolve("apply-update.ps1");
-        UpdateInstaller.PreparedUpdate update = new UpdateInstaller.PreparedUpdate(VERSION, install,
+        UpdateInstaller.PreparedUpdate update = new UpdateInstaller.PreparedUpdate(install,
                 install.resolveSibling("EVEFarm.update"));
 
         ProcessBuilder swap = UpdateInstaller.swapProcess(script, script.getParent(), update,

@@ -5,7 +5,6 @@ import java.util.List;
 
 public record EncounterSummary(
         long encounterId,
-        long characterId,
         String characterName,
         Instant startedAt,
         Instant endedAt,

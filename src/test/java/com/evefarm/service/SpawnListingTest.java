@@ -37,8 +37,8 @@ class SpawnListingTest {
         Database database = new Database(":memory:");
         MigrationRunner.run(database);
         characters = new CharacterDao(database);
-        characters.upsert(PILOT, "Pilot", null, List.of(), "owner-1");
-        characters.upsert(ALT, "Alt", null, List.of(), "owner-2");
+        characters.upsert(PILOT, "Pilot", List.of(), "owner-1");
+        characters.upsert(ALT, "Alt", List.of(), "owner-2");
         encounters = new EncounterDao(database);
         NpcCatalogService catalog = mock(NpcCatalogService.class);
         when(catalog.catalog()).thenReturn(NpcCatalog.of(List.of(

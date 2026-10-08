@@ -28,7 +28,7 @@ class MiningLedgerDaoTest {
         database = new Database(":memory:");
         MigrationRunner.run(database);
         characters = new CharacterDao(database);
-        characters.upsert(MINER, "Miner", null, List.of(), "owner");
+        characters.upsert(MINER, "Miner", List.of(), "owner");
         ledger = new MiningLedgerDao(database);
         try (Statement statement = database.connection().createStatement()) {
             statement.execute("INSERT INTO type_cache(type_id, name, group_id, group_name, category_id, category_name, "
@@ -70,7 +70,7 @@ class MiningLedgerDaoTest {
         characters.remove(MINER);
         assertEquals(List.of(), ledger.listRows(null));
 
-        characters.upsert(MINER, "Miner", null, List.of(), "owner");
+        characters.upsert(MINER, "Miner", List.of(), "owner");
         assertEquals(1, ledger.listRows(null).size());
     }
 }

@@ -41,8 +41,8 @@ class AbyssTrackerServiceTest {
     private static final int CAPSULE = 670;
     private static final int RETRIBUTION = 11393;
     private static final Instant START = Instant.parse("2026-09-28T18:00:00Z");
-    private static final EveCharacter CHARACTER = new EveCharacter(PILOT, "Abyss Runner", null,
-            List.of(OAuthConfig.LOCATION_SCOPE, OAuthConfig.SHIP_SCOPE), START, true);
+    private static final EveCharacter CHARACTER = new EveCharacter(PILOT, "Abyss Runner",
+            List.of(OAuthConfig.LOCATION_SCOPE, OAuthConfig.SHIP_SCOPE), START);
 
     private final Deque<Object> locations = new ArrayDeque<>();
     private final Deque<Integer> ships = new ArrayDeque<>();
@@ -55,7 +55,7 @@ class AbyssTrackerServiceTest {
     void setUp() {
         Database database = new Database(":memory:");
         MigrationRunner.run(database);
-        new CharacterDao(database).upsert(PILOT, "Abyss Runner", null, CHARACTER.scopes(), "owner");
+        new CharacterDao(database).upsert(PILOT, "Abyss Runner", CHARACTER.scopes(), "owner");
         runs = new AbyssalRunDao(database);
         AbyssTrackerService.LocationSource source = new AbyssTrackerService.LocationSource() {
             @Override
@@ -174,8 +174,8 @@ class AbyssTrackerServiceTest {
 
     @Test
     void aCharacterWithoutTheLocationScopesCannotBeTracked() {
-        EveCharacter oldLogin = new EveCharacter(PILOT, "Abyss Runner", null, List.of("esi-assets.read_assets.v1"),
-                START, true);
+        EveCharacter oldLogin = new EveCharacter(PILOT, "Abyss Runner", List.of("esi-assets.read_assets.v1"),
+                START);
 
         assertFalse(AbyssTrackerService.canTrack(oldLogin));
         assertThrows(IllegalStateException.class,

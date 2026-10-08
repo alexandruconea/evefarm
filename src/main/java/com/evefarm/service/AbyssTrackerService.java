@@ -39,10 +39,10 @@ public final class AbyssTrackerService {
 
     public enum EventType { STARTED, ENTERED_ABYSS, LEFT_ABYSS, STOPPED, PROBLEM }
 
-    public record Status(Phase phase, Long characterId, String characterName, AbyssTier tier, AbyssWeather weather,
-                         AbyssFleet fleet, Instant enteredAt, String shipName, int runsSaved, String message) {
+    public record Status(Phase phase, Long characterId, String characterName, AbyssFleet fleet, Instant enteredAt,
+                         int runsSaved, String message) {
         static Status stopped(String message) {
-            return new Status(Phase.STOPPED, null, null, null, null, null, null, null, 0, message);
+            return new Status(Phase.STOPPED, null, null, null, null, 0, message);
         }
     }
 
@@ -93,8 +93,7 @@ public final class AbyssTrackerService {
         }
 
         Status status() {
-            return new Status(phase, characterId, characterName, tier, weather, fleet, enteredAt, shipName, runsSaved,
-                    message);
+            return new Status(phase, characterId, characterName, fleet, enteredAt, runsSaved, message);
         }
     }
 
@@ -206,8 +205,8 @@ public final class AbyssTrackerService {
                 return;
             }
             cancelTask();
-            lastStatus = new Status(Phase.STOPPED, session.characterId, session.characterName, session.tier,
-                    session.weather, session.fleet, null, null, session.runsSaved, message);
+            lastStatus = new Status(Phase.STOPPED, session.characterId, session.characterName, session.fleet, null,
+                    session.runsSaved, message);
             session = null;
             status = lastStatus;
         }

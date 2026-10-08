@@ -24,9 +24,9 @@ public final class SkillPointFilterDao {
                 ps.setLong(1, characterId);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (!rs.next()) {
-                        return new SkillPointFilter(characterId, true, 0);
+                        return new SkillPointFilter(true, 0);
                     }
-                    return new SkillPointFilter(characterId, rs.getInt("enabled") != 0, rs.getLong("minimum_sp"));
+                    return new SkillPointFilter(rs.getInt("enabled") != 0, rs.getLong("minimum_sp"));
                 }
             } catch (SQLException e) {
                 throw new IllegalStateException("Failed to read skill point filter for character " + characterId, e);

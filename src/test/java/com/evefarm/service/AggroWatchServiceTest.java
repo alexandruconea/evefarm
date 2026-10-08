@@ -52,7 +52,7 @@ class AggroWatchServiceTest {
         append(nozeu, OWN_SHOT + HIT);
         watch.tick();
 
-        assertEquals(List.of(new AggroWatchService.Alert(NOZEU, "Nozeu", "Lucifer Dramiel", START)), alerts);
+        assertEquals(List.of(new AggroWatchService.Alert("Nozeu", "Lucifer Dramiel", START)), alerts);
     }
 
     @Test
@@ -98,7 +98,7 @@ class AggroWatchServiceTest {
         log("20260928_111500_" + STRANGER, header("Someone Else") + HIT);
         tickAt(6);
 
-        assertEquals(List.of(new AggroWatchService.Alert(NOZEU, "Nozeu", "Lucifer Echo", START.plusSeconds(6))),
+        assertEquals(List.of(new AggroWatchService.Alert("Nozeu", "Lucifer Echo", START.plusSeconds(6))),
                 alerts);
     }
 

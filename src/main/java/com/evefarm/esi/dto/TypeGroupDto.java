@@ -7,7 +7,6 @@ import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record TypeGroupDto(
-        @JsonProperty("group_id") int groupId,
         @JsonProperty("name") String name,
         @JsonProperty("published") Boolean published,
         @JsonProperty("types") List<Integer> types

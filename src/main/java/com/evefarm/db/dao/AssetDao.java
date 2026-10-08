@@ -24,55 +24,39 @@ public final class AssetDao {
     }
 
     public void replaceForCharacter(long characterId, List<AssetEntry> entries) {
-        synchronized (database) {
-            Connection connection = database.connection();
-            String deleteSql = "DELETE FROM asset_current WHERE character_id = ?";
-            String insertSql = """
-                    INSERT INTO asset_current(
-                      character_id, item_id, type_id, quantity, location_id, location_flag,
-                      is_singleton, name, container_name, unit_price, total_value, fetched_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """;
-            String now = Instant.now().toString();
-            try {
-                connection.setAutoCommit(false);
-                try (PreparedStatement del = connection.prepareStatement(deleteSql)) {
-                    del.setLong(1, characterId);
-                    del.executeUpdate();
-                }
-                try (PreparedStatement ps = connection.prepareStatement(insertSql)) {
-                    for (AssetEntry entry : entries) {
-                        ps.setLong(1, characterId);
-                        ps.setLong(2, entry.itemId());
-                        ps.setInt(3, entry.typeId());
-                        ps.setLong(4, entry.quantity());
-                        JdbcUtil.setNullable(ps, 5, entry.locationId());
-                        ps.setString(6, entry.locationFlag());
-                        ps.setInt(7, entry.isSingleton() ? 1 : 0);
-                        ps.setString(8, entry.name());
-                        ps.setString(9, entry.containerName());
-                        ps.setDouble(10, entry.unitPrice());
-                        ps.setDouble(11, entry.totalValue());
-                        ps.setString(12, now);
-                        ps.addBatch();
-                    }
-                    ps.executeBatch();
-                }
-                archiveMonth(connection, characterId, now.substring(0, 7));
-                connection.commit();
-            } catch (SQLException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException ignored) {
-                }
-                throw new IllegalStateException("Failed to replace assets for character " + characterId, e);
-            } finally {
-                try {
-                    connection.setAutoCommit(true);
-                } catch (SQLException ignored) {
-                }
+        String deleteSql = "DELETE FROM asset_current WHERE character_id = ?";
+        String insertSql = """
+                INSERT INTO asset_current(
+                  character_id, item_id, type_id, quantity, location_id, location_flag,
+                  is_singleton, name, container_name, unit_price, total_value, fetched_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """;
+        String now = Instant.now().toString();
+        database.transaction("Failed to replace assets for character " + characterId, connection -> {
+            try (PreparedStatement del = connection.prepareStatement(deleteSql)) {
+                del.setLong(1, characterId);
+                del.executeUpdate();
             }
-        }
+            try (PreparedStatement ps = connection.prepareStatement(insertSql)) {
+                for (AssetEntry entry : entries) {
+                    ps.setLong(1, characterId);
+                    ps.setLong(2, entry.itemId());
+                    ps.setInt(3, entry.typeId());
+                    ps.setLong(4, entry.quantity());
+                    JdbcUtil.setNullable(ps, 5, entry.locationId());
+                    ps.setString(6, entry.locationFlag());
+                    ps.setInt(7, entry.isSingleton() ? 1 : 0);
+                    ps.setString(8, entry.name());
+                    ps.setString(9, entry.containerName());
+                    ps.setDouble(10, entry.unitPrice());
+                    ps.setDouble(11, entry.totalValue());
+                    ps.setString(12, now);
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+            archiveMonth(connection, characterId, now.substring(0, 7));
+        });
     }
 
     private static void archiveMonth(Connection connection, long characterId, String month) throws SQLException {

@@ -49,7 +49,7 @@ class LocationNameCacheServiceTest {
 
     @Test
     void stationsUseTheStationEndpoint() {
-        when(universe.getStation(60003760L)).thenReturn(new StationDto(60003760L, "Jita IV - Moon 4", 30000142L));
+        when(universe.getStation(60003760L)).thenReturn(new StationDto("Jita IV - Moon 4", 30000142L));
 
         assertEquals("Jita IV - Moon 4", service.resolveLocation(60003760L, "token"));
 

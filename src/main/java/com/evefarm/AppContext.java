@@ -225,9 +225,12 @@ public final class AppContext {
         this.lpOfferPricingService = new LpOfferPricingService(loyaltyApi, fuzzworkApi, typeNameCacheService,
                 priceService);
         this.itemIconService = new ItemIconService();
+        SkillCatalogApi skillCatalogApi = new SkillCatalogApi(esiHttpClient);
+        this.industryCatalogService = new IndustryCatalogService(fuzzworkApi, skillCatalogApi,
+                new IndustryCatalogDao(database), settingsDao);
         this.trackerSnapshotService = new TrackerSnapshotService(authService, walletApi, clonesApi, marketsApi,
                 contractsApi, industryApi, skillsApi, loyaltyApi, priceService, lpOfferPricingService, assetDao,
-                snapshotDao, skillPointFilterDao, settingsDao);
+                snapshotDao, skillPointFilterDao, settingsDao, industryCatalogService);
         this.journalService = new JournalService(authService, walletApi, entityNameCacheService, walletJournalDao);
         this.marketOrderService = new MarketOrderService(authService, marketsApi, typeNameCacheService,
                 locationNameCacheService, marketOrderDao, priceService, walletJournalDao);
@@ -243,13 +246,10 @@ public final class AppContext {
         this.standingService = new StandingService(authService, characterDao, new StandingsApi(esiHttpClient),
                 entityNameCacheService, new StandingDao(database));
         AcceleratorDao acceleratorDao = new AcceleratorDao(database);
-        SkillCatalogApi skillCatalogApi = new SkillCatalogApi(esiHttpClient);
         this.skillCatalogService = new SkillCatalogService(skillCatalogApi,
                 new SkillCatalogDao(database), new ImplantBonusDao(database), acceleratorDao, settingsDao);
         this.skillService = new SkillService(authService, characterDao, skillsApi, clonesApi, skillCatalogService,
                 new CharacterSkillDao(database), new SkillPlanDao(database), acceleratorDao);
-        this.industryCatalogService = new IndustryCatalogService(fuzzworkApi, skillCatalogApi,
-                new IndustryCatalogDao(database), settingsDao);
         this.industryService = new IndustryService(industryCatalogService,
                 new IndustryMarketService(new IndustryIndexApi(esiHttpClient), marketsApi), priceService, skillService);
         this.valueSummaryService = new ValueSummaryService(snapshotDao, assetDao, characterService);

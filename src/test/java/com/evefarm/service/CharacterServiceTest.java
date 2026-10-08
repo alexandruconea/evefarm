@@ -77,6 +77,6 @@ class CharacterServiceTest {
     }
 
     private static EveCharacter character(long id, String name) {
-        return new EveCharacter(id, name, null, List.of(), Instant.EPOCH, true);
+        return new EveCharacter(id, name, List.of(), Instant.EPOCH);
     }
 }

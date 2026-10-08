@@ -141,7 +141,7 @@ class IndustryCatalogServiceTest {
 
     @Test
     void aDecryptorIsReadFromItsDogmaAttributes() {
-        TypeDetailsDto type = new TypeDetailsDto(34201, "Accelerant Decryptor", "", 1304, true, List.of(
+        TypeDetailsDto type = new TypeDetailsDto(34201, "Accelerant Decryptor", "", true, List.of(
                 new TypeDetailsDto.DogmaAttribute(1112, 1.2), new TypeDetailsDto.DogmaAttribute(1113, 2),
                 new TypeDetailsDto.DogmaAttribute(1114, 10), new TypeDetailsDto.DogmaAttribute(1124, 1)));
 

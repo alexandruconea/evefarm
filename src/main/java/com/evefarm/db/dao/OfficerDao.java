@@ -112,7 +112,7 @@ public final class OfficerDao {
 
     public List<OfficerDrop> listDrops(long characterId, String officerName, Instant firstSeenAt) {
         String sql = """
-                SELECT id, type_id, type_name, quantity, unit_price, added_at FROM officer_drop
+                SELECT id, type_name, quantity, unit_price FROM officer_drop
                 WHERE character_id = ? AND officer_name = ? AND first_seen_at = ?
                 ORDER BY quantity * unit_price DESC, type_name
                 """;
@@ -125,9 +125,8 @@ public final class OfficerDao {
                 ps.setString(3, firstSeenAt.toString());
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
-                        result.add(new OfficerDrop(rs.getLong("id"), rs.getInt("type_id"), rs.getString("type_name"),
-                                rs.getInt("quantity"), rs.getDouble("unit_price"),
-                                Instant.parse(rs.getString("added_at"))));
+                        result.add(new OfficerDrop(rs.getLong("id"), rs.getString("type_name"),
+                                rs.getInt("quantity"), rs.getDouble("unit_price")));
                     }
                 }
             } catch (SQLException e) {

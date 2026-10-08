@@ -77,7 +77,7 @@ class ContractServiceTest {
     void theItemsOfEveryContractAreSavedSoTheyCanBeSeenLaterWithoutEve() {
         Database database = new Database(":memory:");
         MigrationRunner.run(database);
-        new CharacterDao(database).upsert(7L, "Trader", null, List.of(), "owner");
+        new CharacterDao(database).upsert(7L, "Trader", List.of(), "owner");
         ContractDao contracts = new ContractDao(database);
         ContractsApi api = mock(ContractsApi.class);
         when(api.listContracts(7L, "token")).thenReturn(List.of(contract(99L), contract(100L), contract(101L)));

@@ -4,7 +4,6 @@ import com.evefarm.db.Database;
 import com.evefarm.model.SkillPlan;
 import com.evefarm.model.SkillPlanEntry;
 
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -72,31 +71,15 @@ public final class SkillPlanDao {
     }
 
     public void delete(long planId) {
-        synchronized (database) {
-            Connection connection = database.connection();
-            try {
-                connection.setAutoCommit(false);
-                for (String sql : List.of("DELETE FROM skill_plan_entry WHERE plan_id = ?",
-                        "DELETE FROM skill_plan WHERE plan_id = ?")) {
-                    try (PreparedStatement ps = connection.prepareStatement(sql)) {
-                        ps.setLong(1, planId);
-                        ps.executeUpdate();
-                    }
-                }
-                connection.commit();
-            } catch (SQLException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException ignored) {
-                }
-                throw new IllegalStateException("Failed to delete skill plan " + planId, e);
-            } finally {
-                try {
-                    connection.setAutoCommit(true);
-                } catch (SQLException ignored) {
+        database.transaction("Failed to delete skill plan " + planId, connection -> {
+            for (String sql : List.of("DELETE FROM skill_plan_entry WHERE plan_id = ?",
+                    "DELETE FROM skill_plan WHERE plan_id = ?")) {
+                try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                    ps.setLong(1, planId);
+                    ps.executeUpdate();
                 }
             }
-        }
+        });
     }
 
     public List<SkillPlanEntry> entries(long planId) {
@@ -120,45 +103,29 @@ public final class SkillPlanDao {
     }
 
     public void replaceEntries(long planId, List<SkillPlanEntry> entries) {
-        synchronized (database) {
-            Connection connection = database.connection();
-            try {
-                connection.setAutoCommit(false);
-                try (PreparedStatement delete = connection.prepareStatement(
-                        "DELETE FROM skill_plan_entry WHERE plan_id = ?")) {
-                    delete.setLong(1, planId);
-                    delete.executeUpdate();
-                }
-                try (PreparedStatement insert = connection.prepareStatement("""
-                        INSERT INTO skill_plan_entry(plan_id, position, skill_id, level, planned, notes)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                        """)) {
-                    for (int i = 0; i < entries.size(); i++) {
-                        SkillPlanEntry entry = entries.get(i);
-                        insert.setLong(1, planId);
-                        insert.setInt(2, i);
-                        insert.setInt(3, entry.skillId());
-                        insert.setInt(4, entry.level());
-                        insert.setInt(5, entry.planned() ? 1 : 0);
-                        insert.setString(6, entry.notes());
-                        insert.addBatch();
-                    }
-                    insert.executeBatch();
-                }
-                connection.commit();
-            } catch (SQLException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException ignored) {
-                }
-                throw new IllegalStateException("Failed to save skill plan " + planId, e);
-            } finally {
-                try {
-                    connection.setAutoCommit(true);
-                } catch (SQLException ignored) {
-                }
+        database.transaction("Failed to save skill plan " + planId, connection -> {
+            try (PreparedStatement delete = connection.prepareStatement(
+                    "DELETE FROM skill_plan_entry WHERE plan_id = ?")) {
+                delete.setLong(1, planId);
+                delete.executeUpdate();
             }
-        }
+            try (PreparedStatement insert = connection.prepareStatement("""
+                    INSERT INTO skill_plan_entry(plan_id, position, skill_id, level, planned, notes)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """)) {
+                for (int i = 0; i < entries.size(); i++) {
+                    SkillPlanEntry entry = entries.get(i);
+                    insert.setLong(1, planId);
+                    insert.setInt(2, i);
+                    insert.setInt(3, entry.skillId());
+                    insert.setInt(4, entry.level());
+                    insert.setInt(5, entry.planned() ? 1 : 0);
+                    insert.setString(6, entry.notes());
+                    insert.addBatch();
+                }
+                insert.executeBatch();
+            }
+        });
     }
 
     private static IllegalStateException nameError(String name, SQLException e) {

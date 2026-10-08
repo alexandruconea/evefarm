@@ -39,7 +39,7 @@ public final class AggroWatchService {
     private static final int MAX_READ_BYTES = 1024 * 1024;
     static final Duration QUIET_TIME = Duration.ofSeconds(15);
 
-    public record Alert(long characterId, String characterName, String attacker, Instant at) {
+    public record Alert(String characterName, String attacker, Instant at) {
     }
 
     public interface Listener {
@@ -141,7 +141,7 @@ public final class AggroWatchService {
                     AggroLineParser.attacker(line).ifPresent(attacker -> {
                         Instant previous = lastHostile.put(log.characterId, now);
                         if (previous == null || Duration.between(previous, now).compareTo(QUIET_TIME) > 0) {
-                            alerts.add(new Alert(log.characterId, nameOf(log.characterId), attacker, now));
+                            alerts.add(new Alert(nameOf(log.characterId), attacker, now));
                         }
                     });
                 }

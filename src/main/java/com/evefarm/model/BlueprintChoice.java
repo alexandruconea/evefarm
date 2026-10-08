@@ -1,7 +1,6 @@
 package com.evefarm.model;
 
-public record BlueprintChoice(int blueprintId, int productId, String productName, String groupName,
-                              String categoryName) {
+public record BlueprintChoice(int blueprintId, String productName, String groupName) {
 
     @Override
     public String toString() {

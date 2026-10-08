@@ -22,7 +22,7 @@ class WalletJournalDaoTest {
     void setUp() {
         Database database = new Database(":memory:");
         MigrationRunner.run(database);
-        new CharacterDao(database).upsert(CHARACTER_ID, "Malpais Legate", null, List.of(), null);
+        new CharacterDao(database).upsert(CHARACTER_ID, "Malpais Legate", List.of(), null);
         dao = new WalletJournalDao(database);
     }
 

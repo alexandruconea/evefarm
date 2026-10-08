@@ -27,45 +27,29 @@ public final class LoyaltyPointDao {
     }
 
     public void replaceForCharacter(long characterId, List<LoyaltyPointEntry> entries) {
-        synchronized (database) {
-            Connection connection = database.connection();
-            String deleteSql = "DELETE FROM character_loyalty_points WHERE character_id = ?";
-            String insertSql = """
-                    INSERT INTO character_loyalty_points(character_id, corporation_id, loyalty_points, fetched_at)
-                    VALUES (?, ?, ?, ?)
-                    """;
-            String now = Instant.now().toString();
-            try {
-                connection.setAutoCommit(false);
-                try (PreparedStatement del = connection.prepareStatement(deleteSql)) {
-                    del.setLong(1, characterId);
-                    del.executeUpdate();
-                }
-                try (PreparedStatement ps = connection.prepareStatement(insertSql)) {
-                    for (LoyaltyPointEntry entry : entries) {
-                        ps.setLong(1, characterId);
-                        ps.setLong(2, entry.corporationId());
-                        ps.setLong(3, entry.loyaltyPoints());
-                        ps.setString(4, now);
-                        ps.addBatch();
-                    }
-                    ps.executeBatch();
-                }
-                recordChanges(connection, characterId, entries, now);
-                connection.commit();
-            } catch (SQLException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException ignored) {
-                }
-                throw new IllegalStateException("Failed to replace loyalty points for character " + characterId, e);
-            } finally {
-                try {
-                    connection.setAutoCommit(true);
-                } catch (SQLException ignored) {
-                }
+        String deleteSql = "DELETE FROM character_loyalty_points WHERE character_id = ?";
+        String insertSql = """
+                INSERT INTO character_loyalty_points(character_id, corporation_id, loyalty_points, fetched_at)
+                VALUES (?, ?, ?, ?)
+                """;
+        String now = Instant.now().toString();
+        database.transaction("Failed to replace loyalty points for character " + characterId, connection -> {
+            try (PreparedStatement del = connection.prepareStatement(deleteSql)) {
+                del.setLong(1, characterId);
+                del.executeUpdate();
             }
-        }
+            try (PreparedStatement ps = connection.prepareStatement(insertSql)) {
+                for (LoyaltyPointEntry entry : entries) {
+                    ps.setLong(1, characterId);
+                    ps.setLong(2, entry.corporationId());
+                    ps.setLong(3, entry.loyaltyPoints());
+                    ps.setString(4, now);
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+            recordChanges(connection, characterId, entries, now);
+        });
     }
 
     private static void recordChanges(Connection connection, long characterId, List<LoyaltyPointEntry> entries,
@@ -130,7 +114,6 @@ public final class LoyaltyPointDao {
                  ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     result.add(new LoyaltyPointHistoryRow(
-                            rs.getLong("character_id"),
                             rs.getString("character_name"),
                             rs.getLong("corporation_id"),
                             rs.getString("corporation_name"),
@@ -147,10 +130,8 @@ public final class LoyaltyPointDao {
 
     public List<LoyaltyPointRow> listForCharacter(long characterId) {
         String sql = """
-                SELECT l.character_id, l.corporation_id, l.loyalty_points,
-                       COALESCE(e.name, 'Corporation #' || l.corporation_id) AS corporation_name
+                SELECT l.corporation_id, l.loyalty_points
                 FROM character_loyalty_points l
-                LEFT JOIN entity_name_cache e ON e.entity_id = l.corporation_id
                 WHERE l.character_id = ?
                 ORDER BY l.loyalty_points DESC
                 """;
@@ -162,9 +143,7 @@ public final class LoyaltyPointDao {
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
                         result.add(new LoyaltyPointRow(
-                                rs.getLong("character_id"),
                                 rs.getLong("corporation_id"),
-                                rs.getString("corporation_name"),
                                 rs.getLong("loyalty_points")
                         ));
                     }

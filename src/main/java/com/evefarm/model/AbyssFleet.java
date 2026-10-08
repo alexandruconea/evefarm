@@ -20,10 +20,6 @@ public enum AbyssFleet {
         this.label = label;
     }
 
-    public int ships() {
-        return ships;
-    }
-
     public static int shipsOf(AbyssFleet fleet) {
         return fleet == null ? 1 : fleet.ships;
     }

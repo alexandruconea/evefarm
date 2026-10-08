@@ -20,38 +20,22 @@ public final class NpcTypeDao {
     }
 
     public void replaceAll(List<NpcType> types) {
-        synchronized (database) {
-            Connection connection = database.connection();
-            String insertSql = "INSERT INTO sde_npc_type(type_id, type_name, group_id, group_name) VALUES (?, ?, ?, ?)";
-            try {
-                connection.setAutoCommit(false);
-                try (Statement statement = connection.createStatement()) {
-                    statement.execute("DELETE FROM sde_npc_type");
-                }
-                try (PreparedStatement ps = connection.prepareStatement(insertSql)) {
-                    for (NpcType type : types) {
-                        ps.setInt(1, type.typeId());
-                        ps.setString(2, type.typeName());
-                        ps.setInt(3, type.groupId());
-                        ps.setString(4, type.groupName());
-                        ps.addBatch();
-                    }
-                    ps.executeBatch();
-                }
-                connection.commit();
-            } catch (SQLException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException ignored) {
-                }
-                throw new IllegalStateException("Failed to replace the NPC type catalog", e);
-            } finally {
-                try {
-                    connection.setAutoCommit(true);
-                } catch (SQLException ignored) {
-                }
+        String insertSql = "INSERT INTO sde_npc_type(type_id, type_name, group_id, group_name) VALUES (?, ?, ?, ?)";
+        database.transaction("Failed to replace the NPC type catalog", connection -> {
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("DELETE FROM sde_npc_type");
             }
-        }
+            try (PreparedStatement ps = connection.prepareStatement(insertSql)) {
+                for (NpcType type : types) {
+                    ps.setInt(1, type.typeId());
+                    ps.setString(2, type.typeName());
+                    ps.setInt(3, type.groupId());
+                    ps.setString(4, type.groupName());
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+        });
     }
 
     public List<NpcType> listAll() {

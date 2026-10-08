@@ -100,7 +100,7 @@ class AcceleratorTrackingTest {
                 new TypeDetailsDto.DogmaAttribute(179, 12), new TypeDetailsDto.DogmaAttribute(330, 1_036_800_000));
 
         assertEquals(Optional.of(GENIUS), SkillCatalogService.toAccelerator(new TypeDetailsDto(77919,
-                "Genius 'Boost' Cerebral Accelerator", "", 303, true, attributes)));
+                "Genius 'Boost' Cerebral Accelerator", "", true, attributes)));
         assertTrue(SkillCatalogService.isUsableAccelerator("Genius 'Boost' Cerebral Accelerator"));
         assertFalse(SkillCatalogService.isUsableAccelerator("Expired Cerebral Accelerator"));
         assertFalse(SkillCatalogService.isUsableAccelerator("Advanced gunnery Skill accelerator"));

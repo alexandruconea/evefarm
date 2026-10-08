@@ -120,48 +120,33 @@ public final class PriceCacheDao {
     }
 
     public void replaceAll(Map<Integer, AverageAdjusted> typeIdToAverageAdjusted) {
-        synchronized (database) {
-            Connection connection = database.connection();
-            String sql = """
-                    INSERT INTO price_cache(type_id, average_price, adjusted_price, updated_at)
-                    VALUES (?, ?, ?, ?)
-                    ON CONFLICT(type_id) DO UPDATE SET
-                      average_price = excluded.average_price,
-                      adjusted_price = excluded.adjusted_price,
-                      updated_at = excluded.updated_at
-                    """;
-            String now = Instant.now().toString();
-            try {
-                connection.setAutoCommit(false);
-                try (PreparedStatement ps = connection.prepareStatement(sql)) {
-                    for (Map.Entry<Integer, AverageAdjusted> entry : typeIdToAverageAdjusted.entrySet()) {
-                        ps.setInt(1, entry.getKey());
-                        JdbcUtil.setNullable(ps, 2, entry.getValue().average());
-                        JdbcUtil.setNullable(ps, 3, entry.getValue().adjusted());
-                        ps.setString(4, now);
-                        ps.addBatch();
-                    }
-                    ps.executeBatch();
+        String sql = """
+                INSERT INTO price_cache(type_id, average_price, adjusted_price, updated_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(type_id) DO UPDATE SET
+                  average_price = excluded.average_price,
+                  adjusted_price = excluded.adjusted_price,
+                  sell_max = NULL, sell_avg = NULL, sell_median = NULL, sell_percentile = NULL, sell_min = NULL,
+                  buy_max = NULL, buy_avg = NULL, buy_median = NULL, buy_percentile = NULL, buy_min = NULL,
+                  sell_volume = NULL, buy_volume = NULL,
+                  updated_at = excluded.updated_at
+                """;
+        String now = Instant.now().toString();
+        database.transaction("Failed to replace price_cache", connection -> {
+            try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                for (Map.Entry<Integer, AverageAdjusted> entry : typeIdToAverageAdjusted.entrySet()) {
+                    ps.setInt(1, entry.getKey());
+                    JdbcUtil.setNullable(ps, 2, entry.getValue().average());
+                    JdbcUtil.setNullable(ps, 3, entry.getValue().adjusted());
+                    ps.setString(4, now);
+                    ps.addBatch();
                 }
-                connection.commit();
-            } catch (SQLException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException ignored) {
-                }
-                throw new IllegalStateException("Failed to replace price_cache", e);
-            } finally {
-                try {
-                    connection.setAutoCommit(true);
-                } catch (SQLException ignored) {
-                }
+                ps.executeBatch();
             }
-        }
+        });
     }
 
     public void replaceAllDetailed(Map<Integer, PriceBreakdown> breakdown) {
-        synchronized (database) {
-        Connection connection = database.connection();
         String sql = """
                 INSERT INTO price_cache(
                   type_id, average_price, adjusted_price,
@@ -187,8 +172,7 @@ public final class PriceCacheDao {
                   updated_at = excluded.updated_at
                 """;
         String now = Instant.now().toString();
-        try {
-            connection.setAutoCommit(false);
+        database.transaction("Failed to replace price_cache (detailed)", connection -> {
             try (PreparedStatement ps = connection.prepareStatement(sql)) {
                 for (Map.Entry<Integer, PriceBreakdown> entry : breakdown.entrySet()) {
                     PriceBreakdown b = entry.getValue();
@@ -214,20 +198,7 @@ public final class PriceCacheDao {
                 }
                 ps.executeBatch();
             }
-            connection.commit();
-        } catch (SQLException e) {
-            try {
-                connection.rollback();
-            } catch (SQLException ignored) {
-            }
-            throw new IllegalStateException("Failed to replace price_cache (detailed)", e);
-        } finally {
-            try {
-                connection.setAutoCommit(true);
-            } catch (SQLException ignored) {
-            }
-        }
-        }
+        });
     }
 
     private double firstNonNull(Double... values) {

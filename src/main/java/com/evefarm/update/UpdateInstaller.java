@@ -38,7 +38,7 @@ public final class UpdateInstaller {
         void report(String step, long done, long total);
     }
 
-    public record PreparedUpdate(String version, Path installDir, Path stagedDir) {
+    public record PreparedUpdate(Path installDir, Path stagedDir) {
     }
 
     private final BackupRestoreService backupRestoreService;
@@ -117,7 +117,7 @@ public final class UpdateInstaller {
         backupRestoreService.backupTo(backupDir.resolve("evefarm-before-update-" + release.version() + ".db"));
 
         Files.deleteIfExists(zip);
-        return new PreparedUpdate(release.version(), installDir, staged);
+        return new PreparedUpdate(installDir, staged);
     }
 
     public void launchSwap(PreparedUpdate update) throws IOException {

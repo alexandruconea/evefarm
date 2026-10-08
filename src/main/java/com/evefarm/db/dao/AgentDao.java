@@ -21,60 +21,44 @@ public final class AgentDao {
     }
 
     public void replaceAll(List<AgentRow> agents) {
-        synchronized (database) {
-            Connection connection = database.connection();
-            String insertSql = """
-                    INSERT INTO sde_agent(
-                      agent_id, agent_name, corporation_id, corporation_name, faction_id, faction_name,
-                      division_name, agent_type_name, level, is_locator, station_id, station_name,
-                      solar_system_name, security, constellation_name, region_name,
-                      solar_system_id, constellation_id, region_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """;
-            try {
-                connection.setAutoCommit(false);
-                try (Statement statement = connection.createStatement()) {
-                    statement.execute("DELETE FROM sde_agent");
-                }
-                try (PreparedStatement ps = connection.prepareStatement(insertSql)) {
-                    for (AgentRow agent : agents) {
-                        ps.setLong(1, agent.agentId());
-                        ps.setString(2, agent.agentName());
-                        JdbcUtil.setNullable(ps, 3, agent.corporationId());
-                        ps.setString(4, agent.corporationName());
-                        JdbcUtil.setNullable(ps, 5, agent.factionId());
-                        ps.setString(6, agent.factionName());
-                        ps.setString(7, agent.divisionName());
-                        ps.setString(8, agent.agentTypeName());
-                        ps.setInt(9, agent.level());
-                        ps.setInt(10, agent.isLocator() ? 1 : 0);
-                        JdbcUtil.setNullable(ps, 11, agent.stationId());
-                        ps.setString(12, agent.stationName());
-                        ps.setString(13, agent.solarSystemName());
-                        JdbcUtil.setNullable(ps, 14, agent.security());
-                        ps.setString(15, agent.constellationName());
-                        ps.setString(16, agent.regionName());
-                        JdbcUtil.setNullable(ps, 17, agent.solarSystemId());
-                        JdbcUtil.setNullable(ps, 18, agent.constellationId());
-                        JdbcUtil.setNullable(ps, 19, agent.regionId());
-                        ps.addBatch();
-                    }
-                    ps.executeBatch();
-                }
-                connection.commit();
-            } catch (SQLException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException ignored) {
-                }
-                throw new IllegalStateException("Failed to replace the agent catalog", e);
-            } finally {
-                try {
-                    connection.setAutoCommit(true);
-                } catch (SQLException ignored) {
-                }
+        String insertSql = """
+                INSERT INTO sde_agent(
+                  agent_id, agent_name, corporation_id, corporation_name, faction_id, faction_name,
+                  division_name, agent_type_name, level, is_locator, station_id, station_name,
+                  solar_system_name, security, constellation_name, region_name,
+                  solar_system_id, constellation_id, region_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """;
+        database.transaction("Failed to replace the agent catalog", connection -> {
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("DELETE FROM sde_agent");
             }
-        }
+            try (PreparedStatement ps = connection.prepareStatement(insertSql)) {
+                for (AgentRow agent : agents) {
+                    ps.setLong(1, agent.agentId());
+                    ps.setString(2, agent.agentName());
+                    JdbcUtil.setNullable(ps, 3, agent.corporationId());
+                    ps.setString(4, agent.corporationName());
+                    JdbcUtil.setNullable(ps, 5, agent.factionId());
+                    ps.setString(6, agent.factionName());
+                    ps.setString(7, agent.divisionName());
+                    ps.setString(8, agent.agentTypeName());
+                    ps.setInt(9, agent.level());
+                    ps.setInt(10, agent.isLocator() ? 1 : 0);
+                    JdbcUtil.setNullable(ps, 11, agent.stationId());
+                    ps.setString(12, agent.stationName());
+                    ps.setString(13, agent.solarSystemName());
+                    JdbcUtil.setNullable(ps, 14, agent.security());
+                    ps.setString(15, agent.constellationName());
+                    ps.setString(16, agent.regionName());
+                    JdbcUtil.setNullable(ps, 17, agent.solarSystemId());
+                    JdbcUtil.setNullable(ps, 18, agent.constellationId());
+                    JdbcUtil.setNullable(ps, 19, agent.regionId());
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+        });
     }
 
     public boolean hasAgentsWithoutLocationIds() {

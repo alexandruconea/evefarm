@@ -24,56 +24,40 @@ public final class SkillCatalogDao {
     }
 
     public void replaceAll(List<SkillInfo> skills) {
-        synchronized (database) {
-            Connection connection = database.connection();
-            try {
-                connection.setAutoCommit(false);
-                try (Statement statement = connection.createStatement()) {
-                    statement.executeUpdate("DELETE FROM sde_skill_requirement");
-                    statement.executeUpdate("DELETE FROM sde_skill");
-                }
-                try (PreparedStatement skill = connection.prepareStatement("""
-                        INSERT INTO sde_skill(type_id, name, group_name, description, skill_rank,
-                                              primary_attribute, secondary_attribute)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
-                        """);
-                     PreparedStatement requirement = connection.prepareStatement("""
-                             INSERT OR REPLACE INTO sde_skill_requirement(type_id, required_type_id, required_level)
-                             VALUES (?, ?, ?)
-                             """)) {
-                    for (SkillInfo info : skills) {
-                        skill.setInt(1, info.skillId());
-                        skill.setString(2, info.name());
-                        skill.setString(3, info.groupName());
-                        skill.setString(4, info.description());
-                        skill.setInt(5, info.rank());
-                        skill.setString(6, info.primaryAttribute());
-                        skill.setString(7, info.secondaryAttribute());
-                        skill.addBatch();
-                        for (SkillRequirement required : info.requirements()) {
-                            requirement.setInt(1, info.skillId());
-                            requirement.setInt(2, required.skillId());
-                            requirement.setInt(3, required.level());
-                            requirement.addBatch();
-                        }
-                    }
-                    skill.executeBatch();
-                    requirement.executeBatch();
-                }
-                connection.commit();
-            } catch (SQLException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException ignored) {
-                }
-                throw new IllegalStateException("Failed to save the skill catalog", e);
-            } finally {
-                try {
-                    connection.setAutoCommit(true);
-                } catch (SQLException ignored) {
-                }
+        database.transaction("Failed to save the skill catalog", connection -> {
+            try (Statement statement = connection.createStatement()) {
+                statement.executeUpdate("DELETE FROM sde_skill_requirement");
+                statement.executeUpdate("DELETE FROM sde_skill");
             }
-        }
+            try (PreparedStatement skill = connection.prepareStatement("""
+                    INSERT INTO sde_skill(type_id, name, group_name, description, skill_rank,
+                                          primary_attribute, secondary_attribute)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """);
+                 PreparedStatement requirement = connection.prepareStatement("""
+                         INSERT OR REPLACE INTO sde_skill_requirement(type_id, required_type_id, required_level)
+                         VALUES (?, ?, ?)
+                         """)) {
+                for (SkillInfo info : skills) {
+                    skill.setInt(1, info.skillId());
+                    skill.setString(2, info.name());
+                    skill.setString(3, info.groupName());
+                    skill.setString(4, info.description());
+                    skill.setInt(5, info.rank());
+                    skill.setString(6, info.primaryAttribute());
+                    skill.setString(7, info.secondaryAttribute());
+                    skill.addBatch();
+                    for (SkillRequirement required : info.requirements()) {
+                        requirement.setInt(1, info.skillId());
+                        requirement.setInt(2, required.skillId());
+                        requirement.setInt(3, required.level());
+                        requirement.addBatch();
+                    }
+                }
+                skill.executeBatch();
+                requirement.executeBatch();
+            }
+        });
     }
 
     public Map<Integer, SkillInfo> loadAll() {

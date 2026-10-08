@@ -38,7 +38,7 @@ class CharacterDaoTest {
         transactions = new WalletTransactionDao(database);
         encounters = new EncounterDao(database);
 
-        characters.upsert(CHARACTER_ID, "Malpais Legate", null, List.of(), "first-owner");
+        characters.upsert(CHARACTER_ID, "Malpais Legate", List.of(), "first-owner");
         journal.saveForCharacter(CHARACTER_ID, List.of(new JournalEntry(1, "2026-09-23T15:20:00Z", "bounty_prizes",
                 17_820_000, 0, "bounty prizes in TXW-EI", "13603: 1", null, null, 0, null)));
         transactions.saveForCharacter(CHARACTER_ID, List.of(new TransactionEntry(10, "2026-09-23T16:00:00Z", 34,
@@ -93,7 +93,7 @@ class CharacterDaoTest {
     @Test
     void addingTheCharacterAgainBringsItsHistoryBack() {
         characters.remove(CHARACTER_ID);
-        characters.upsert(CHARACTER_ID, "Malpais Legate", null, List.of(), "new-owner");
+        characters.upsert(CHARACTER_ID, "Malpais Legate", List.of(), "new-owner");
 
         assertEquals(1, characters.listAll().size());
         assertEquals(1, journal.listRows(null).size());

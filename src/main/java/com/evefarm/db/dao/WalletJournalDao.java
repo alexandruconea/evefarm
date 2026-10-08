@@ -25,59 +25,43 @@ public final class WalletJournalDao {
     }
 
     public void saveForCharacter(long characterId, List<JournalEntry> entries) {
-        synchronized (database) {
-            Connection connection = database.connection();
-            String insertSql = """
-                    INSERT INTO wallet_journal_entry(
-                      character_id, entry_id, date, ref_type, amount, balance, description, reason,
-                      first_party_id, second_party_id, tax, tax_receiver_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(character_id, entry_id) DO UPDATE SET
-                      date = excluded.date,
-                      ref_type = excluded.ref_type,
-                      amount = excluded.amount,
-                      balance = excluded.balance,
-                      description = excluded.description,
-                      reason = excluded.reason,
-                      first_party_id = excluded.first_party_id,
-                      second_party_id = excluded.second_party_id,
-                      tax = excluded.tax,
-                      tax_receiver_id = excluded.tax_receiver_id
-                    """;
-            try {
-                connection.setAutoCommit(false);
-                try (PreparedStatement ps = connection.prepareStatement(insertSql)) {
-                    for (JournalEntry entry : entries) {
-                        ps.setLong(1, characterId);
-                        ps.setLong(2, entry.entryId());
-                        ps.setString(3, entry.date());
-                        ps.setString(4, entry.refType());
-                        ps.setDouble(5, entry.amount());
-                        ps.setDouble(6, entry.balance());
-                        ps.setString(7, entry.description());
-                        ps.setString(8, entry.reason());
-                        JdbcUtil.setNullable(ps, 9, entry.firstPartyId());
-                        JdbcUtil.setNullable(ps, 10, entry.secondPartyId());
-                        ps.setDouble(11, entry.tax());
-                        JdbcUtil.setNullable(ps, 12, entry.taxReceiverId());
-                        ps.addBatch();
-                    }
-                    ps.executeBatch();
+        String insertSql = """
+                INSERT INTO wallet_journal_entry(
+                  character_id, entry_id, date, ref_type, amount, balance, description, reason,
+                  first_party_id, second_party_id, tax, tax_receiver_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(character_id, entry_id) DO UPDATE SET
+                  date = excluded.date,
+                  ref_type = excluded.ref_type,
+                  amount = excluded.amount,
+                  balance = excluded.balance,
+                  description = excluded.description,
+                  reason = excluded.reason,
+                  first_party_id = excluded.first_party_id,
+                  second_party_id = excluded.second_party_id,
+                  tax = excluded.tax,
+                  tax_receiver_id = excluded.tax_receiver_id
+                """;
+        database.transaction("Failed to save wallet journal for character " + characterId, connection -> {
+            try (PreparedStatement ps = connection.prepareStatement(insertSql)) {
+                for (JournalEntry entry : entries) {
+                    ps.setLong(1, characterId);
+                    ps.setLong(2, entry.entryId());
+                    ps.setString(3, entry.date());
+                    ps.setString(4, entry.refType());
+                    ps.setDouble(5, entry.amount());
+                    ps.setDouble(6, entry.balance());
+                    ps.setString(7, entry.description());
+                    ps.setString(8, entry.reason());
+                    JdbcUtil.setNullable(ps, 9, entry.firstPartyId());
+                    JdbcUtil.setNullable(ps, 10, entry.secondPartyId());
+                    ps.setDouble(11, entry.tax());
+                    JdbcUtil.setNullable(ps, 12, entry.taxReceiverId());
+                    ps.addBatch();
                 }
-                connection.commit();
-            } catch (SQLException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException ignored) {
-                }
-                throw new IllegalStateException("Failed to save wallet journal for character " + characterId, e);
-            } finally {
-                try {
-                    connection.setAutoCommit(true);
-                } catch (SQLException ignored) {
-                }
+                ps.executeBatch();
             }
-        }
+        });
     }
 
     public List<JournalRow> listRows(Set<Long> characterIdFilter) {

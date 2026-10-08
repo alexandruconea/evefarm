@@ -25,7 +25,7 @@ class AssetDaoTest {
     void setUp() {
         database = new Database(":memory:");
         MigrationRunner.run(database);
-        new CharacterDao(database).upsert(PILOT, "Hauler", null, List.of(), "owner");
+        new CharacterDao(database).upsert(PILOT, "Hauler", List.of(), "owner");
         assets = new AssetDao(database);
     }
 

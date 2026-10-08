@@ -23,7 +23,7 @@ class MarketOrderDaoTest {
     void setUp() {
         Database database = new Database(":memory:");
         MigrationRunner.run(database);
-        new CharacterDao(database).upsert(TRADER, "Trader", null, List.of(), "owner");
+        new CharacterDao(database).upsert(TRADER, "Trader", List.of(), "owner");
         orders = new MarketOrderDao(database);
     }
 

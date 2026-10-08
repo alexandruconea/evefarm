@@ -61,7 +61,6 @@ public final class TokenDao {
                     }
                     String expiresAtRaw = rs.getString("access_token_expires_at");
                     return Optional.of(new TokenRecord(
-                            rs.getLong("character_id"),
                             TokenCipher.decrypt(rs.getString("refresh_token")),
                             TokenCipher.decrypt(rs.getString("access_token")),
                             expiresAtRaw == null ? null : Instant.parse(expiresAtRaw)

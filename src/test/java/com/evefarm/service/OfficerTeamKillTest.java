@@ -42,9 +42,9 @@ class OfficerTeamKillTest {
         Database database = new Database(":memory:");
         MigrationRunner.run(database);
         CharacterDao characters = new CharacterDao(database);
-        characters.upsert(BARSET, "Barset", null, List.of(), "owner-1");
-        characters.upsert(NOZEU, "Nozeu", null, List.of(), "owner-1");
-        characters.upsert(MALPAIS, "Malpais Legate", null, List.of(), "owner-1");
+        characters.upsert(BARSET, "Barset", List.of(), "owner-1");
+        characters.upsert(NOZEU, "Nozeu", List.of(), "owner-1");
+        characters.upsert(MALPAIS, "Malpais Legate", List.of(), "owner-1");
         encounters = new EncounterDao(database);
         officerDao = new OfficerDao(database);
         NpcCatalogService catalog = mock(NpcCatalogService.class);

@@ -1,4 +1,4 @@
 package com.evefarm.model;
 
-public record SkillPointFilter(long characterId, boolean enabled, long minimumSp) {
+public record SkillPointFilter(boolean enabled, long minimumSp) {
 }

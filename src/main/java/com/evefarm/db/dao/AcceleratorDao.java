@@ -4,7 +4,6 @@ import com.evefarm.db.Database;
 import com.evefarm.model.Accelerator;
 import com.evefarm.model.CharacterAccelerator;
 
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -24,38 +23,22 @@ public final class AcceleratorDao {
     }
 
     public void replaceCatalog(List<Accelerator> accelerators) {
-        synchronized (database) {
-            Connection connection = database.connection();
-            try {
-                connection.setAutoCommit(false);
-                try (Statement statement = connection.createStatement()) {
-                    statement.executeUpdate("DELETE FROM sde_accelerator");
-                }
-                try (PreparedStatement ps = connection.prepareStatement(
-                        "INSERT INTO sde_accelerator(type_id, name, bonus, duration_hours) VALUES (?, ?, ?, ?)")) {
-                    for (Accelerator accelerator : accelerators) {
-                        ps.setInt(1, accelerator.typeId());
-                        ps.setString(2, accelerator.name());
-                        ps.setInt(3, accelerator.bonus());
-                        ps.setDouble(4, accelerator.durationHours());
-                        ps.addBatch();
-                    }
-                    ps.executeBatch();
-                }
-                connection.commit();
-            } catch (SQLException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException ignored) {
-                }
-                throw new IllegalStateException("Failed to save the accelerator list", e);
-            } finally {
-                try {
-                    connection.setAutoCommit(true);
-                } catch (SQLException ignored) {
-                }
+        database.transaction("Failed to save the accelerator list", connection -> {
+            try (Statement statement = connection.createStatement()) {
+                statement.executeUpdate("DELETE FROM sde_accelerator");
             }
-        }
+            try (PreparedStatement ps = connection.prepareStatement(
+                    "INSERT INTO sde_accelerator(type_id, name, bonus, duration_hours) VALUES (?, ?, ?, ?)")) {
+                for (Accelerator accelerator : accelerators) {
+                    ps.setInt(1, accelerator.typeId());
+                    ps.setString(2, accelerator.name());
+                    ps.setInt(3, accelerator.bonus());
+                    ps.setDouble(4, accelerator.durationHours());
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+        });
     }
 
     public List<Accelerator> catalog() {

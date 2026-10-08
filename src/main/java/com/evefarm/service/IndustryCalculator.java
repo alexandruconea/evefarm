@@ -156,14 +156,9 @@ public final class IndustryCalculator {
 
     public record Manufacturing(List<MaterialLine> materials, double materialsCost, double estimatedItemValue,
                                 double jobFee, long units, int jobs, Duration time) {
-
-        public double cost() {
-            return materialsCost + jobFee;
-        }
     }
 
-    public record Invention(Decryptor decryptor, double chance, int runsPerCopy, int me, int te,
-                            double attemptCost, double costPerRun) {
+    public record Invention(double chance, int runsPerCopy, int me, int te, double costPerRun) {
     }
 
     public record Sale(double grossValue, double fees) {
@@ -298,7 +293,7 @@ public final class IndustryCalculator {
         int te = INVENTED_BASE_TE + (decryptor == null ? 0 : decryptor.teModifier());
         double attemptCost = datacoresCost + (decryptor == null ? 0 : decryptorPrice) + inventionFee + copyFee;
         double costPerRun = chance > 0 ? attemptCost / (chance * runs) : Double.POSITIVE_INFINITY;
-        return new Invention(decryptor, chance, runs, me, te, attemptCost, costPerRun);
+        return new Invention(chance, runs, me, te, costPerRun);
     }
 
     public static Sale sell(long units, double unitPrice, double salesTax, double brokerFee) {

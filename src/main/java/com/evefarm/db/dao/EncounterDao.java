@@ -37,59 +37,43 @@ public final class EncounterDao {
                   bounty, last_kill_at, damage_dealt, damage_taken)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
-        synchronized (database) {
-            Connection connection = database.connection();
-            try {
-                connection.setAutoCommit(false);
-                try (PreparedStatement delete = connection.prepareStatement(
-                        "DELETE FROM combat_encounter WHERE log_file = ?")) {
-                    delete.setString(1, logFile);
-                    delete.executeUpdate();
-                }
-                try (PreparedStatement encounterPs = connection.prepareStatement(insertEncounter,
-                        Statement.RETURN_GENERATED_KEYS);
-                     PreparedStatement npcPs = connection.prepareStatement(insertNpc)) {
-                    for (ParsedEncounter encounter : encounters) {
-                        encounterPs.setLong(1, characterId);
-                        encounterPs.setString(2, logFile);
-                        encounterPs.setString(3, encounter.startedAt().toString());
-                        encounterPs.setString(4, encounter.endedAt().toString());
-                        encounterPs.setString(5, encounter.solarSystem());
-                        encounterPs.executeUpdate();
-                        long encounterId;
-                        try (ResultSet keys = encounterPs.getGeneratedKeys()) {
-                            keys.next();
-                            encounterId = keys.getLong(1);
-                        }
-                        for (ParsedEncounter.Npc npc : encounter.npcs()) {
-                            npcPs.setLong(1, encounterId);
-                            npcPs.setString(2, npc.name());
-                            npcPs.setString(3, npc.firstSeenAt().toString());
-                            npcPs.setString(4, npc.lastSeenAt().toString());
-                            npcPs.setInt(5, npc.kills());
-                            npcPs.setDouble(6, npc.bounty());
-                            npcPs.setString(7, npc.lastKillAt() == null ? null : npc.lastKillAt().toString());
-                            npcPs.setLong(8, npc.damageDealt());
-                            npcPs.setLong(9, npc.damageTaken());
-                            npcPs.addBatch();
-                        }
-                    }
-                    npcPs.executeBatch();
-                }
-                connection.commit();
-            } catch (SQLException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException ignored) {
-                }
-                throw new IllegalStateException("Failed to store fights from " + logFile, e);
-            } finally {
-                try {
-                    connection.setAutoCommit(true);
-                } catch (SQLException ignored) {
-                }
+        database.transaction("Failed to store fights from " + logFile, connection -> {
+            try (PreparedStatement delete = connection.prepareStatement(
+                    "DELETE FROM combat_encounter WHERE log_file = ?")) {
+                delete.setString(1, logFile);
+                delete.executeUpdate();
             }
-        }
+            try (PreparedStatement encounterPs = connection.prepareStatement(insertEncounter,
+                    Statement.RETURN_GENERATED_KEYS);
+                 PreparedStatement npcPs = connection.prepareStatement(insertNpc)) {
+                for (ParsedEncounter encounter : encounters) {
+                    encounterPs.setLong(1, characterId);
+                    encounterPs.setString(2, logFile);
+                    encounterPs.setString(3, encounter.startedAt().toString());
+                    encounterPs.setString(4, encounter.endedAt().toString());
+                    encounterPs.setString(5, encounter.solarSystem());
+                    encounterPs.executeUpdate();
+                    long encounterId;
+                    try (ResultSet keys = encounterPs.getGeneratedKeys()) {
+                        keys.next();
+                        encounterId = keys.getLong(1);
+                    }
+                    for (ParsedEncounter.Npc npc : encounter.npcs()) {
+                        npcPs.setLong(1, encounterId);
+                        npcPs.setString(2, npc.name());
+                        npcPs.setString(3, npc.firstSeenAt().toString());
+                        npcPs.setString(4, npc.lastSeenAt().toString());
+                        npcPs.setInt(5, npc.kills());
+                        npcPs.setDouble(6, npc.bounty());
+                        npcPs.setString(7, npc.lastKillAt() == null ? null : npc.lastKillAt().toString());
+                        npcPs.setLong(8, npc.damageDealt());
+                        npcPs.setLong(9, npc.damageTaken());
+                        npcPs.addBatch();
+                    }
+                }
+                npcPs.executeBatch();
+            }
+        });
     }
 
     public List<OfficerSighting> listOfficerSightings(Set<String> officerNames) {
@@ -152,7 +136,7 @@ public final class EncounterDao {
                                 rs.getString("notes"),
                                 payout,
                                 List.of(new OfficerSighting.Member(characterId, characterName, encounterId,
-                                        firstSeenAt, killedAt, bounty, rs.getLong("damage_dealt")))));
+                                        firstSeenAt, killedAt, rs.getLong("damage_dealt")))));
                     }
                 }
             } catch (SQLException e) {
@@ -181,7 +165,7 @@ public final class EncounterDao {
                     long id = rs.getLong("id");
                     EncounterSummary summary = byId.get(id);
                     if (summary == null) {
-                        summary = new EncounterSummary(id, rs.getLong("character_id"), rs.getString("character_name"),
+                        summary = new EncounterSummary(id, rs.getString("character_name"),
                                 Instant.parse(rs.getString("started_at")), Instant.parse(rs.getString("ended_at")),
                                 rs.getString("solar_system"), new ArrayList<>());
                         byId.put(id, summary);

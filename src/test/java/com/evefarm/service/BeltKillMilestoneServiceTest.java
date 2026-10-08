@@ -35,8 +35,8 @@ class BeltKillMilestoneServiceTest {
         MigrationRunner.run(database);
         settings = new SettingsDao(database);
         characters = new CharacterDao(database);
-        characters.upsert(PILOT, "Pilot", null, List.of(), "owner-1");
-        characters.upsert(ALT, "Alt", null, List.of(), "owner-2");
+        characters.upsert(PILOT, "Pilot", List.of(), "owner-1");
+        characters.upsert(ALT, "Alt", List.of(), "owner-2");
         NpcCatalogService catalogService = mock(NpcCatalogService.class);
         when(catalogService.catalog()).thenReturn(NpcCatalog.of(List.of(
                 new NpcType(1, "Pithi Arrogator", 10, "Asteroid Guristas Frigate"),

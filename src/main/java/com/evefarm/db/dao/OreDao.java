@@ -23,47 +23,31 @@ public final class OreDao {
     }
 
     public void replaceAll(Collection<Ore> ores) {
-        synchronized (database) {
-            Connection connection = database.connection();
-            try {
-                connection.setAutoCommit(false);
-                try (Statement statement = connection.createStatement()) {
-                    statement.execute("DELETE FROM sde_ore_material");
-                    statement.execute("DELETE FROM sde_ore");
-                }
-                try (PreparedStatement ore = connection.prepareStatement(
-                        "INSERT INTO sde_ore(type_id, portion_size, compressed_type_id) VALUES (?, ?, ?)");
-                     PreparedStatement material = connection.prepareStatement(
-                             "INSERT INTO sde_ore_material(type_id, material_type_id, quantity) VALUES (?, ?, ?)")) {
-                    for (Ore entry : ores) {
-                        ore.setInt(1, entry.typeId());
-                        ore.setInt(2, entry.portionSize());
-                        JdbcUtil.setNullable(ore, 3, entry.compressedTypeId());
-                        ore.addBatch();
-                        for (Map.Entry<Integer, Long> part : entry.materials().entrySet()) {
-                            material.setInt(1, entry.typeId());
-                            material.setInt(2, part.getKey());
-                            material.setLong(3, part.getValue());
-                            material.addBatch();
-                        }
-                    }
-                    ore.executeBatch();
-                    material.executeBatch();
-                }
-                connection.commit();
-            } catch (SQLException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException ignored) {
-                }
-                throw new IllegalStateException("Failed to save the ore catalog", e);
-            } finally {
-                try {
-                    connection.setAutoCommit(true);
-                } catch (SQLException ignored) {
-                }
+        database.transaction("Failed to save the ore catalog", connection -> {
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("DELETE FROM sde_ore_material");
+                statement.execute("DELETE FROM sde_ore");
             }
-        }
+            try (PreparedStatement ore = connection.prepareStatement(
+                    "INSERT INTO sde_ore(type_id, portion_size, compressed_type_id) VALUES (?, ?, ?)");
+                 PreparedStatement material = connection.prepareStatement(
+                         "INSERT INTO sde_ore_material(type_id, material_type_id, quantity) VALUES (?, ?, ?)")) {
+                for (Ore entry : ores) {
+                    ore.setInt(1, entry.typeId());
+                    ore.setInt(2, entry.portionSize());
+                    JdbcUtil.setNullable(ore, 3, entry.compressedTypeId());
+                    ore.addBatch();
+                    for (Map.Entry<Integer, Long> part : entry.materials().entrySet()) {
+                        material.setInt(1, entry.typeId());
+                        material.setInt(2, part.getKey());
+                        material.setLong(3, part.getValue());
+                        material.addBatch();
+                    }
+                }
+                ore.executeBatch();
+                material.executeBatch();
+            }
+        });
     }
 
     public int count() {

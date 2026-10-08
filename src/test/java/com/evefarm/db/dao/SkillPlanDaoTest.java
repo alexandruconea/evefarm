@@ -30,7 +30,7 @@ class SkillPlanDaoTest {
     void setUp() {
         database = new Database(":memory:");
         MigrationRunner.run(database);
-        new CharacterDao(database).upsert(PILOT, "Pilot", null, List.of(), "owner");
+        new CharacterDao(database).upsert(PILOT, "Pilot", List.of(), "owner");
         plans = new SkillPlanDao(database);
     }
 

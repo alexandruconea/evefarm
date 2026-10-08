@@ -16,8 +16,10 @@ import com.evefarm.esi.dto.ContractDto;
 import com.evefarm.esi.dto.IndustryJobDto;
 import com.evefarm.esi.dto.LoyaltyPointDto;
 import com.evefarm.esi.dto.MarketOrderDto;
+import com.evefarm.model.IndustryActivity;
 import com.evefarm.model.SkillPointFilter;
 import com.evefarm.model.TrackerSnapshot;
+import com.evefarm.model.TypeQuantity;
 
 import java.time.Instant;
 import java.util.List;
@@ -28,6 +30,9 @@ public final class TrackerSnapshotService {
 
     private static final int ACTIVITY_MANUFACTURING = 1;
     private static final int ACTIVITY_REACTIONS = 9;
+    private static final String COURIER = "courier";
+    private static final String OUTSTANDING = "outstanding";
+    private static final String IN_PROGRESS = "in_progress";
 
     private static final int TYPE_ID_SKILL_EXTRACTOR = 40519;
     private static final int TYPE_ID_LARGE_SKILL_INJECTOR = 40520;
@@ -48,13 +53,14 @@ public final class TrackerSnapshotService {
     private final SnapshotDao snapshotDao;
     private final SkillPointFilterDao skillPointFilterDao;
     private final SettingsDao settingsDao;
+    private final IndustryCatalogService industryCatalogService;
 
     public TrackerSnapshotService(AuthService authService, WalletApi walletApi, ClonesApi clonesApi,
                                    MarketsApi marketsApi, ContractsApi contractsApi, IndustryApi industryApi,
                                    SkillsApi skillsApi, LoyaltyApi loyaltyApi, PriceService priceService,
                                    LpOfferPricingService lpOfferPricingService, AssetDao assetDao,
                                    SnapshotDao snapshotDao, SkillPointFilterDao skillPointFilterDao,
-                                   SettingsDao settingsDao) {
+                                   SettingsDao settingsDao, IndustryCatalogService industryCatalogService) {
         this.authService = authService;
         this.walletApi = walletApi;
         this.clonesApi = clonesApi;
@@ -69,6 +75,7 @@ public final class TrackerSnapshotService {
         this.snapshotDao = snapshotDao;
         this.skillPointFilterDao = skillPointFilterDao;
         this.settingsDao = settingsDao;
+        this.industryCatalogService = industryCatalogService;
     }
 
     public TrackerSnapshot captureSnapshot(long characterId) {
@@ -93,20 +100,14 @@ public final class TrackerSnapshotService {
                 .sum();
 
         List<ContractDto> contracts = contractsApi.listContracts(characterId, accessToken);
-        double contractCollateralValue = contracts.stream()
-                .filter(c -> "outstanding".equalsIgnoreCase(c.status()))
-                .mapToDouble(c -> c.collateral() == null ? 0 : c.collateral())
-                .sum();
-        double contractsValue = contracts.stream()
-                .filter(c -> "outstanding".equalsIgnoreCase(c.status()))
-                .mapToDouble(c -> (c.price() == null ? 0 : c.price()) + (c.reward() == null ? 0 : c.reward()))
-                .sum();
+        double contractCollateralValue = contractCollateralValue(contracts, characterId);
+        double contractsValue = contractsValue(contracts, characterId);
 
         List<IndustryJobDto> jobs = industryApi.listActiveJobs(characterId, accessToken);
         double manufacturingValue = jobs.stream()
-                .filter(j -> (j.activityId() == ACTIVITY_MANUFACTURING || j.activityId() == ACTIVITY_REACTIONS)
-                        && j.productTypeId() != null)
-                .mapToDouble(j -> (j.runs() == null ? 1 : j.runs()) * priceService.getUnitPrice(j.productTypeId()).orElse(0))
+                .filter(j -> makesItems(j.activityId()) && j.productTypeId() != null)
+                .mapToDouble(j -> (j.runs() == null ? 1 : j.runs()) * unitsPerRun(j)
+                        * priceService.getUnitPrice(j.productTypeId()).orElse(0))
                 .sum();
 
         long skillPoints = skillsApi.getSkills(characterId, accessToken).totalSp();
@@ -120,6 +121,50 @@ public final class TrackerSnapshotService {
                 contractCollateralValue, contractsValue, skillPoints, skillPointValue, lpValue);
         snapshotDao.insert(snapshot);
         return snapshot;
+    }
+
+    private static boolean makesItems(int activityId) {
+        return activityId == ACTIVITY_MANUFACTURING || activityId == ACTIVITY_REACTIONS
+                || activityId == IndustryActivity.REACTION;
+    }
+
+    private long unitsPerRun(IndustryJobDto job) {
+        int activity = job.activityId() == ACTIVITY_MANUFACTURING ? IndustryActivity.MANUFACTURING
+                : IndustryActivity.REACTION;
+        return industryCatalogService.activity(job.blueprintTypeId(), activity)
+                .map(IndustryActivity::product)
+                .map(TypeQuantity::quantity)
+                .filter(quantity -> quantity > 0)
+                .orElse(1L);
+    }
+
+    static double contractsValue(List<ContractDto> contracts, long characterId) {
+        return contracts.stream()
+                .filter(contract -> issuedAndOpen(contract, characterId))
+                .mapToDouble(contract -> amount(contract.price()) + amount(contract.reward()))
+                .sum();
+    }
+
+    static double contractCollateralValue(List<ContractDto> contracts, long characterId) {
+        return contracts.stream()
+                .filter(contract -> COURIER.equalsIgnoreCase(contract.type()))
+                .filter(contract -> issuedAndOpen(contract, characterId) || carriedBy(contract, characterId))
+                .mapToDouble(contract -> amount(contract.collateral()))
+                .sum();
+    }
+
+    private static boolean issuedAndOpen(ContractDto contract, long characterId) {
+        return !contract.forCorporation() && contract.issuerId() != null && contract.issuerId() == characterId
+                && (OUTSTANDING.equalsIgnoreCase(contract.status()) || IN_PROGRESS.equalsIgnoreCase(contract.status()));
+    }
+
+    private static boolean carriedBy(ContractDto contract, long characterId) {
+        return contract.acceptorId() != null && contract.acceptorId() == characterId
+                && IN_PROGRESS.equalsIgnoreCase(contract.status());
+    }
+
+    private static double amount(Double value) {
+        return value == null ? 0 : value;
     }
 
     private double lpValue(long characterId, String accessToken) {

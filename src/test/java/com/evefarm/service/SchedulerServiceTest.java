@@ -144,6 +144,6 @@ class SchedulerServiceTest {
     }
 
     private static EveCharacter character(long id) {
-        return new EveCharacter(id, "Pilot", null, List.of(), Instant.EPOCH, true);
+        return new EveCharacter(id, "Pilot", List.of(), Instant.EPOCH);
     }
 }

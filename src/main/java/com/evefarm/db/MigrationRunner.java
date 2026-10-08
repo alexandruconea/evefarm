@@ -93,7 +93,7 @@ public final class MigrationRunner {
                 }
                 continue;
             }
-            applyMigration(connection, resourcePath, version, sql, checksum);
+            applyMigration(database, resourcePath, version, sql, checksum);
         }
     }
 
@@ -113,11 +113,10 @@ public final class MigrationRunner {
         }
     }
 
-    private static void applyMigration(Connection connection, String resourcePath, int version,
+    private static void applyMigration(Database database, String resourcePath, int version,
                                        String sql, String checksum) {
         LOG.info("Applying migration " + resourcePath);
-        try {
-            connection.setAutoCommit(false);
+        database.transaction("Failed to apply migration " + resourcePath, connection -> {
             try (Statement statement = connection.createStatement()) {
                 for (String single : splitStatements(sql)) {
                     String trimmed = single.trim();
@@ -133,16 +132,7 @@ public final class MigrationRunner {
                     ps.executeUpdate();
                 }
             }
-            connection.commit();
-        } catch (SQLException e) {
-            rollbackQuietly(connection);
-            throw new IllegalStateException("Failed to apply migration " + resourcePath, e);
-        } finally {
-            try {
-                connection.setAutoCommit(true);
-            } catch (SQLException ignored) {
-            }
-        }
+        });
     }
 
     private static void ensureChecksumColumn(Connection connection) {
@@ -270,13 +260,6 @@ public final class MigrationRunner {
             statements.add(current.toString());
         }
         return statements;
-    }
-
-    private static void rollbackQuietly(Connection connection) {
-        try {
-            connection.rollback();
-        } catch (SQLException ignored) {
-        }
     }
 
     private static int parseVersion(String resourcePath) {

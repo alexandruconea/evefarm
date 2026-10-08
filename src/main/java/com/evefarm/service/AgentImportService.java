@@ -30,10 +30,10 @@ public final class AgentImportService {
                      int agentTypeId, boolean isLocator) {
     }
 
-    record RawCorporation(int corporationId, String name, Integer factionId) {
+    record RawCorporation(String name, Integer factionId) {
     }
 
-    record RawStation(long stationId, String name, int solarSystemId) {
+    record RawStation(String name, int solarSystemId) {
     }
 
     record RawSolarSystem(int solarSystemId, String name, Double security, int constellationId, int regionId) {
@@ -161,7 +161,7 @@ public final class AgentImportService {
             Integer corporationId = table.integer(row, "corporationID");
             String name = table.text(row, "corporationName");
             if (corporationId != null && name != null) {
-                result.put(corporationId, new RawCorporation(corporationId, name, table.integer(row, "factionID")));
+                result.put(corporationId, new RawCorporation(name, table.integer(row, "factionID")));
             }
         }
         return result;
@@ -175,7 +175,7 @@ public final class AgentImportService {
             String name = table.text(row, "stationName");
             Integer solarSystemId = table.integer(row, "solarSystemID");
             if (stationId != null && name != null && solarSystemId != null) {
-                result.put(stationId, new RawStation(stationId, name, solarSystemId));
+                result.put(stationId, new RawStation(name, solarSystemId));
             }
         }
         return result;

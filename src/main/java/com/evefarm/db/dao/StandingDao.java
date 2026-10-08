@@ -4,7 +4,6 @@ import com.evefarm.db.Database;
 import com.evefarm.model.StandingEntry;
 import com.evefarm.model.StandingRow;
 
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -21,45 +20,29 @@ public final class StandingDao {
     }
 
     public void replaceForCharacter(long characterId, List<StandingEntry> entries) {
-        synchronized (database) {
-            Connection connection = database.connection();
-            String insertSql = """
-                    INSERT INTO character_standings(character_id, from_id, from_type, standing, fetched_at)
-                    VALUES (?, ?, ?, ?, ?)
-                    """;
-            String now = Instant.now().toString();
-            try {
-                connection.setAutoCommit(false);
-                try (PreparedStatement del = connection.prepareStatement(
-                        "DELETE FROM character_standings WHERE character_id = ?")) {
-                    del.setLong(1, characterId);
-                    del.executeUpdate();
-                }
-                try (PreparedStatement ps = connection.prepareStatement(insertSql)) {
-                    for (StandingEntry entry : entries) {
-                        ps.setLong(1, characterId);
-                        ps.setLong(2, entry.fromId());
-                        ps.setString(3, entry.fromType());
-                        ps.setDouble(4, entry.standing());
-                        ps.setString(5, now);
-                        ps.addBatch();
-                    }
-                    ps.executeBatch();
-                }
-                connection.commit();
-            } catch (SQLException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException ignored) {
-                }
-                throw new IllegalStateException("Failed to save the standings of character " + characterId, e);
-            } finally {
-                try {
-                    connection.setAutoCommit(true);
-                } catch (SQLException ignored) {
-                }
+        String insertSql = """
+                INSERT INTO character_standings(character_id, from_id, from_type, standing, fetched_at)
+                VALUES (?, ?, ?, ?, ?)
+                """;
+        String now = Instant.now().toString();
+        database.transaction("Failed to save the standings of character " + characterId, connection -> {
+            try (PreparedStatement del = connection.prepareStatement(
+                    "DELETE FROM character_standings WHERE character_id = ?")) {
+                del.setLong(1, characterId);
+                del.executeUpdate();
             }
-        }
+            try (PreparedStatement ps = connection.prepareStatement(insertSql)) {
+                for (StandingEntry entry : entries) {
+                    ps.setLong(1, characterId);
+                    ps.setLong(2, entry.fromId());
+                    ps.setString(3, entry.fromType());
+                    ps.setDouble(4, entry.standing());
+                    ps.setString(5, now);
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+        });
     }
 
     public List<StandingRow> listRows() {

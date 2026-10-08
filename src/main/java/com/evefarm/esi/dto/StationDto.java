@@ -5,7 +5,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record StationDto(
-        @JsonProperty("station_id") long stationId,
         @JsonProperty("name") String name,
         @JsonProperty("system_id") long systemId
 ) {

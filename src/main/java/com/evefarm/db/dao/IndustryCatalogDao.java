@@ -36,33 +36,17 @@ public final class IndustryCatalogDao {
     }
 
     public void replaceAll(IndustryCatalog catalog, List<Decryptor> decryptors, List<SolarSystem> solarSystems) {
-        synchronized (database) {
-            Connection connection = database.connection();
-            try {
-                connection.setAutoCommit(false);
-                try (Statement statement = connection.createStatement()) {
-                    for (String table : TABLES) {
-                        statement.executeUpdate("DELETE FROM " + table);
-                    }
-                }
-                insertTypes(connection, catalog.types());
-                insertActivities(connection, catalog.activities());
-                insertDecryptors(connection, decryptors);
-                insertSolarSystems(connection, solarSystems);
-                connection.commit();
-            } catch (SQLException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException ignored) {
-                }
-                throw new IllegalStateException("Failed to save the industry data", e);
-            } finally {
-                try {
-                    connection.setAutoCommit(true);
-                } catch (SQLException ignored) {
+        database.transaction("Failed to save the industry data", connection -> {
+            try (Statement statement = connection.createStatement()) {
+                for (String table : TABLES) {
+                    statement.executeUpdate("DELETE FROM " + table);
                 }
             }
-        }
+            insertTypes(connection, catalog.types());
+            insertActivities(connection, catalog.activities());
+            insertDecryptors(connection, decryptors);
+            insertSolarSystems(connection, solarSystems);
+        });
     }
 
     private static void insertTypes(Connection connection, List<IndustryType> types) throws SQLException {
@@ -208,7 +192,7 @@ public final class IndustryCatalogDao {
 
     public List<BlueprintChoice> manufacturingChoices() {
         String sql = """
-                SELECT p.blueprint_id, p.product_id, t.name, t.group_name, t.category_name
+                SELECT p.blueprint_id, t.name, t.group_name
                 FROM sde_industry_product p
                 JOIN sde_industry_type t ON t.type_id = p.product_id
                 JOIN sde_industry_type b ON b.type_id = p.blueprint_id
@@ -221,8 +205,8 @@ public final class IndustryCatalogDao {
                 List<BlueprintChoice> choices = new ArrayList<>();
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
-                        choices.add(new BlueprintChoice(rs.getInt("blueprint_id"), rs.getInt("product_id"),
-                                rs.getString("name"), rs.getString("group_name"), rs.getString("category_name")));
+                        choices.add(new BlueprintChoice(rs.getInt("blueprint_id"), rs.getString("name"),
+                                rs.getString("group_name")));
                     }
                 }
                 return choices;
