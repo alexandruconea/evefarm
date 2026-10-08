@@ -32,7 +32,7 @@ public final class IndustryService {
 
     public record Settings(int blueprintId, Long characterId, int runs, int me, int te, boolean includeInvention,
                            String systemName, Structure structure, Rig materialRig, Rig timeRig, double facilityTax,
-                           double brokerFee, boolean buildComponents, int componentMe, int componentTe,
+                           double brokerFee, BuildPlanner.Mode buildMode, int componentMe, int componentTe,
                            Map<Integer, Boolean> buildChoices, BuildPlanner.Surplus surplus) {
     }
 
@@ -54,10 +54,6 @@ public final class IndustryService {
     public record Result(int productId, String productName, SolarSystem system, double manufacturingIndex,
                          SkillEffects skills, boolean inventable, boolean invented, boolean reactionsAllowed,
                          double productPrice, Map<Integer, String> names, List<Option> options, int bestIndex) {
-
-        public Option best() {
-            return options.get(bestIndex);
-        }
     }
 
     private final IndustryCatalogService industryCatalogService;
@@ -120,7 +116,7 @@ public final class IndustryService {
                 new Facility(settings.structure(), Rig.NONE, Rig.NONE, facility.security(), settings.facilityTax()),
                 new Facility(Structure.REFINERY, Rig.NONE, Rig.NONE, facility.security(), settings.facilityTax()),
                 manufacturingIndex, costIndex(system, "reaction"), settings.componentMe(), settings.componentTe(),
-                level, reactionsAllowed, settings.buildComponents(), settings.buildChoices(), settings.surplus(),
+                level, reactionsAllowed, settings.buildMode(), settings.buildChoices(), settings.surplus(),
                 skills.salesTax() + settings.brokerFee());
         int reactionLines = IndustryCalculator.reactionLines(level);
 

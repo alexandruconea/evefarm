@@ -2,6 +2,7 @@ package com.evefarm.service;
 
 import com.evefarm.model.IndustryActivity;
 import com.evefarm.model.TypeQuantity;
+import com.evefarm.service.BuildPlanner.Mode;
 import com.evefarm.service.BuildPlanner.Plan;
 import com.evefarm.service.BuildPlanner.Setup;
 import com.evefarm.service.BuildPlanner.Surplus;
@@ -13,6 +14,7 @@ import com.evefarm.service.IndustryCalculator.Structure;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -28,6 +30,7 @@ class BuildPlannerTest {
     private static final int ALLOY = 200;
     private static final int MOON_GOO = 300;
     private static final int FUEL = 400;
+    private static final int ICE = 500;
     private static final Map<Integer, IndustryActivity> PRODUCERS = Map.of(
             COMPONENT, new IndustryActivity(1, IndustryActivity.MANUFACTURING, 60,
                     List.of(new TypeQuantity(ALLOY, 10)), List.of(new TypeQuantity(COMPONENT, 1)), Map.of(),
@@ -40,19 +43,23 @@ class BuildPlannerTest {
     private static final Facility FREE = new Facility(Structure.REFINERY, Rig.NONE, Rig.NONE, Security.NULL, 0);
     private static final List<MaterialLine> THREE_COMPONENTS = List.of(new MaterialLine(COMPONENT, 3, 1000));
 
-    private static Setup setup(boolean reactions, boolean buildWhenCheaper, Map<Integer, Boolean> choices,
-                               Surplus surplus) {
-        return new Setup(type -> Optional.ofNullable(PRODUCERS.get(type)), PRICES, Map.of(), FREE, FREE, 0, 0, 0, 0,
-                skill -> 0, reactions, buildWhenCheaper, choices, surplus, 0.1);
+    private static Setup setup(Map<Integer, IndustryActivity> producers, Map<Integer, Double> prices, Mode mode) {
+        return new Setup(type -> Optional.ofNullable(producers.get(type)), prices, Map.of(), FREE, FREE, 0, 0, 0, 0,
+                skill -> 0, true, mode, Map.of(), Surplus.KEEP, 0.1);
     }
 
-    private static Setup setup(boolean reactions, boolean buildWhenCheaper, Map<Integer, Boolean> choices) {
-        return setup(reactions, buildWhenCheaper, choices, Surplus.KEEP);
+    private static Setup setup(boolean reactions, Mode mode, Map<Integer, Boolean> choices, Surplus surplus) {
+        return new Setup(type -> Optional.ofNullable(PRODUCERS.get(type)), PRICES, Map.of(), FREE, FREE, 0, 0, 0, 0,
+                skill -> 0, reactions, mode, choices, surplus, 0.1);
+    }
+
+    private static Setup setup(boolean reactions, Mode mode, Map<Integer, Boolean> choices) {
+        return setup(reactions, mode, choices, Surplus.KEEP);
     }
 
     @Test
     void cheaperItemsAreBuiltAllTheWayDownInSteps() {
-        Plan plan = BuildPlanner.plan(THREE_COMPONENTS, setup(true, true, Map.of()), 1, 1);
+        Plan plan = BuildPlanner.plan(THREE_COMPONENTS, setup(true, Mode.CHEAPER, Map.of()), 1, 1);
 
         assertEquals(30, plan.materialsCost(), 1e-9);
         assertEquals(10, plan.materials().getFirst().unitPrice(), 1e-9);
@@ -68,9 +75,9 @@ class BuildPlannerTest {
 
     @Test
     void theSurplusIsKeptSoldOrWasted() {
-        Plan kept = BuildPlanner.plan(THREE_COMPONENTS, setup(true, true, Map.of(), Surplus.KEEP), 1, 1);
-        Plan sold = BuildPlanner.plan(THREE_COMPONENTS, setup(true, true, Map.of(), Surplus.SELL), 1, 1);
-        Plan wasted = BuildPlanner.plan(THREE_COMPONENTS, setup(true, true, Map.of(), Surplus.WASTE), 1, 1);
+        Plan kept = BuildPlanner.plan(THREE_COMPONENTS, setup(true, Mode.CHEAPER, Map.of(), Surplus.KEEP), 1, 1);
+        Plan sold = BuildPlanner.plan(THREE_COMPONENTS, setup(true, Mode.CHEAPER, Map.of(), Surplus.SELL), 1, 1);
+        Plan wasted = BuildPlanner.plan(THREE_COMPONENTS, setup(true, Mode.CHEAPER, Map.of(), Surplus.WASTE), 1, 1);
 
         assertEquals(70, kept.surplusValue(), 1e-9);
         assertEquals(0, kept.surplusCost(), 1e-9);
@@ -81,7 +88,7 @@ class BuildPlannerTest {
     @Test
     void whatTheChainNeedsOfOneItemIsMadeInOneJob() {
         Plan plan = BuildPlanner.plan(List.of(new MaterialLine(COMPONENT, 3, 1000), new MaterialLine(ALLOY, 50, 5)),
-                setup(true, true, Map.of()), 1, 1);
+                setup(true, Mode.CHEAPER, Map.of()), 1, 1);
 
         assertEquals(80, plan.component(ALLOY).orElseThrow().needed());
         assertEquals(1, plan.component(ALLOY).orElseThrow().runs());
@@ -92,7 +99,7 @@ class BuildPlannerTest {
 
     @Test
     void aChoiceToBuyStopsTheChainThere() {
-        Plan plan = BuildPlanner.plan(THREE_COMPONENTS, setup(true, true, Map.of(ALLOY, false)), 1, 1);
+        Plan plan = BuildPlanner.plan(THREE_COMPONENTS, setup(true, Mode.CHEAPER, Map.of(ALLOY, false)), 1, 1);
 
         assertEquals(150, plan.materialsCost(), 1e-9);
         assertEquals(List.of(new MaterialLine(ALLOY, 30, 5.0)), plan.shopping());
@@ -101,7 +108,7 @@ class BuildPlannerTest {
 
     @Test
     void withoutBuildingEverythingIsBoughtButTheBuildCostIsStillShown() {
-        Plan plan = BuildPlanner.plan(THREE_COMPONENTS, setup(true, false, Map.of()), 1, 1);
+        Plan plan = BuildPlanner.plan(THREE_COMPONENTS, setup(true, Mode.BUY, Map.of()), 1, 1);
 
         assertEquals(3000, plan.materialsCost(), 1e-9);
         assertEquals(List.of(new MaterialLine(COMPONENT, 3, 1000.0)), plan.shopping());
@@ -112,8 +119,26 @@ class BuildPlannerTest {
     }
 
     @Test
+    void buildingAllMakesEveryReactionAndBuysWhatOnlyReactionsUse() {
+        Map<Integer, IndustryActivity> producers = new HashMap<>(PRODUCERS);
+        producers.put(FUEL, new IndustryActivity(3, IndustryActivity.MANUFACTURING, 60,
+                List.of(new TypeQuantity(ICE, 1)), List.of(new TypeQuantity(FUEL, 1)), Map.of(), List.of()));
+        Map<Integer, Double> prices = Map.of(COMPONENT, 1000.0, ALLOY, 0.1, MOON_GOO, 1.0, FUEL, 10.0, ICE, 1.0);
+
+        Plan cheaper = BuildPlanner.plan(THREE_COMPONENTS, setup(producers, prices, Mode.CHEAPER), 1, 1);
+        Plan all = BuildPlanner.plan(THREE_COMPONENTS, setup(producers, prices, Mode.ALL), 1, 1);
+
+        assertFalse(cheaper.component(ALLOY).orElseThrow().built());
+        assertTrue(all.component(ALLOY).orElseThrow().built());
+        assertFalse(all.component(FUEL).orElseThrow().built());
+        assertEquals(List.of(new MaterialLine(MOON_GOO, 50, 1.0), new MaterialLine(FUEL, 5, 10.0)), all.shopping());
+        assertEquals(List.of(List.of(ALLOY), List.of(COMPONENT)), all.steps().stream()
+                .map(step -> step.jobs().stream().map(BuildPlanner.Component::typeId).toList()).toList());
+    }
+
+    @Test
     void reactionsOutsideLowAndNullSecAreBought() {
-        Plan plan = BuildPlanner.plan(THREE_COMPONENTS, setup(false, true, Map.of()), 1, 1);
+        Plan plan = BuildPlanner.plan(THREE_COMPONENTS, setup(false, Mode.CHEAPER, Map.of()), 1, 1);
 
         assertEquals(150, plan.materialsCost(), 1e-9);
         assertTrue(plan.component(ALLOY).isEmpty());

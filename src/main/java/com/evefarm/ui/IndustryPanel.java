@@ -77,7 +77,7 @@ public final class IndustryPanel extends JPanel {
     private final JSpinner meSpinner = new JSpinner(new SpinnerNumberModel(0, 0, IndustryCalculator.MAX_ME, 1));
     private final JSpinner teSpinner = new JSpinner(new SpinnerNumberModel(0, 0, IndustryCalculator.MAX_TE, 2));
     private final JCheckBox inventionCheck = new JCheckBox("Include invention", true);
-    private final JCheckBox buildCheck = new JCheckBox("Build components when cheaper", true);
+    private final JComboBox<BuildPlanner.Mode> buildCombo = new JComboBox<>(BuildPlanner.Mode.values());
     private final JTextField systemField = new JTextField(12);
     private final JLabel systemLabel = new JLabel(" ");
     private final JComboBox<Structure> structureCombo =
@@ -149,8 +149,9 @@ public final class IndustryPanel extends JPanel {
                     .ifPresent(surplusCombo::setSelectedItem);
             taxSpinner.setValue(savedPercent(SettingsDao.INDUSTRY_FACILITY_TAX, 0));
             brokerSpinner.setValue(savedPercent(SettingsDao.INDUSTRY_BROKER_FEE, 1.5));
-            buildCheck.setSelected(Boolean.parseBoolean(settings.getOrDefault(SettingsDao.INDUSTRY_BUILD_COMPONENTS,
-                    "true")));
+            buildCombo.setSelectedItem(settings.getEnum(SettingsDao.INDUSTRY_BUILD_COMPONENTS, BuildPlanner.Mode.class)
+                    .orElse("false".equals(settings.getOrDefault(SettingsDao.INDUSTRY_BUILD_COMPONENTS, ""))
+                            ? BuildPlanner.Mode.BUY : BuildPlanner.Mode.CHEAPER));
             componentMeSpinner.setValue(savedLevel(SettingsDao.INDUSTRY_COMPONENT_ME, DEFAULT_COMPONENT_ME,
                     IndustryCalculator.MAX_ME));
             componentTeSpinner.setValue(savedLevel(SettingsDao.INDUSTRY_COMPONENT_TE, DEFAULT_COMPONENT_TE,
@@ -178,7 +179,7 @@ public final class IndustryPanel extends JPanel {
             spinner.addChangeListener(e -> changed());
         }
         inventionCheck.addActionListener(e -> changed());
-        buildCheck.addActionListener(e -> {
+        buildCombo.addActionListener(e -> {
             buildChoices.clear();
             changed();
         });
@@ -366,9 +367,13 @@ public final class IndustryPanel extends JPanel {
                 ownMe, ownTe, inventionCheck.isSelected(),
                 systemField.getText(), (Structure) structureCombo.getSelectedItem(),
                 (Rig) materialRigCombo.getSelectedItem(), (Rig) timeRigCombo.getSelectedItem(),
-                percent(taxSpinner), percent(brokerSpinner), buildCheck.isSelected(),
+                percent(taxSpinner), percent(brokerSpinner), buildMode(),
                 (Integer) componentMeSpinner.getValue(), (Integer) componentTeSpinner.getValue(),
                 Map.copyOf(buildChoices), (BuildPlanner.Surplus) surplusCombo.getSelectedItem());
+    }
+
+    private BuildPlanner.Mode buildMode() {
+        return (BuildPlanner.Mode) buildCombo.getSelectedItem();
     }
 
     private static double percent(JSpinner spinner) {
@@ -383,7 +388,7 @@ public final class IndustryPanel extends JPanel {
         settings.set(SettingsDao.INDUSTRY_TE_RIG, ((Rig) timeRigCombo.getSelectedItem()).name());
         settings.set(SettingsDao.INDUSTRY_FACILITY_TAX, String.valueOf(taxSpinner.getValue()));
         settings.set(SettingsDao.INDUSTRY_BROKER_FEE, String.valueOf(brokerSpinner.getValue()));
-        settings.set(SettingsDao.INDUSTRY_BUILD_COMPONENTS, String.valueOf(buildCheck.isSelected()));
+        settings.set(SettingsDao.INDUSTRY_BUILD_COMPONENTS, buildMode().name());
         settings.set(SettingsDao.INDUSTRY_COMPONENT_ME, String.valueOf(componentMeSpinner.getValue()));
         settings.set(SettingsDao.INDUSTRY_COMPONENT_TE, String.valueOf(componentTeSpinner.getValue()));
         settings.set(SettingsDao.INDUSTRY_SURPLUS, ((BuildPlanner.Surplus) surplusCombo.getSelectedItem()).name());
@@ -442,7 +447,7 @@ public final class IndustryPanel extends JPanel {
         if (calculated.productPrice() <= 0) {
             notes.add("No market price for the product.");
         }
-        if (buildCheck.isSelected() && !calculated.reactionsAllowed()) {
+        if (buildMode() != BuildPlanner.Mode.BUY && !calculated.reactionsAllowed()) {
             notes.add("Reactions need low-sec or null-sec, so their products are bought.");
         }
         hintLabel.setText(notes.isEmpty() ? " " : String.join("  ", notes));
@@ -564,9 +569,8 @@ public final class IndustryPanel extends JPanel {
         runsSpinner.setPreferredSize(new Dimension(90, runsSpinner.getPreferredSize().height));
         inventionCheck.setOpaque(false);
         inventionCheck.setToolTipText("For Tech II blueprints: count the cost of inventing the blueprint copies");
-        buildCheck.setOpaque(false);
-        buildCheck.setToolTipText("Make the components and reaction products that cost less to build than to buy. "
-                + "Change any of them in the Build or buy tab");
+        buildCombo.setToolTipText("Buy the components, make those that cost less to build than to buy, or build the "
+                + "whole chain from the reactions to the finished item. Change any of them in the Build or buy tab");
         componentMeSpinner.setToolTipText("The ME of your component blueprints");
         componentTeSpinner.setToolTipText("The TE of your component blueprints");
         surplusCombo.setToolTipText("What happens to what a job makes beyond what you need, such as most of a "
@@ -593,7 +597,7 @@ public final class IndustryPanel extends JPanel {
         field(blueprintForm, "ME", meSpinner, 2, 2, 1);
         field(blueprintForm, "TE", teSpinner, 4, 2, 1);
         place(blueprintForm, inventionCheck, 0, 3, 6);
-        place(blueprintForm, buildCheck, 0, 4, 6);
+        field(blueprintForm, "Components", buildCombo, 0, 4, 5);
 
         JPanel facilityForm = new JPanel(new GridBagLayout());
         field(facilityForm, "System", systemField, 0, 0, 1);

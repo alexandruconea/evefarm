@@ -27,6 +27,23 @@ public final class BuildPlanner {
     private static final int MAX_DEPTH = 8;
     private static final int MAX_ROUNDS = 6;
 
+    public enum Mode {
+        BUY("Buy all"),
+        CHEAPER("Build when cheaper"),
+        ALL("Build all from reactions");
+
+        private final String label;
+
+        Mode(String label) {
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
+
     public enum Surplus {
         KEEP("Keep it for later builds"),
         SELL("Sell it"),
@@ -47,7 +64,7 @@ public final class BuildPlanner {
     public record Setup(Function<Integer, Optional<IndustryActivity>> producer, Map<Integer, Double> prices,
                         Map<Integer, Double> adjustedPrices, Facility componentFacility, Facility reactionFacility,
                         double manufacturingIndex, double reactionIndex, int componentMe, int componentTe,
-                        IntUnaryOperator level, boolean reactionsAllowed, boolean buildWhenCheaper,
+                        IntUnaryOperator level, boolean reactionsAllowed, Mode mode,
                         Map<Integer, Boolean> choices, Surplus surplus, double sellFees) {
     }
 
@@ -59,7 +76,7 @@ public final class BuildPlanner {
         }
     }
 
-    public record Step(int number, List<Component> jobs, Duration time) {
+    public record Step(List<Component> jobs, Duration time) {
     }
 
     public record Plan(List<MaterialLine> materials, List<Component> components, List<MaterialLine> shopping,
@@ -133,7 +150,8 @@ public final class BuildPlanner {
         private Map<Integer, Boolean> decide(Round round, Map<Integer, Boolean> previous) {
             Map<Integer, Boolean> decisions = new HashMap<>(previous);
             for (int type : round.order) {
-                if (recipe(type).isEmpty()) {
+                Optional<Recipe> recipe = recipe(type);
+                if (recipe.isEmpty()) {
                     continue;
                 }
                 Boolean choice = setup.choices().get(type);
@@ -141,16 +159,26 @@ public final class BuildPlanner {
                     decisions.put(type, choice);
                     continue;
                 }
-                Double price = buildPrices.get(type);
-                double market = market(type);
-                decisions.put(type, setup.buildWhenCheaper() && price != null && (market <= 0 || price < market));
+                boolean build = switch (setup.mode()) {
+                    case BUY -> false;
+                    case CHEAPER -> cheaperToBuild(type);
+                    case ALL -> recipe.get().reaction() || round.manufacturingInputs.contains(type);
+                };
+                decisions.put(type, build);
             }
             return decisions;
+        }
+
+        private boolean cheaperToBuild(int type) {
+            Double price = buildPrices.get(type);
+            double market = market(type);
+            return price != null && (market <= 0 || price < market);
         }
 
         private Round solve(Predicate<Integer> builds) {
             Round round = new Round();
             for (MaterialLine root : roots) {
+                round.manufacturingInputs.add(root.typeId());
                 round.level(root.typeId(), builds, new HashSet<>());
                 round.demand.merge(root.typeId(), root.quantity(), Long::sum);
             }
@@ -217,6 +245,7 @@ public final class BuildPlanner {
         private final class Round {
 
             private final Set<Integer> order = new LinkedHashSet<>();
+            private final Set<Integer> manufacturingInputs = new HashSet<>();
             private final Map<Integer, Integer> levels = new HashMap<>();
             private final Map<Integer, Long> demand = new HashMap<>();
             private final Map<Integer, Job> jobs = new HashMap<>();
@@ -239,6 +268,9 @@ public final class BuildPlanner {
                 path.add(type);
                 int level = 0;
                 for (TypeQuantity material : recipe.get().activity().materials()) {
+                    if (!recipe.get().reaction()) {
+                        manufacturingInputs.add(material.typeId());
+                    }
                     level = Math.max(level, level(material.typeId(), builds, path));
                 }
                 path.remove(type);
@@ -304,15 +336,14 @@ public final class BuildPlanner {
                     }
                 }
                 List<Step> steps = new ArrayList<>();
-                byLevel.forEach((level, jobsInStep) -> {
+                for (List<Component> jobsInStep : byLevel.values()) {
                     List<Component> sorted = jobsInStep.stream()
                             .sorted(Comparator.comparing(Component::reaction).reversed())
                             .toList();
                     Duration reactions = elapsed(sorted.stream().filter(Component::reaction).toList(), reactionLines);
                     Duration manufacturing = elapsed(sorted.stream().filter(job -> !job.reaction()).toList(), lines);
-                    steps.add(new Step(level, sorted, reactions.compareTo(manufacturing) > 0 ? reactions
-                            : manufacturing));
-                });
+                    steps.add(new Step(sorted, reactions.compareTo(manufacturing) > 0 ? reactions : manufacturing));
+                }
                 return List.copyOf(steps);
             }
         }
