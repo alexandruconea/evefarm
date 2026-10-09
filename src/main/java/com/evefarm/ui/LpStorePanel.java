@@ -217,11 +217,12 @@ public final class LpStorePanel extends JPanel {
         int index = corporationCombo.getSelectedIndex();
         long newCorporationId = (index >= 0 && index < allCorporations.size())
                 ? allCorporations.get(index).corporationId() : -1;
+        boolean changed = newCorporationId != selectedCorporationId;
+        selectedCorporationId = newCorporationId;
         updateYourLpLabel();
-        if (newCorporationId == selectedCorporationId) {
+        if (!changed) {
             return;
         }
-        selectedCorporationId = newCorporationId;
         updateFavoriteCheckBox();
         tableModel.setRows(List.of());
         offerCount = 0;
