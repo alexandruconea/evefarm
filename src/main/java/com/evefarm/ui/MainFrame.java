@@ -19,6 +19,7 @@ import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
+import javax.swing.JPopupMenu;
 import javax.swing.JSeparator;
 import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
@@ -41,6 +42,8 @@ import java.awt.Taskbar;
 import java.awt.TrayIcon;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
@@ -144,6 +147,7 @@ public final class MainFrame extends JFrame {
         tabSpecs.put("industry", new TabSpec("Industry Calculator", Icons.CALCULATOR, industryPanel));
 
         rebuildTabs();
+        installTabMenu();
 
         tabbedPane.addChangeListener(e -> {
             Component selected = tabbedPane.getSelectedComponent();
@@ -214,6 +218,13 @@ public final class MainFrame extends JFrame {
 
         setupUpdates();
         setupBeltKillAlerts();
+        appContext.notificationService.addListener(notification -> SwingUtilities.invokeLater(
+                () -> showTrayNotification(notification.caption(), notification.text())));
+        appContext.marketWatchService.addListener(() -> SwingUtilities.invokeLater(() -> {
+            if (tabbedPane.getSelectedComponent() == marketOrdersPanel) {
+                marketOrdersPanel.onShown();
+            }
+        }));
         appContext.schedulerService.addSnapshotListener(() -> SwingUtilities.invokeLater(this::onDataUpdated));
     }
 
@@ -222,7 +233,8 @@ public final class MainFrame extends JFrame {
             try {
                 appContext.beltKillMilestoneService.checkForNewMilestone().ifPresent(milestone ->
                         SwingUtilities.invokeLater(() -> showTrayNotification("Belt hunting milestone",
-                                String.format("Your characters have killed %,d NPCs in asteroid belts.", milestone))));
+                                String.format(Locale.US, "Your characters have killed %,d NPCs in asteroid belts.",
+                                        milestone))));
             } catch (Exception e) {
                 LOG.log(Level.WARNING, "Failed to check the belt kill milestone", e);
             }
@@ -502,6 +514,57 @@ public final class MainFrame extends JFrame {
                 }
             }
         }
+    }
+
+    private void installTabMenu() {
+        tabbedPane.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                showTabMenu(e);
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                showTabMenu(e);
+            }
+        });
+    }
+
+    private void showTabMenu(MouseEvent e) {
+        if (!e.isPopupTrigger()) {
+            return;
+        }
+        int index = tabbedPane.indexAtLocation(e.getX(), e.getY());
+        String key = index < 0 ? null : tabKey(tabbedPane.getComponentAt(index));
+        if (key == null) {
+            return;
+        }
+        JPopupMenu menu = new JPopupMenu();
+        JMenuItem close = new JMenuItem("Close Tab", Icons.CANCEL);
+        close.setEnabled(tabbedPane.getTabCount() > 1);
+        close.addActionListener(event -> closeTab(key));
+        JMenuItem showTabs = new JMenuItem("Show Tabs...", Icons.EYE);
+        showTabs.addActionListener(this::showTabsItemActionPerformed);
+        menu.add(close);
+        menu.addSeparator();
+        menu.add(showTabs);
+        menu.show(tabbedPane, e.getX(), e.getY());
+    }
+
+    private String tabKey(Component component) {
+        for (Map.Entry<String, TabSpec> entry : tabSpecs.entrySet()) {
+            if (entry.getValue().component() == component) {
+                return entry.getKey();
+            }
+        }
+        return null;
+    }
+
+    private void closeTab(String key) {
+        Set<String> hidden = TabVisibility.readHidden(appContext.settingsDao);
+        hidden.add(key);
+        TabVisibility.writeHidden(appContext.settingsDao, hidden);
+        rebuildTabs();
     }
 
     private void onCharactersChanged() {

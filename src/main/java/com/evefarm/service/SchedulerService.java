@@ -20,6 +20,7 @@ public final class SchedulerService {
     private static final Logger LOG = Logger.getLogger(SchedulerService.class.getName());
     private static final Duration MIN_PRICE_REFRESH_INTERVAL = Duration.ofHours(1);
     private static final int GAMELOG_SCAN_SECONDS = 600;
+    private static final int NOTIFICATION_CHECK_MINUTES = 15;
 
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "evefarm-scheduler");
@@ -36,6 +37,11 @@ public final class SchedulerService {
         t.setDaemon(true);
         return t;
     });
+    private final ScheduledExecutorService notificationExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "evefarm-notifications");
+        t.setDaemon(true);
+        return t;
+    });
 
     private final AuthService authService;
     private final CharacterService characterService;
@@ -46,12 +52,14 @@ public final class SchedulerService {
     private final BackupRestoreService backupRestoreService;
     private final KillService killService;
     private final SkillService skillService;
+    private final NotificationService notificationService;
     private final List<Runnable> snapshotListeners = new CopyOnWriteArrayList<>();
 
     public SchedulerService(AuthService authService, CharacterService characterService, PriceService priceService,
                              AssetService assetService, TrackerSnapshotService trackerSnapshotService,
                              UpdateCooldownDao updateCooldownDao, BackupRestoreService backupRestoreService,
-                             KillService killService, SkillService skillService) {
+                             KillService killService, SkillService skillService,
+                             NotificationService notificationService) {
         this.authService = authService;
         this.characterService = characterService;
         this.priceService = priceService;
@@ -61,6 +69,7 @@ public final class SchedulerService {
         this.backupRestoreService = backupRestoreService;
         this.killService = killService;
         this.skillService = skillService;
+        this.notificationService = notificationService;
     }
 
     public void start() {
@@ -69,6 +78,8 @@ public final class SchedulerService {
         backupExecutor.scheduleWithFixedDelay(backupRestoreService::autoBackupIfDue, 10, 6 * 60 * 60, TimeUnit.SECONDS);
         executor.schedule(this::captureAllSnapshots, 0, TimeUnit.SECONDS);
         gamelogExecutor.scheduleWithFixedDelay(this::scanGamelogs, 15, GAMELOG_SCAN_SECONDS, TimeUnit.SECONDS);
+        notificationExecutor.scheduleWithFixedDelay(this::checkNotifications, 1, NOTIFICATION_CHECK_MINUTES,
+                TimeUnit.MINUTES);
     }
 
     public void addSnapshotListener(Runnable listener) {
@@ -79,6 +90,7 @@ public final class SchedulerService {
         executor.shutdownNow();
         backupExecutor.shutdownNow();
         gamelogExecutor.shutdownNow();
+        notificationExecutor.shutdownNow();
         try {
             if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
                 LOG.warning("Scheduler did not stop within 2s of shutdown - proceeding anyway");
@@ -88,6 +100,9 @@ public final class SchedulerService {
             }
             if (!gamelogExecutor.awaitTermination(2, TimeUnit.SECONDS)) {
                 LOG.warning("Gamelog scan did not finish within 2s of shutdown - proceeding anyway");
+            }
+            if (!notificationExecutor.awaitTermination(2, TimeUnit.SECONDS)) {
+                LOG.warning("Notification check did not finish within 2s of shutdown - proceeding anyway");
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -102,6 +117,14 @@ public final class SchedulerService {
             killService.refreshKillsFromLogs();
         } catch (Exception e) {
             LOG.log(Level.WARNING, "Automatic Gamelog scan failed", e);
+        }
+    }
+
+    void checkNotifications() {
+        try {
+            notificationService.check();
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Notification check failed", e);
         }
     }
 

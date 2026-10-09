@@ -1,17 +1,18 @@
 package com.evefarm;
 
-import com.evefarm.auth.TokenCipher;
 import com.evefarm.db.Database;
 import com.evefarm.db.MigrationRunner;
 import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.service.BackupRestoreService;
 import com.evefarm.ui.CompactMenuItemUI;
+import com.evefarm.ui.CompactToolTips;
 import com.evefarm.ui.EveLaf;
 import com.evefarm.ui.MainFrame;
 import com.evefarm.ui.UnderlineTabbedPaneUI;
 import com.evefarm.util.AppLogging;
 import com.evefarm.util.AppPaths;
 import com.evefarm.util.SingleInstance;
+import com.evefarm.util.TokenCipher;
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLaf;
 
@@ -159,6 +160,7 @@ public final class Main {
                 CompactMenuItemUI.install();
                 UnderlineTabbedPaneUI.install();
             }
+            CompactToolTips.install();
             boolean flat = UIManager.getLookAndFeel() instanceof FlatLaf;
             JFrame.setDefaultLookAndFeelDecorated(flat);
             JDialog.setDefaultLookAndFeelDecorated(flat);

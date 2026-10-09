@@ -41,6 +41,21 @@ public final class MarketsApi {
         return result;
     }
 
+    public List<MarketOrderDto> listRegionOrders(long regionId, int typeId) {
+        List<String> pages = client.getAllPages("/markets/" + regionId + "/orders/", null,
+                Map.of("order_type", "all", "type_id", String.valueOf(typeId)));
+        List<MarketOrderDto> result = new ArrayList<>();
+        try {
+            for (String page : pages) {
+                result.addAll(client.objectMapper().readValue(page, new TypeReference<List<MarketOrderDto>>() {
+                }));
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to parse the market orders of type " + typeId, e);
+        }
+        return result;
+    }
+
     public List<MarketPriceDto> listPrices() {
         String body = client.get("/markets/prices/", null, Map.of());
         try {

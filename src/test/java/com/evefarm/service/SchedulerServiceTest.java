@@ -133,14 +133,15 @@ class SchedulerServiceTest {
     private static SchedulerService scheduler(KillService kills) {
         return new SchedulerService(mock(AuthService.class), mock(CharacterService.class), mock(PriceService.class),
                 mock(AssetService.class), mock(TrackerSnapshotService.class), mock(UpdateCooldownDao.class),
-                mock(BackupRestoreService.class), kills, mock(SkillService.class));
+                mock(BackupRestoreService.class), kills, mock(SkillService.class), mock(NotificationService.class));
     }
 
     private static SchedulerService scheduler(PriceService prices, CharacterService characters,
                                                AssetService assets, TrackerSnapshotService snapshots,
                                                UpdateCooldownDao cooldowns) {
         return new SchedulerService(mock(AuthService.class), characters, prices, assets, snapshots,
-                cooldowns, mock(BackupRestoreService.class), mock(KillService.class), mock(SkillService.class));
+                cooldowns, mock(BackupRestoreService.class), mock(KillService.class), mock(SkillService.class),
+                mock(NotificationService.class));
     }
 
     private static EveCharacter character(long id) {

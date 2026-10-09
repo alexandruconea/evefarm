@@ -20,6 +20,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -194,6 +195,24 @@ class UpdateInstallerTest {
         UpdateInstaller.deleteRecursively(install);
 
         assertFalse(Files.exists(install), "jpackage marks EVEFarm.exe read-only; it must not block the cleanup");
+    }
+
+    @Test
+    void onlyTheBackupsOfTheLastThreeUpdatesAreKept() throws Exception {
+        Path backupDir = Files.createDirectories(temp.resolve("backups"));
+        for (String name : new String[]{"evefarm-before-update-1.0.3.db", "evefarm-before-update-1.0.9.db",
+                "evefarm-before-update-1.0.10.db", "evefarm-before-update-1.0.19.db",
+                "evefarm-before-update-1.0.20.db", "evefarm-auto-2026-10-01_1012.db", "my-copy.db"}) {
+            Files.writeString(backupDir.resolve(name), "data");
+        }
+
+        UpdateInstaller.pruneBeforeUpdateBackups(backupDir, 3);
+
+        try (var files = Files.list(backupDir)) {
+            assertEquals(List.of("evefarm-auto-2026-10-01_1012.db", "evefarm-before-update-1.0.10.db",
+                            "evefarm-before-update-1.0.19.db", "evefarm-before-update-1.0.20.db", "my-copy.db"),
+                    files.map(file -> file.getFileName().toString()).sorted().toList());
+        }
     }
 
     @Test

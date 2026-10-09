@@ -20,8 +20,10 @@ import com.evefarm.db.dao.LocationCacheDao;
 import com.evefarm.db.dao.LoyaltyPointDao;
 import com.evefarm.db.dao.MarketOrderDao;
 import com.evefarm.db.dao.MiningLedgerDao;
+import com.evefarm.db.dao.NotificationDao;
 import com.evefarm.db.dao.NpcTypeDao;
 import com.evefarm.db.dao.OfficerDao;
+import com.evefarm.db.dao.OrderCompetitionDao;
 import com.evefarm.db.dao.OreDao;
 import com.evefarm.db.dao.PriceCacheDao;
 import com.evefarm.db.dao.SavedFilterDao;
@@ -76,7 +78,9 @@ import com.evefarm.service.LocationNameCacheService;
 import com.evefarm.service.LoyaltyPointService;
 import com.evefarm.service.LpOfferPricingService;
 import com.evefarm.service.MarketOrderService;
+import com.evefarm.service.MarketWatchService;
 import com.evefarm.service.MiningService;
+import com.evefarm.service.NotificationService;
 import com.evefarm.service.NpcCatalogService;
 import com.evefarm.service.OfficerService;
 import com.evefarm.service.OreCatalogService;
@@ -127,6 +131,7 @@ public final class AppContext {
     public final TrackerSnapshotService trackerSnapshotService;
     public final JournalService journalService;
     public final MarketOrderService marketOrderService;
+    public final MarketWatchService marketWatchService;
     public final TransactionService transactionService;
     public final ContractService contractService;
     public final IndustryJobService industryJobService;
@@ -150,6 +155,7 @@ public final class AppContext {
     public final LpOfferPricingService lpOfferPricingService;
     public final ItemIconService itemIconService;
     public final ValueSummaryService valueSummaryService;
+    public final NotificationService notificationService;
     public final SchedulerService schedulerService;
     public final BackupRestoreService backupRestoreService;
     public final EveSettingsService eveSettingsService;
@@ -232,8 +238,9 @@ public final class AppContext {
                 contractsApi, industryApi, skillsApi, loyaltyApi, priceService, lpOfferPricingService, assetDao,
                 snapshotDao, skillPointFilterDao, settingsDao, industryCatalogService);
         this.journalService = new JournalService(authService, walletApi, entityNameCacheService, walletJournalDao);
+        this.marketWatchService = new MarketWatchService(authService, marketsApi, new OrderCompetitionDao(database));
         this.marketOrderService = new MarketOrderService(authService, marketsApi, typeNameCacheService,
-                locationNameCacheService, marketOrderDao, priceService, walletJournalDao);
+                locationNameCacheService, marketOrderDao, priceService, marketWatchService, walletJournalDao);
         this.transactionService = new TransactionService(authService, walletApi, typeNameCacheService,
                 locationNameCacheService, entityNameCacheService, walletTransactionDao);
         this.contractService = new ContractService(authService, contractsApi, entityNameCacheService,
@@ -251,13 +258,18 @@ public final class AppContext {
         this.skillService = new SkillService(authService, characterDao, skillsApi, clonesApi, skillCatalogService,
                 new CharacterSkillDao(database), new SkillPlanDao(database), acceleratorDao);
         this.industryService = new IndustryService(industryCatalogService,
-                new IndustryMarketService(new IndustryIndexApi(esiHttpClient), marketsApi), priceService, skillService);
+                new IndustryMarketService(new IndustryIndexApi(esiHttpClient), marketsApi), priceService, skillService,
+                assetService);
         this.valueSummaryService = new ValueSummaryService(snapshotDao, assetDao, characterService);
         this.backupRestoreService = new BackupRestoreService(database, settingsDao);
         this.eveSettingsService = new EveSettingsService(settingsDao);
         this.updateService = new UpdateService(settingsDao);
         this.updateInstaller = new UpdateInstaller(backupRestoreService);
+        this.notificationService = new NotificationService(authService, characterService, industryJobService,
+                marketWatchService, skillsApi, contractsApi, typeNameCacheService, new NotificationDao(database),
+                settingsDao);
         this.schedulerService = new SchedulerService(authService, characterService, priceService, assetService,
-                trackerSnapshotService, updateCooldownDao, backupRestoreService, killService, skillService);
+                trackerSnapshotService, updateCooldownDao, backupRestoreService, killService, skillService,
+                notificationService);
     }
 }

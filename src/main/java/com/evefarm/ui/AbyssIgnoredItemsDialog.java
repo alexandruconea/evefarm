@@ -9,7 +9,6 @@ import javax.swing.JDialog;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
 import javax.swing.ListSelectionModel;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -47,11 +46,8 @@ final class AbyssIgnoredItemsDialog extends JDialog {
     }
 
     private void buildUi() {
-        JTextArea hint = new JTextArea("These items are never counted as Abyss loot, for example your own ammo. "
-                + "To add one, right-click it in the loot of a run and choose Always Ignore.");
-        TextAreaStyler.informational(hint);
-        hint.setColumns(34);
-
+        list.setToolTipText("These items are never counted as Abyss loot, for example your own ammo. To add one, "
+                + "right-click it in the loot of a run and choose Always Ignore.");
         list.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
         list.addListSelectionListener(e -> stopButton.setEnabled(!list.isSelectionEmpty()));
         JScrollPane scroll = new JScrollPane(list);
@@ -66,7 +62,6 @@ final class AbyssIgnoredItemsDialog extends JDialog {
 
         JPanel content = new JPanel(new BorderLayout(0, 8));
         content.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
-        content.add(hint, BorderLayout.NORTH);
         content.add(scroll, BorderLayout.CENTER);
         content.add(buttons, BorderLayout.SOUTH);
         setContentPane(content);

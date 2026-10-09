@@ -1,4 +1,4 @@
-package com.evefarm.auth;
+package com.evefarm.util;
 
 import com.sun.jna.platform.win32.Crypt32Util;
 import com.sun.jna.platform.win32.WinCrypt;

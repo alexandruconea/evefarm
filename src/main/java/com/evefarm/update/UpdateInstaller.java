@@ -13,13 +13,18 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessDeniedException;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -33,6 +38,10 @@ public final class UpdateInstaller {
     private static final int MAX_ZIP_ENTRIES = 10_000;
     private static final String APP_FOLDER = "EVEFarm";
     private static final String LAUNCHER = "EVEFarm.exe";
+    private static final String BEFORE_UPDATE_PREFIX = "evefarm-before-update-";
+    private static final Pattern BEFORE_UPDATE_BACKUP = Pattern.compile(
+            Pattern.quote(BEFORE_UPDATE_PREFIX) + "(\\d+(?:\\.\\d+)*)\\.db");
+    private static final int KEEP_BEFORE_UPDATE_BACKUPS = 3;
 
     public interface Progress {
         void report(String step, long done, long total);
@@ -114,7 +123,8 @@ public final class UpdateInstaller {
         }
 
         progress.report("Backing up your data", 0, 0);
-        backupRestoreService.backupTo(backupDir.resolve("evefarm-before-update-" + release.version() + ".db"));
+        backupRestoreService.backupTo(backupDir.resolve(BEFORE_UPDATE_PREFIX + release.version() + ".db"));
+        pruneBeforeUpdateBackups(backupDir, KEEP_BEFORE_UPDATE_BACKUPS);
 
         Files.deleteIfExists(zip);
         return new PreparedUpdate(installDir, staged);
@@ -173,6 +183,7 @@ public final class UpdateInstaller {
             deleteQuietly(installDir.resolveSibling(installDir.getFileName() + ".update"));
         });
         deleteQuietly(AppPaths.appDataDir().resolve("updates"));
+        pruneBeforeUpdateBackups(AppPaths.backupDir(), KEEP_BEFORE_UPDATE_BACKUPS);
     }
 
     private void download(String url, Path target, long expectedSize, Progress progress) throws IOException {
@@ -269,6 +280,24 @@ public final class UpdateInstaller {
                 in.closeEntry();
             }
         }
+    }
+
+    static void pruneBeforeUpdateBackups(Path directory, int keep) {
+        Map<Path, String> versions = new HashMap<>();
+        try (DirectoryStream<Path> files = Files.newDirectoryStream(directory, BEFORE_UPDATE_PREFIX + "*.db")) {
+            for (Path file : files) {
+                Matcher name = BEFORE_UPDATE_BACKUP.matcher(file.getFileName().toString());
+                if (name.matches()) {
+                    versions.put(file, name.group(1));
+                }
+            }
+        } catch (IOException e) {
+            return;
+        }
+        versions.keySet().stream()
+                .sorted((a, b) -> AppInfo.compareVersions(versions.get(b), versions.get(a)))
+                .skip(keep)
+                .forEach(UpdateInstaller::deleteQuietly);
     }
 
     static void deleteRecursively(Path dir) throws IOException {

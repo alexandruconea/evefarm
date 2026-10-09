@@ -66,8 +66,7 @@ final class AppUpdateDialog extends JDialog {
 
     private void buildUi() {
         JLabel header = new JLabel("<html><b>" + AppInfo.NAME + " " + release.version() + " is available.</b>"
-                + "<br>You have " + AppInfo.version() + ". Your data isn't touched by updating, and it's backed up "
-                + "first anyway.</html>");
+                + "<br>You have " + AppInfo.version() + ".</html>");
 
         JEditorPane notes = new JEditorPane();
         notes.setEditable(false);
@@ -97,6 +96,7 @@ final class AppUpdateDialog extends JDialog {
         updateButton.setText(canInstallHere() ? "Update Now" : "Download");
         updateButton.setIcon(Icons.REFRESH);
         updateButton.addActionListener(e -> updateNow());
+        updateButton.setToolTipText("Your data isn't touched by updating, and it's backed up first anyway");
         pageButton.addActionListener(e -> openReleasePage());
         skipButton.addActionListener(e -> {
             appContext.updateService.skip(release);

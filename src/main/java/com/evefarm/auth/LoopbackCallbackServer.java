@@ -1,5 +1,6 @@
 package com.evefarm.auth;
 
+import com.evefarm.util.Text;
 import com.sun.net.httpserver.HttpServer;
 
 import java.io.IOException;
@@ -71,7 +72,7 @@ public final class LoopbackCallbackServer implements AutoCloseable {
         if (error != null) {
             authorizationCode.completeExceptionally(
                     new IllegalStateException("EVE SSO returned an error: " + error));
-            return page("Login failed", escapeHtml(error) + "<br>You may close this window.");
+            return page("Login failed", Text.escapeHtml(error) + "<br>You may close this window.");
         }
         if (code == null) {
             authorizationCode.completeExceptionally(
@@ -84,21 +85,6 @@ public final class LoopbackCallbackServer implements AutoCloseable {
 
     private static String page(String title, String message) {
         return "<html><body><h3>" + title + "</h3><p>" + message + "</p></body></html>";
-    }
-
-    static String escapeHtml(String text) {
-        StringBuilder escaped = new StringBuilder(text.length());
-        for (char c : text.toCharArray()) {
-            switch (c) {
-                case '<' -> escaped.append("&lt;");
-                case '>' -> escaped.append("&gt;");
-                case '&' -> escaped.append("&amp;");
-                case '"' -> escaped.append("&quot;");
-                case '\'' -> escaped.append("&#39;");
-                default -> escaped.append(c);
-            }
-        }
-        return escaped.toString();
     }
 
     private static Map<String, String> parseQuery(URI uri) {

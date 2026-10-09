@@ -11,7 +11,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -117,6 +119,35 @@ public final class AssetDao {
                 }
             } catch (SQLException e) {
                 throw new IllegalStateException("Failed to sum assets for character " + characterId, e);
+            }
+        }
+    }
+
+    public Map<Integer, Long> usableStock(Long solarSystemId) {
+        String sql = """
+                SELECT a.type_id, SUM(a.quantity) AS quantity
+                FROM asset_current a
+                JOIN characters c ON c.character_id = a.character_id
+                LEFT JOIN location_cache l ON l.location_id = a.location_id
+                WHERE c.removed_at IS NULL AND a.is_singleton = 0 AND a.quantity > 0
+                  AND COALESCE(a.location_flag, '') NOT LIKE '%Slot%'
+                  AND COALESCE(a.location_flag, '') NOT IN ('HiddenModifiers', 'AssetSafety')
+                  AND (? IS NULL OR l.system_id = ?)
+                GROUP BY a.type_id
+                """;
+        synchronized (database) {
+            try (PreparedStatement ps = database.connection().prepareStatement(sql)) {
+                JdbcUtil.setNullable(ps, 1, solarSystemId);
+                JdbcUtil.setNullable(ps, 2, solarSystemId);
+                Map<Integer, Long> stock = new HashMap<>();
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        stock.put(rs.getInt("type_id"), rs.getLong("quantity"));
+                    }
+                }
+                return stock;
+            } catch (SQLException e) {
+                throw new IllegalStateException("Failed to read the items in stock", e);
             }
         }
     }

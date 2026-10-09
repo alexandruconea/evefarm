@@ -1,6 +1,5 @@
 package com.evefarm.service;
 
-import com.evefarm.auth.TokenCipher;
 import com.evefarm.db.dao.PriceCacheDao;
 import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.db.dao.TypeCacheDao;
@@ -12,6 +11,7 @@ import com.evefarm.esi.dto.JaniceItemDto;
 import com.evefarm.esi.dto.MarketPriceDto;
 import com.evefarm.model.PriceBreakdown;
 import com.evefarm.model.PriceMode;
+import com.evefarm.util.TokenCipher;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.OptionalDouble;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -39,6 +40,7 @@ public final class PriceService {
     private final PriceCacheDao priceCacheDao;
     private final TypeCacheDao typeCacheDao;
     private final SettingsDao settingsDao;
+    private final Map<String, Instant> unpriced = new ConcurrentHashMap<>();
 
     public PriceService(MarketsApi marketsApi, FuzzworkApi fuzzworkApi, JaniceApi janiceApi,
                          PriceCacheDao priceCacheDao, TypeCacheDao typeCacheDao, SettingsDao settingsDao) {
@@ -74,10 +76,10 @@ public final class PriceService {
         refreshFuzzworkPrices(typeCacheDao.listAllTypeIds());
     }
 
-    private void refreshFuzzworkPrices(List<Integer> typeIds) {
+    private Set<Integer> refreshFuzzworkPrices(List<Integer> typeIds) {
         if (typeIds.isEmpty()) {
             LOG.info("Skipping Fuzzwork price refresh - no known item types yet");
-            return;
+            return Set.of();
         }
         LOG.info("Refreshing market price cache (Fuzzwork) for " + typeIds.size() + " known types");
         Map<Integer, FuzzworkAggregateDto> aggregates = fuzzworkApi.fetchAggregates(typeIds);
@@ -102,20 +104,21 @@ public final class PriceService {
             ));
         }
         priceCacheDao.replaceAllDetailed(byType);
+        return byType.keySet();
     }
 
     private void refreshJanicePrices() {
         refreshJanicePrices(typeCacheDao.listAllTypeIds());
     }
 
-    private void refreshJanicePrices(List<Integer> typeIds) {
+    private Set<Integer> refreshJanicePrices(List<Integer> typeIds) {
         String apiKey = TokenCipher.decrypt(settingsDao.getOrDefault(SettingsDao.JANICE_API_KEY, ""));
         if (apiKey.isBlank()) {
             throw new IllegalStateException("Janice is selected as price provider, but no API key is configured");
         }
         if (typeIds.isEmpty()) {
             LOG.info("Skipping Janice price refresh - no known item types yet");
-            return;
+            return Set.of();
         }
         LOG.info("Refreshing market price cache (Janice) for " + typeIds.size() + " known types");
         Map<Integer, JaniceItemDto> items = janiceApi.fetchPrices(typeIds, apiKey);
@@ -134,6 +137,7 @@ public final class PriceService {
             ));
         }
         priceCacheDao.replaceAllDetailed(byType);
+        return byType.keySet();
     }
 
     private Double parsePrice(String raw) {
@@ -164,6 +168,11 @@ public final class PriceService {
         return priceCacheDao.findAllUnitPrices(mode);
     }
 
+    private boolean unpricedSince(String provider, int typeId, Instant freshSince) {
+        Instant checked = unpriced.get(provider + ":" + typeId);
+        return checked != null && checked.isAfter(freshSince);
+    }
+
     public Map<Integer, Double> getSellVolumes() {
         return priceCacheDao.findAllSellVolumes();
     }
@@ -177,16 +186,20 @@ public final class PriceService {
         if (!PROVIDER_FUZZWORK.equals(provider) && !PROVIDER_JANICE.equals(provider)) {
             return;
         }
-        Set<Integer> stale = priceCacheDao.findStaleTypeIds(typeIds, Instant.now().minus(MAX_AGE));
+        Instant freshSince = Instant.now().minus(MAX_AGE);
+        List<Integer> stale = priceCacheDao.findStaleTypeIds(typeIds, freshSince).stream()
+                .filter(typeId -> !unpricedSince(provider, typeId, freshSince))
+                .toList();
         if (stale.isEmpty()) {
             return;
         }
         try {
-            if (PROVIDER_FUZZWORK.equals(provider)) {
-                refreshFuzzworkPrices(List.copyOf(stale));
-            } else {
-                refreshJanicePrices(List.copyOf(stale));
-            }
+            Set<Integer> priced = PROVIDER_FUZZWORK.equals(provider) ? refreshFuzzworkPrices(stale)
+                    : refreshJanicePrices(stale);
+            Instant now = Instant.now();
+            stale.stream()
+                    .filter(typeId -> !priced.contains(typeId))
+                    .forEach(typeId -> unpriced.put(provider + ":" + typeId, now));
         } catch (RuntimeException e) {
             LOG.log(Level.WARNING, "Couldn't fetch prices for " + stale.size()
                     + " item types; continuing with the prices already saved", e);

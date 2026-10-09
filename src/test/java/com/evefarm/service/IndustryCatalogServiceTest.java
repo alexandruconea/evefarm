@@ -118,6 +118,23 @@ class IndustryCatalogServiceTest {
     }
 
     @Test
+    void blueprintsThatOnlyTurnAnItemIntoItselfAreNotOffered() {
+        IndustryCatalog catalog = IndustryCatalogService.parse(ACTIVITIES + "\"2748\",\"1\",\"300\"\n",
+                MATERIALS + "\"2748\",\"1\",\"14343\",\"1\"\n", PRODUCTS + "\"2748\",\"1\",\"14343\",\"1\"\n",
+                PROBABILITIES, SKILLS,
+                TYPES + "\"2748\",\"105\",\"Silo Blueprint\",\"1\"\n\"14343\",\"25\",\"Silo\",\"1\"\n", GROUPS,
+                CATEGORIES);
+        Database database = new Database(":memory:");
+        MigrationRunner.run(database);
+        IndustryCatalogDao dao = new IndustryCatalogDao(database);
+
+        dao.replaceAll(catalog, List.of(), List.of());
+
+        assertEquals(List.of("Jaguar", "Rifter"), dao.manufacturingChoices().stream()
+                .map(BlueprintChoice::productName).toList());
+    }
+
+    @Test
     void solarSystemsKeepTheirRegionAndSkipAbyssalSpace() {
         List<SolarSystem> systems = IndustryCatalogService.parseSolarSystems(SYSTEMS, REGIONS);
 

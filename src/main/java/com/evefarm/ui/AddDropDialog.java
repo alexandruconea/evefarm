@@ -109,6 +109,8 @@ final class AddDropDialog extends JDialog {
         form.add(new JLabel("Quantity:"));
         form.add(quantitySpinner);
         form.add(new JLabel("Unit price (ISK):"));
+        priceField.setToolTipText("The market price from your price provider - overwrite it with a sale price "
+                + "if you like");
         form.add(priceField);
 
         addButton.setEnabled(false);
@@ -190,7 +192,7 @@ final class AddDropDialog extends JDialog {
                     OptionalDouble price = get();
                     if (price.isPresent()) {
                         priceField.setText(IskFormatter.formatPlain(price.getAsDouble()));
-                        priceHint.setText("Market price from your price provider - overwrite it with a sale price if you like.");
+                        priceHint.setText(" ");
                     } else {
                         priceField.setText("");
                         priceHint.setText("No market price for this item - type one in.");

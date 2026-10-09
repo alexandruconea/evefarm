@@ -60,8 +60,7 @@ public final class EveSettingsCopyDialog extends JDialog {
     private final JComboBox<CharacterChoice> sourceCharacter = new JComboBox<>();
     private final JComboBox<Profile> targetProfile = new JComboBox<>();
     private final JComboBox<CharacterChoice> targetCharacter = new JComboBox<>();
-    private final JCheckBox includeAccount =
-            new JCheckBox("Also copy keyboard shortcuts and other account-wide settings (core_user)");
+    private final JCheckBox includeAccount = new JCheckBox("Also copy keyboard shortcuts");
     private final JComboBox<AccountChoice> sourceAccount = new JComboBox<>();
     private final JComboBox<AccountChoice> targetAccount = new JComboBox<>();
     private final JLabel accountHint = new JLabel(" ");
@@ -110,6 +109,8 @@ public final class EveSettingsCopyDialog extends JDialog {
         constraints.gridx = 1;
         constraints.gridy = 5;
         constraints.gridwidth = 2;
+        includeAccount.setToolTipText("Copies the account-wide settings too (the core_user file), such as "
+                + "keyboard shortcuts");
         form.add(includeAccount, constraints);
         constraints.gridwidth = 1;
 

@@ -5,8 +5,10 @@ import com.evefarm.esi.EsiException;
 import com.evefarm.model.ContractItem;
 import com.evefarm.model.ContractRow;
 import com.evefarm.service.ItemIconService;
+import com.evefarm.ui.column.ColumnDescriptions;
 import com.evefarm.util.DateUtil;
 import com.evefarm.util.IskFormatter;
+import com.evefarm.util.Text;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -69,7 +71,7 @@ final class ContractContentsDialog extends JDialog {
         if (contract.title() != null && !contract.title().isBlank()) {
             return contract.title();
         }
-        return ContractsTableModel.formatEnum(contract.type());
+        return Text.titleCase(contract.type());
     }
 
     private void buildUi() {
@@ -101,8 +103,8 @@ final class ContractContentsDialog extends JDialog {
     private JPanel details() {
         List<String[]> fields = new ArrayList<>();
         addField(fields, "Character", contract.characterName());
-        addField(fields, "Type", ContractsTableModel.formatEnum(contract.type()));
-        addField(fields, "Status", ContractsTableModel.formatEnum(contract.status()));
+        addField(fields, "Type", Text.titleCase(contract.type()));
+        addField(fields, "Status", Text.titleCase(contract.status()));
         addField(fields, "Issuer", contract.issuerName());
         addField(fields, "Assignee", contract.assigneeName());
         addField(fields, "Acceptor", contract.acceptorName());
@@ -239,9 +241,12 @@ final class ContractContentsDialog extends JDialog {
                 + (unpriced == 0 ? "" : "  (" + unpriced + " without a market price)");
     }
 
-    private static final class ItemsTableModel extends AbstractTableModel {
+    private static final class ItemsTableModel extends AbstractTableModel implements ColumnDescriptions {
 
         private static final String[] COLUMNS = {"", "Item", "Group", "Quantity", "Unit Price", "Total"};
+        private static final String[] DESCRIPTIONS = {"The item's icon", "The item's name",
+                "The item's group, such as Frigate or Mineral", "How many units",
+                "The price of one unit, from your price provider", "The unit price times the quantity"};
 
         private final ItemIconService icons;
         private List<ContractItem> items = List.of();
@@ -268,6 +273,11 @@ final class ContractContentsDialog extends JDialog {
         @Override
         public String getColumnName(int column) {
             return COLUMNS[column];
+        }
+
+        @Override
+        public String columnDescription(int column) {
+            return DESCRIPTIONS[column];
         }
 
         @Override

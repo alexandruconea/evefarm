@@ -94,7 +94,9 @@ During EVE's daily downtime the servers don't answer. The update says so; try ag
 
 ## The tabs
 
-You can hide tabs you don't use and change their order in **Options > Show Tabs...** (tick a tab to show it, **Move Up** and **Move Down** to reorder).
+You can hide tabs you don't use and change their order in **Options > Show Tabs...** (tick a tab to show it, **Move Up** and **Move Down** to reorder). To hide a tab quickly, right-click it and choose **Close Tab**; it comes back when you tick it again in **Show Tabs...**.
+
+To keep the screens tidy, the explanations sit behind the mouse: hover a tab, a field, a button or a line of the Industry Result to read what it does.
 
 ### Values
 
@@ -142,7 +144,7 @@ Your wallet journal: date, type, amount, balance, description and the two partie
 Your buy and sell orders with price, quantity, location, issue and expiry date, status and range.
 
 - **Show closed orders** adds the orders that were filled, cancelled or expired. EVE only shows those for 90 days; EVE Farm keeps them.
-- **Outbid** says whether someone has a better price than you: a lower sell price or a higher buy price.
+- **Outbid** says whether someone else has a better price than you at the same station: a cheaper sell order or a higher buy order. Orders of your own characters don't count. EVE Farm checks every 15 minutes while it runs, so the column fills in about a minute after it starts. **Competitor Price** (hidden at first) shows that best price.
 - **Broker's Fee** and **Broker's Fee %** show what you paid to place the order, matched from your wallet journal.
 - Hidden columns (right-click a column header and choose **Choose Columns...** to show them): **Market Sell Min**, **Market Buy Max**, **Market Price**, **Market Margin %** and **Market Profit +**, which compare your price with the market.
 
@@ -311,7 +313,7 @@ Works out what it costs to build an item and what you make selling it. The first
 4. Choose where you build: an NPC station, or a Raitaru, Azbel or Sotiyo with no rig, a T1 rig or a T2 rig for material (ME) and time (TE), and the structure's **Facility tax %**. The rig bonus grows in low-sec and null-sec, as in the game.
 5. Set the **Broker fee %** you pay: in an NPC station it is 3% less 0.3% for each level of Broker Relations, and less again with good standings; in a player structure it is the owner's fee plus 0.5%. Set it to 0 if you sell to buy orders. The **Sales tax** comes from the character's Accounting skill: 7.5% less 11% for each level.
 
-The **Materials** tab lists what the job uses, with the price you pay for each and whether you build it or buy it. The **Result** at the top right shows what the product sells for, the sales tax and broker fee, the materials, the job fee, the total cost, the profit (also per unit), the build time and the ISK per hour.
+The **Materials** tab lists what the job uses, with the price you pay for each and whether you build it or buy it. The **Result** at the top right shows what the product sells for, the sales tax and broker fee, the materials, the job fee, the total cost, the profit, **To spend** (the ISK you still pay out: what is left to buy, the job fees and the invention), the build time and the ISK per hour. Hover a line for more, such as the price per unit or what the surplus is worth.
 
 **Building components.** The **Components:** setting decides what you make yourself:
 
@@ -320,6 +322,14 @@ The **Materials** tab lists what the job uses, with the price you pay for each a
 - **Build all from reactions**: the whole chain is built, from the reactions to the finished item, even where buying would cost less. Only the raw materials are bought, along with what only the reactions use, such as moon materials and fuel blocks.
 
 The **Build or buy** tab lists every item you could make with its market price, build cost and job time; **More profitable** says whether building or buying it costs you less, and **Saving** how much you save that way; tick or clear **Build** to decide yourself. Set the ME and TE of your component blueprints above the table (reactions have none). Reactions run in a refinery and only in low-sec, null-sec or a wormhole, so in high-sec their products are bought. The **Shopping list** tab shows everything left to buy, and its **Copy for Multibuy** button copies it to paste into Multibuy in EVE.
+
+**Using what you already have.** The **Stock:** setting leaves out what your characters already own, from their assets as of the last update:
+
+- **Don't use** (the default): everything is bought or built;
+- **In the build system**: only items in the system typed in **System:** count;
+- **Anywhere**: items anywhere count.
+
+The items of all your characters count, in hangars, containers and cargo holds; fitted modules and assembled items don't. What you have is taken first at every step of the chain: the **Shopping list** shows **Needed**, **In Stock** and **To Buy**, the **Build or buy** and **Chain** tabs show what comes from stock, and an item you have enough of needs no job at all, so a surplus you kept from an earlier build is used up first. **To spend** in the Result drops by what you have; it can be higher than the total cost when you keep a surplus, as you pay for whole runs now and use the rest later. The total cost and the profit stay the same, as the items you have are worth their market price too. Run **Update > Update...** for **Assets** after buying or moving items, so EVE Farm sees them.
 
 **The production chain.** The **Chain** tab shows the order to build in, from the raw materials to the finished item. Step 1 is buying the Shopping list. Each next step lists its jobs, for a ship for example the simple reactions, the complex reactions, the components and last the ship itself, with the runs, what the job makes, what the chain needs, the job time and what it uses. The jobs of one step run side by side on the character's manufacturing and reaction lines, and the step takes as long as its slowest job. What the whole chain needs of one item is made in one job, so a fuel block used by five reactions is built once. To see the whole chain from the reactions, choose **Build all from reactions**. The time of all the steps before the final build is shown as **Component time** and counts in the ISK per hour.
 
@@ -357,6 +367,7 @@ Most tabs show a table, and all of them work the same way.
 
 **Columns**
 
+- Hover a column header to see what the column shows and how it is worked out. **Choose Columns...** shows the same when you hover a column in its list.
 - Click a column header to sort by it; click again to reverse. Numbers and amounts sort as numbers.
 - Drag a header to move the column. The order is remembered.
 - Right-click a header and choose **Choose Columns...** to show or hide columns. Some useful columns are hidden at first, such as the IDs.
@@ -375,9 +386,10 @@ Open **Options > Settings...**.
   - **Fuzzwork (Jita 4-4 sell price)**: prices from the Jita 4-4 market;
   - **Janice (Jita 4-4, requires API key)**: Janice's Jita prices. Janice has no public API, so you need your own key. **How do I get one?** explains how to ask for it on their Discord. The key is stored encrypted.
 - **Default price:** which price is used to value items: Sell Maximum, Sell Average, Sell Median, Sell Percentile, Sell Minimum, Midpoint, Buy Maximum, Buy Average, Buy Median, Buy Percentile or Buy Minimum. It only applies to Fuzzwork and Janice; CCP has a single average price.
-- **EVE Gamelogs folder (Kills tab):** where EVE writes its Gamelogs, used by NPC Kills and the Abyss voice. Usually found by itself; **Browse...** sets it by hand.
+- **Gamelogs folder:** where EVE writes its Gamelogs, used by NPC Kills and the Abyss voice. Usually found by itself; **Browse...** sets it by hand.
 - **Extra backup copy folder:** a second folder for the automatic backups, such as a cloud-synced one.
 - **Updates:** **Check for new versions automatically**.
+- **Notifications:** which Windows notifications you get. See [Tray icon and notifications](#tray-icon-and-notifications).
 
 After changing the price provider or the default price, click **Now** next to **Market Prices** in **Update > Update...** to load the new prices.
 
@@ -398,7 +410,7 @@ Before replacing anything, EVE Farm makes a backup of the target files and check
 - **Options > Settings... > Extra backup copy folder** copies every automatic backup to a second folder too.
 - **Options > Backup Data...** saves a backup wherever you like.
 - **Options > Restore Data...** restores a backup. EVE Farm checks the file first, then puts it in place the next time it starts. Your current data is saved beside it before it's replaced, so you can go back.
-- Before installing an app update, EVE Farm also backs up your data.
+- Before installing an app update, EVE Farm also backs up your data. It keeps the backups of the last 3 updates.
 
 A backup restored on another computer or Windows account keeps all the history, but the characters must be added again, because their logins can only be read by the Windows account that saved them.
 
@@ -416,6 +428,13 @@ A backup restored on another computer or Windows account keeps all the history, 
 
 - Minimizing EVE Farm hides it in the Windows tray, next to the clock. Click the tray icon, or right-click it and choose **Open**, to bring it back. **Exit** closes the app.
 - EVE Farm shows Windows notifications for Abyss runs (entering the Abyss, a run saved, the loot counted, a ship lost), for every 1,000 NPCs killed in belts, and for a new version while the window is hidden.
+- Every 15 minutes while it runs, EVE Farm also checks your characters and tells you about:
+  - **industry jobs** that are ready to deliver;
+  - **market orders** that someone else has outbid at the same station: a cheaper sell order or a higher buy order. Orders of your own characters don't count;
+  - **skill queues** that end within 24 hours or are empty;
+  - **your contracts** that someone accepted in the last day, or that expire within 24 hours. Contracts for your corporation don't count.
+
+  Each event is shown once. An order that is outbid again after leading is shown again. The market order check runs even when its notification is off, as it keeps the **Outbid** column of Market Orders up to date. When several things happen at once, they come in one notification per kind. Turn each kind on or off under **Notifications** in **Options > Settings...**. Skill queue notifications need the character added with EVE Farm 1.0.16 or later.
 
 ## Your data and privacy
 

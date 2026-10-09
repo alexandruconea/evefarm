@@ -1,10 +1,10 @@
 package com.evefarm.ui;
 
-import com.evefarm.auth.TokenCipher;
 import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.model.PriceMode;
 import com.evefarm.service.PriceService;
 import com.evefarm.util.AppPaths;
+import com.evefarm.util.TokenCipher;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -16,7 +16,6 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
-import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
 import java.awt.BorderLayout;
@@ -26,6 +25,7 @@ import java.awt.Dimension;
 import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.GridLayout;
 import java.awt.Insets;
 import java.io.File;
 import java.net.URI;
@@ -35,7 +35,6 @@ public final class SettingsDialog extends JDialog {
 
     private static final int FIELD_WIDTH = 320;
     private static final int FIELD_HEIGHT = 26;
-    private static final int BACKUP_NOTE_WIDTH = 520;
 
     private final SettingsDao settingsDao;
     private static final List<String> THEME_KEYS = List.of("system", "flatlaf-dark", "eve");
@@ -50,6 +49,10 @@ public final class SettingsDialog extends JDialog {
     private final JTextField backupCopyDirectoryField = new JTextField();
     private final JButton backupCopyDirectoryBrowseButton = new JButton("Browse...");
     private final JCheckBox updateCheckBox = new JCheckBox("Check for new versions automatically");
+    private final JCheckBox notifyJobsBox = new JCheckBox("Industry jobs that are ready");
+    private final JCheckBox notifyOrdersBox = new JCheckBox("Market orders that are outbid");
+    private final JCheckBox notifySkillsBox = new JCheckBox("Skill queues that end within 24 hours");
+    private final JCheckBox notifyContractsBox = new JCheckBox("Your contracts: accepted, or expiring within 24 hours");
 
     public SettingsDialog(Frame owner, SettingsDao settingsDao) {
         super(owner, "Settings", true);
@@ -92,27 +95,36 @@ public final class SettingsDialog extends JDialog {
         gameLogPanel.setPreferredSize(new Dimension(FIELD_WIDTH, FIELD_HEIGHT));
         gameLogPanel.add(gameLogDirectoryField, BorderLayout.CENTER);
         gameLogPanel.add(gameLogDirectoryBrowseButton, BorderLayout.EAST);
-        addRow(panel, c, row++, "EVE Gamelogs folder (Kills tab):", gameLogPanel);
+        String gameLogTip = "Where EVE writes its Gamelogs, used by NPC Kills and the Abyss voice. "
+                + "Usually found by itself";
+        gameLogDirectoryField.setToolTipText(gameLogTip);
+        gameLogDirectoryBrowseButton.setToolTipText(gameLogTip);
+        addRow(panel, c, row++, "Gamelogs folder:", gameLogPanel);
 
         JPanel backupCopyPanel = new JPanel(new BorderLayout(4, 0));
         backupCopyPanel.setPreferredSize(new Dimension(FIELD_WIDTH, FIELD_HEIGHT));
         backupCopyPanel.add(backupCopyDirectoryField, BorderLayout.CENTER);
         backupCopyPanel.add(backupCopyDirectoryBrowseButton, BorderLayout.EAST);
+        String backupTip = "Automatic backups run once a day to " + AppPaths.backupDir() + " (last 7 days + one "
+                + "per month for 12 months) - always, no setup needed. The extra folder is optional: any folder on "
+                + "another drive, a USB stick or a OneDrive/Google Drive folder gets a second copy. Restore any of "
+                + "them with Options > Restore Data.";
+        backupCopyDirectoryField.setToolTipText(backupTip);
+        backupCopyDirectoryBrowseButton.setToolTipText(backupTip);
         addRow(panel, c, row++, "Extra backup copy folder:", backupCopyPanel);
         addRow(panel, c, row++, "Updates:", updateCheckBox);
 
-        JTextArea backupNote = new JTextArea("Automatic backups run once a day to " + AppPaths.backupDir()
-                + " (last 7 days + one per month for 12 months) - always, no setup needed. The extra folder "
-                + "is optional: any folder on another drive, a USB stick or a OneDrive/Google Drive folder gets "
-                + "a second copy. Restore any of them with Options > Restore Data.");
-        TextAreaStyler.informational(backupNote);
-        backupNote.setSize(new Dimension(BACKUP_NOTE_WIDTH, Short.MAX_VALUE));
-        backupNote.setPreferredSize(new Dimension(BACKUP_NOTE_WIDTH, backupNote.getPreferredSize().height));
-        c.gridx = 0;
-        c.gridy = row++;
-        c.gridwidth = 2;
-        panel.add(backupNote, c);
-        c.gridwidth = 1;
+        JPanel notificationsPanel = new JPanel(new GridLayout(0, 1));
+        notificationsPanel.add(notifyJobsBox);
+        notificationsPanel.add(notifyOrdersBox);
+        notificationsPanel.add(notifySkillsBox);
+        notificationsPanel.add(notifyContractsBox);
+        for (JCheckBox box : List.of(notifyJobsBox, notifyOrdersBox, notifySkillsBox, notifyContractsBox)) {
+            box.setToolTipText("A Windows notification, checked every 15 minutes while EVE Farm runs");
+        }
+        c.anchor = GridBagConstraints.NORTHWEST;
+        addRow(panel, c, row++, "Notifications:", notificationsPanel);
+        c.anchor = GridBagConstraints.WEST;
 
         priceProviderCombo.addActionListener(e -> updateJaniceFieldEnabled());
         janiceGetApiKeyButton.addActionListener(e -> showJaniceApiKeyHelp());
@@ -211,6 +223,14 @@ public final class SettingsDialog extends JDialog {
                 SettingsDao.GAMELOG_DIRECTORY, AppPaths.defaultGameLogDirectory().toString()));
         backupCopyDirectoryField.setText(settingsDao.getOrDefault(SettingsDao.BACKUP_COPY_DIRECTORY, ""));
         updateCheckBox.setSelected(!"false".equals(settingsDao.getOrDefault(SettingsDao.UPDATE_AUTO_CHECK, "true")));
+        notifyJobsBox.setSelected(isOn(SettingsDao.NOTIFY_INDUSTRY_JOBS));
+        notifyOrdersBox.setSelected(isOn(SettingsDao.NOTIFY_OUTBID_ORDERS));
+        notifySkillsBox.setSelected(isOn(SettingsDao.NOTIFY_SKILL_QUEUE));
+        notifyContractsBox.setSelected(isOn(SettingsDao.NOTIFY_CONTRACTS));
+    }
+
+    private boolean isOn(String key) {
+        return !"false".equals(settingsDao.getOrDefault(key, "true"));
     }
 
     private int providerIndex(String provider) {
@@ -238,6 +258,10 @@ public final class SettingsDialog extends JDialog {
         settingsDao.set(SettingsDao.GAMELOG_DIRECTORY, gameLogDirectoryField.getText().trim());
         settingsDao.set(SettingsDao.BACKUP_COPY_DIRECTORY, backupCopyDirectoryField.getText().trim());
         settingsDao.set(SettingsDao.UPDATE_AUTO_CHECK, String.valueOf(updateCheckBox.isSelected()));
+        settingsDao.set(SettingsDao.NOTIFY_INDUSTRY_JOBS, String.valueOf(notifyJobsBox.isSelected()));
+        settingsDao.set(SettingsDao.NOTIFY_OUTBID_ORDERS, String.valueOf(notifyOrdersBox.isSelected()));
+        settingsDao.set(SettingsDao.NOTIFY_SKILL_QUEUE, String.valueOf(notifySkillsBox.isSelected()));
+        settingsDao.set(SettingsDao.NOTIFY_CONTRACTS, String.valueOf(notifyContractsBox.isSelected()));
 
         JOptionPane.showMessageDialog(this,
                 "Saved. Restart EVE Farm for theme changes to take effect. For price provider or "

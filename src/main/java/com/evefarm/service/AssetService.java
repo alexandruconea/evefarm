@@ -86,6 +86,10 @@ public final class AssetService {
         return assetDao.listRows(characterIdFilter);
     }
 
+    public Map<Integer, Long> usableStock(Long solarSystemId) {
+        return assetDao.usableStock(solarSystemId);
+    }
+
     public List<AssetDao.ArchivedMonth> getArchivedMonths() {
         return assetDao.listArchivedMonths();
     }

@@ -6,7 +6,7 @@ import javax.swing.table.AbstractTableModel;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ColumnTableModel<T> extends AbstractTableModel {
+public class ColumnTableModel<T> extends AbstractTableModel implements ColumnDescriptions {
 
     private final List<ColumnDef<T>> columns;
     private List<T> rows = new ArrayList<>();
@@ -59,6 +59,11 @@ public class ColumnTableModel<T> extends AbstractTableModel {
     @Override
     public Object getValueAt(int rowIndex, int columnIndex) {
         return columns.get(columnIndex).getter().apply(rows.get(rowIndex));
+    }
+
+    @Override
+    public String columnDescription(int column) {
+        return columns.get(column).description();
     }
 
     protected static String nullToEmpty(String value) {

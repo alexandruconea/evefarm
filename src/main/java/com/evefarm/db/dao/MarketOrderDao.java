@@ -74,7 +74,7 @@ public final class MarketOrderDao {
                 SELECT o.order_id, o.character_id, c.character_name, o.type_id,
                        COALESCE(t.name, 'Type #' || o.type_id) AS type_name,
                        t.group_name, t.category_name, o.is_buy_order, o.state, o.price, o.volume_remain,
-                       o.volume_total, o.escrow,
+                       o.volume_total, o.escrow, o.location_id,
                        COALESCE(l.name, 'Location #' || o.location_id) AS location_name,
                        o.issued, o.duration, o.range, o.min_volume, t.volume
                 FROM market_order_current o
@@ -118,13 +118,14 @@ public final class MarketOrderDao {
                                 rs.getLong("volume_remain"),
                                 rs.getLong("volume_total"),
                                 JdbcUtil.getNullableDouble(rs, "escrow"),
+                                rs.getLong("location_id"),
                                 rs.getString("location_name"),
                                 rs.getString("issued"),
                                 JdbcUtil.getNullableInt(rs, "duration"),
                                 rs.getString("range"),
                                 JdbcUtil.getNullableLong(rs, "min_volume"),
                                 rs.getDouble("volume"),
-                                null, null, null, null, null, null, null, null
+                                null, null, null, null, null, null, null, null, null
                         ));
                     }
                 }

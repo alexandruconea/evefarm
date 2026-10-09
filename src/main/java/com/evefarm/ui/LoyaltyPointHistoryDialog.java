@@ -33,11 +33,16 @@ final class LoyaltyPointHistoryDialog extends JDialog {
     private static final String ALL_CHARACTERS = "All characters";
 
     private static final List<ColumnDef<LoyaltyPointHistoryRow>> COLUMNS = List.of(
-            new ColumnDef<>("date", "Date", String.class, r -> DateUtil.formatIsoInstant(r.recordedAt())),
-            new ColumnDef<>("character", "Character", String.class, LoyaltyPointHistoryRow::characterName),
-            new ColumnDef<>("corporation", "Corporation", String.class, LoyaltyPointHistoryRow::corporationName),
-            new ColumnDef<>("lp", "LP", String.class, r -> String.format(Locale.US, "%,d", r.loyaltyPoints())),
-            new ColumnDef<>("change", "Change", String.class, r -> formatChange(r.change())));
+            new ColumnDef<>("date", "Date", String.class, r -> DateUtil.formatIsoInstant(r.recordedAt()),
+                    "When EVE Farm saw this LP, in your local time"),
+            new ColumnDef<>("character", "Character", String.class, LoyaltyPointHistoryRow::characterName,
+                    "The character who holds the LP"),
+            new ColumnDef<>("corporation", "Corporation", String.class, LoyaltyPointHistoryRow::corporationName,
+                    "The corporation the LP is with"),
+            new ColumnDef<>("lp", "LP", String.class, r -> String.format(Locale.US, "%,d", r.loyaltyPoints()),
+                    "The LP the character had with the corporation"),
+            new ColumnDef<>("change", "Change", String.class, r -> formatChange(r.change()),
+                    "How much the LP went up or down since the line before"));
 
     private final AppContext appContext;
     private final ColumnTableModel<LoyaltyPointHistoryRow> tableModel = new ColumnTableModel<>(COLUMNS);

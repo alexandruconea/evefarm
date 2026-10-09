@@ -58,9 +58,14 @@ public final class SettingsDao {
     public static final String INDUSTRY_COMPONENT_ME = "industry_component_me";
     public static final String INDUSTRY_COMPONENT_TE = "industry_component_te";
     public static final String INDUSTRY_SURPLUS = "industry_surplus";
+    public static final String INDUSTRY_STOCK = "industry_stock";
     public static final String SKILLS_DIVIDER = "skills_divider";
     public static final String ABYSS_CARGO_PREFIX = "abyss_cargo_";
     public static final String MARKET_ORDERS_SHOW_CLOSED = "market_orders_show_closed";
+    public static final String NOTIFY_INDUSTRY_JOBS = "notify_industry_jobs";
+    public static final String NOTIFY_OUTBID_ORDERS = "notify_outbid_orders";
+    public static final String NOTIFY_SKILL_QUEUE = "notify_skill_queue";
+    public static final String NOTIFY_CONTRACTS = "notify_contracts";
 
     private final Database database;
 

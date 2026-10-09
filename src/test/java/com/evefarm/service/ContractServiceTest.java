@@ -106,7 +106,7 @@ class ContractServiceTest {
     private static ContractDto contract(long contractId) {
         return new ContractDto(contractId, "item_exchange", "finished", "", null, 1_000.0, null, 1.0,
                 "2026-09-" + (contractId - 80) + "T10:00:00Z", "2026-10-20T10:00:00Z", "2026-09-29T11:00:00Z",
-                false, 7, 7, 8, 60003760L, 60003760L);
+                false, 7, 7, 8, 60003760L, 60003760L, null);
     }
 
     private static ContractService service(ContractsApi api) {

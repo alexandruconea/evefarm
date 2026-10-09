@@ -13,6 +13,7 @@ import com.evefarm.service.AbyssLootService;
 import com.evefarm.service.AbyssStats;
 import com.evefarm.service.AbyssTrackerService;
 import com.evefarm.service.CargoParser;
+import com.evefarm.ui.column.ColumnDescriptions;
 import com.evefarm.util.DateUtil;
 import com.evefarm.util.IskFormatter;
 import com.formdev.flatlaf.FlatLaf;
@@ -715,10 +716,14 @@ public final class AbyssPanel extends JPanel {
         return table.getForeground();
     }
 
-    private static final class StatsTableModel extends AbstractTableModel {
+    private static final class StatsTableModel extends AbstractTableModel implements ColumnDescriptions {
 
         private static final String[] COLUMNS = {"Group", "Runs", "Lost", "Loot", "Filaments", "Profit",
                 "Avg Profit", "Avg Time", "ISK/h"};
+        private static final String[] DESCRIPTIONS = {"The tier, filament or fleet, as chosen in Group by",
+                "How many runs", "How many ships were lost", "What the loot of all the runs is worth",
+                "What the filaments cost", "The loot less the filaments", "The profit of an average run",
+                "How long an average run takes", "The profit per hour of run time"};
 
         private List<AbyssStats.Summary> summaries = List.of();
 
@@ -740,6 +745,11 @@ public final class AbyssPanel extends JPanel {
         @Override
         public String getColumnName(int column) {
             return COLUMNS[column];
+        }
+
+        @Override
+        public String columnDescription(int column) {
+            return DESCRIPTIONS[column];
         }
 
         @Override

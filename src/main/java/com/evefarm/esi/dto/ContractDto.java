@@ -21,6 +21,7 @@ public record ContractDto(
         @JsonProperty("assignee_id") Integer assigneeId,
         @JsonProperty("acceptor_id") Integer acceptorId,
         @JsonProperty("start_location_id") Long startLocationId,
-        @JsonProperty("end_location_id") Long endLocationId
+        @JsonProperty("end_location_id") Long endLocationId,
+        @JsonProperty("date_accepted") String dateAccepted
 ) {
 }

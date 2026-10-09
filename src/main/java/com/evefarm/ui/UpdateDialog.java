@@ -28,6 +28,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -85,7 +86,7 @@ public final class UpdateDialog extends JDialog {
     private final JCheckBox transactionsBox = new JCheckBox("Transactions", true);
     private final JCheckBox contractsBox = new JCheckBox("Contracts", true);
     private final JCheckBox industryJobsBox = new JCheckBox("Industry Jobs", true);
-    private final JCheckBox trackerBox = new JCheckBox("Tracker Snapshot (Wallet, Net Worth, Skill Points...)", true);
+    private final JCheckBox trackerBox = new JCheckBox("Tracker Snapshot", true);
     private final JCheckBox marketPricesBox = new JCheckBox("Market Prices", true);
     private final JCheckBox loyaltyPointsBox = new JCheckBox("Loyalty Points", true);
     private final JCheckBox killsBox = new JCheckBox("NPC Kills", true);
@@ -127,6 +128,7 @@ public final class UpdateDialog extends JDialog {
         rows.add(row(UpdateCategories.TRANSACTIONS, transactionsBox, TRANSACTIONS_COOLDOWN, this::runTransactions));
         rows.add(row(UpdateCategories.CONTRACTS, contractsBox, CONTRACTS_COOLDOWN, this::runContracts));
         rows.add(row(UpdateCategories.INDUSTRY_JOBS, industryJobsBox, INDUSTRY_JOBS_COOLDOWN, this::runIndustryJobs));
+        trackerBox.setToolTipText("Wallet, net worth, skill points and the other values of the Tracker");
         rows.add(row(UpdateCategories.TRACKER, trackerBox, TRACKER_COOLDOWN, this::runTracker));
         rows.add(row(UpdateCategories.MARKET_PRICES, marketPricesBox, MARKET_PRICES_COOLDOWN, this::runMarketPrices));
         rows.add(row(UpdateCategories.LOYALTY_POINTS, loyaltyPointsBox, LOYALTY_POINTS_COOLDOWN, this::runLoyaltyPoints));
@@ -247,12 +249,12 @@ public final class UpdateDialog extends JDialog {
         long minutes = (totalSeconds % 3600) / 60;
         long seconds = totalSeconds % 60;
         if (hours > 0) {
-            return String.format("%dh %02dm", hours, minutes);
+            return String.format(Locale.US, "%dh %02dm", hours, minutes);
         }
         if (minutes > 0) {
-            return String.format("%dm %02ds", minutes, seconds);
+            return String.format(Locale.US, "%dm %02ds", minutes, seconds);
         }
-        return String.format("%ds", seconds);
+        return String.format(Locale.US, "%ds", seconds);
     }
 
     @Override

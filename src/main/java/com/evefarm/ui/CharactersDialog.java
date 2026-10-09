@@ -3,6 +3,7 @@ package com.evefarm.ui;
 import com.evefarm.AppContext;
 import com.evefarm.auth.CharacterIdentity;
 import com.evefarm.model.EveCharacter;
+import com.evefarm.ui.column.ColumnDescriptions;
 import com.evefarm.util.DateUtil;
 
 import javax.swing.JButton;
@@ -203,8 +204,10 @@ public final class CharactersDialog extends JDialog {
         updateMainButton();
     }
 
-    private static final class CharacterTableModel extends AbstractTableModel {
+    private static final class CharacterTableModel extends AbstractTableModel implements ColumnDescriptions {
         private final String[] columns = {"Character", "Character ID", "Added"};
+        private final String[] descriptions = {"The character's name", "EVE's ID of the character",
+                "When you added the character to EVE Farm, in your local time"};
         private List<EveCharacter> rows = new ArrayList<>();
         private Long mainCharacterId;
 
@@ -231,6 +234,11 @@ public final class CharactersDialog extends JDialog {
         @Override
         public String getColumnName(int column) {
             return columns[column];
+        }
+
+        @Override
+        public String columnDescription(int column) {
+            return descriptions[column];
         }
 
         @Override

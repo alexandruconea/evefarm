@@ -143,7 +143,7 @@ class TrackerSnapshotServiceTest {
     private static ContractDto contract(String type, String status, Integer issuerId, Integer acceptorId,
                                         boolean forCorporation, double price, double reward, double collateral) {
         return new ContractDto(1, type, status, "", collateral, price, reward, 0.0, null, null, null,
-                forCorporation, issuerId, 42, acceptorId, null, null);
+                forCorporation, issuerId, 42, acceptorId, null, null, null);
     }
 
     private static TrackerSnapshotService tracker(AuthService auth, WalletApi wallet, AssetDao assets,

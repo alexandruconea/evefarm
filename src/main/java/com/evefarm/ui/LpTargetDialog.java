@@ -30,13 +30,13 @@ public final class LpTargetDialog extends JDialog {
 
         JPanel form = new JPanel(new GridLayout(0, 2, 8, 8));
         form.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
-        form.add(new JLabel("Target ISK/LP:"));
+        JLabel targetLabel = new JLabel("Target ISK/LP:");
+        String help = "Offers at or above this are shown in green in the ISK/LP columns; offers below it are shown "
+                + "in red. Set it to 0 to turn the coloring off.";
+        targetLabel.setToolTipText(help);
+        targetSpinner.setToolTipText(help);
+        form.add(targetLabel);
         form.add(targetSpinner);
-
-        JLabel help = new JLabel("<html><body style='width: 260px'>Offers at or above this are "
-                + "shown in green in the ISK/LP columns; offers below it are shown in red. Set "
-                + "it to 0 to turn the coloring off.</body></html>");
-        help.setBorder(BorderFactory.createEmptyBorder(0, 12, 8, 12));
 
         JButton save = new JButton("Save", Icons.SAVE);
         save.addActionListener(e -> save());
@@ -46,7 +46,6 @@ public final class LpTargetDialog extends JDialog {
         buttonPanel.add(ButtonSizing.row(6, save, cancel));
 
         setLayout(new BorderLayout());
-        add(help, BorderLayout.NORTH);
         add(form, BorderLayout.CENTER);
         add(buttonPanel, BorderLayout.SOUTH);
 

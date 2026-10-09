@@ -7,7 +7,6 @@ import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JDialog;
-import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -25,7 +24,7 @@ import java.util.Set;
 
 public final class ColumnChooserDialog extends JDialog {
 
-    private record Entry(String key, String label) {
+    private record Entry(String key, String label, String description) {
     }
 
     private final DefaultListModel<Entry> listModel = new DefaultListModel<>();
@@ -53,6 +52,7 @@ public final class ColumnChooserDialog extends JDialog {
 
         list.setCellRenderer((jList, entry, index, isSelected, cellHasFocus) -> {
             JCheckBox box = new JCheckBox(entry.label(), checked.contains(entry.key()));
+            box.setToolTipText(entry.description());
             box.setBackground(isSelected ? jList.getSelectionBackground() : jList.getBackground());
             box.setForeground(isSelected ? jList.getSelectionForeground() : jList.getForeground());
             return box;
@@ -73,8 +73,11 @@ public final class ColumnChooserDialog extends JDialog {
         });
 
         JButton up = new JButton("Move Up");
+        up.setToolTipText("Move the selected column to the left in the table. You can also drag the column headers");
         up.addActionListener(e -> move(-1));
         JButton down = new JButton("Move Down");
+        down.setToolTipText("Move the selected column to the right in the table. You can also drag the column "
+                + "headers");
         down.addActionListener(e -> move(1));
         JButton showAll = new JButton("Show All");
         showAll.addActionListener(e -> {
@@ -102,8 +105,8 @@ public final class ColumnChooserDialog extends JDialog {
 
         JPanel content = new JPanel(new BorderLayout(8, 8));
         content.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        content.add(new JLabel("<html>Check the columns to show.<br>Drag column headers in the "
-                + "table to reorder them, or use Move Up/Down here.</html>"), BorderLayout.NORTH);
+        list.setToolTipText("Tick the columns to show. Drag the column headers in the table to reorder them, or "
+                + "use Move Up and Move Down here.");
         content.add(new JScrollPane(list), BorderLayout.CENTER);
         content.add(sideButtons, BorderLayout.EAST);
         content.add(bottom, BorderLayout.SOUTH);
@@ -127,7 +130,7 @@ public final class ColumnChooserDialog extends JDialog {
     public static <T> List<String> show(Window owner, List<ColumnDef<T>> allColumns, List<String> visibleKeysInOrder) {
         List<Entry> entries = new ArrayList<>();
         for (ColumnDef<T> def : allColumns) {
-            entries.add(new Entry(def.key(), def.label()));
+            entries.add(new Entry(def.key(), def.label(), def.description()));
         }
         ColumnChooserDialog dialog = new ColumnChooserDialog(owner, entries, visibleKeysInOrder);
         dialog.setVisible(true);

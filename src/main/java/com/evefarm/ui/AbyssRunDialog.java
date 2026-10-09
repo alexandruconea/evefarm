@@ -11,6 +11,7 @@ import com.evefarm.model.AbyssalRun;
 import com.evefarm.model.EveCharacter;
 import com.evefarm.service.AbyssLootService;
 import com.evefarm.service.ItemIconService;
+import com.evefarm.ui.column.ColumnDescriptions;
 import com.evefarm.util.IskFormatter;
 
 import javax.swing.AbstractAction;
@@ -164,9 +165,10 @@ final class AbyssRunDialog extends JDialog {
         JPanel cargo = new JPanel(new GridLayout(1, 2, 10, 0));
         cargo.add(cargoSection("Cargo before the run", beforeArea));
         cargo.add(cargoSection("Cargo after the run", afterArea));
-        JLabel cargoHint = new JLabel("In EVE open the cargo hold, select all items (Ctrl+A), copy (Ctrl+C) "
-                + "and paste here. Only what you gained is counted as loot.");
-        cargoHint.setForeground(UiColors.muted());
+        String cargoTip = "In EVE open the cargo hold, select all items (Ctrl+A), copy (Ctrl+C) and paste here. "
+                + "Only what you gained is counted as loot.";
+        beforeArea.setToolTipText(cargoTip);
+        afterArea.setToolTipText(cargoTip);
 
         TableStyler.style(lootTable);
         lootTable.setRowHeight(Math.max(lootTable.getRowHeight(), ItemIconService.RENDER_SIZE + 6));
@@ -174,12 +176,10 @@ final class AbyssRunDialog extends JDialog {
         lootScroll.setPreferredSize(new Dimension(760, 170));
 
         installLootMenu();
-        JLabel lootHint = new JLabel("Right-click an item that isn't loot, such as your own ammo");
-        lootHint.setForeground(UiColors.muted());
+        lootTable.setToolTipText("Right-click an item that isn't loot, such as your own ammo");
         JButton ignoredButton = new JButton("Ignored Items...");
         ignoredButton.addActionListener(e -> manageIgnoredItems());
         JPanel lootTools = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        lootTools.add(lootHint);
         lootTools.add(ignoredButton);
         JPanel lootHeader = new JPanel(new BorderLayout());
         lootHeader.add(sectionTitle("Loot"), BorderLayout.WEST);
@@ -192,7 +192,6 @@ final class AbyssRunDialog extends JDialog {
 
         JPanel cargoPanel = new JPanel(new BorderLayout(0, 4));
         cargoPanel.add(cargo, BorderLayout.CENTER);
-        cargoPanel.add(cargoHint, BorderLayout.SOUTH);
 
         JPanel middle = new JPanel(new BorderLayout(0, 10));
         middle.add(cargoPanel, BorderLayout.NORTH);
@@ -665,9 +664,11 @@ final class AbyssRunDialog extends JDialog {
         JOptionPane.showMessageDialog(this, message, getTitle(), JOptionPane.WARNING_MESSAGE);
     }
 
-    private static final class LootTableModel extends AbstractTableModel {
+    private static final class LootTableModel extends AbstractTableModel implements ColumnDescriptions {
 
         private static final String[] COLUMNS = {"", "Item", "Quantity", "Unit Price", "Total"};
+        private static final String[] DESCRIPTIONS = {"The item's icon", "The item looted", "How many were looted",
+                "The price of one unit, from your price provider", "The unit price times the quantity"};
 
         private final ItemIconService icons;
         private List<AbyssalLoot> items = List.of();
@@ -694,6 +695,11 @@ final class AbyssRunDialog extends JDialog {
         @Override
         public String getColumnName(int column) {
             return COLUMNS[column];
+        }
+
+        @Override
+        public String columnDescription(int column) {
+            return DESCRIPTIONS[column];
         }
 
         @Override

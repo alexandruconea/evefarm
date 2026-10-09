@@ -1,14 +1,17 @@
 package com.evefarm.ui;
 
+import com.evefarm.ui.column.ColumnDescriptions;
 import com.formdev.flatlaf.FlatLaf;
 
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JTable;
 import javax.swing.SwingConstants;
 import javax.swing.UIManager;
 import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.JTableHeader;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 import java.awt.Color;
@@ -27,8 +30,12 @@ public final class TableStyler {
         table.setFillsViewportHeight(true);
         table.setShowGrid(false);
         table.setIntercellSpacing(new Dimension(0, 0));
-        if (table.getTableHeader().getDefaultRenderer() instanceof JLabel headerLabel) {
+        JTableHeader header = table.getTableHeader();
+        if (header.getDefaultRenderer() instanceof JLabel headerLabel) {
             headerLabel.setHorizontalAlignment(SwingConstants.LEADING);
+        }
+        if (!(header.getDefaultRenderer() instanceof DescribedHeaderRenderer)) {
+            header.setDefaultRenderer(new DescribedHeaderRenderer(header.getDefaultRenderer()));
         }
 
         DefaultTableCellRenderer stripedRenderer = new DefaultTableCellRenderer() {
@@ -61,6 +68,28 @@ public final class TableStyler {
         iconRenderer.setHorizontalAlignment(SwingConstants.CENTER);
         table.setDefaultRenderer(Icon.class, iconRenderer);
         table.setDefaultRenderer(ImageIcon.class, iconRenderer);
+    }
+
+    static String columnDescription(JTable table, int column) {
+        if (table == null || column < 0 || column >= table.getColumnCount()
+                || !(table.getModel() instanceof ColumnDescriptions descriptions)) {
+            return null;
+        }
+        String description = descriptions.columnDescription(table.convertColumnIndexToModel(column));
+        return description == null || description.isBlank() ? null : description;
+    }
+
+    private record DescribedHeaderRenderer(TableCellRenderer base) implements TableCellRenderer {
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                                                       boolean hasFocus, int row, int column) {
+            Component component = base.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            if (component instanceof JComponent described) {
+                described.setToolTipText(columnDescription(table, column));
+            }
+            return component;
+        }
     }
 
     static Color stripeColor(JTable table) {

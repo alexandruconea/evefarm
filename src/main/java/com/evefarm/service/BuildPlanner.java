@@ -66,20 +66,38 @@ public final class BuildPlanner {
                         double manufacturingIndex, double reactionIndex, int componentMe, int componentTe,
                         IntUnaryOperator level, boolean reactionsAllowed, Mode mode,
                         Map<Integer, Boolean> choices, Surplus surplus, double sellFees) {
+
+        Setup withChoices(Map<Integer, Boolean> decided) {
+            return new Setup(producer, prices, adjustedPrices, componentFacility, reactionFacility,
+                    manufacturingIndex, reactionIndex, componentMe, componentTe, level, reactionsAllowed, mode,
+                    Map.copyOf(decided), surplus, sellFees);
+        }
     }
 
-    public record Component(int typeId, boolean reaction, long needed, int runs, long produced, double marketPrice,
-                            double buildPrice, boolean built, Duration time, int step, List<TypeQuantity> inputs) {
+    public record Component(int typeId, boolean reaction, long needed, long fromStock, int runs, long produced,
+                            double marketPrice, double buildPrice, boolean built, Duration time, int step,
+                            List<TypeQuantity> inputs, double fee) {
 
         public long surplus() {
-            return built ? produced - needed : 0;
+            return built ? fromStock + produced - needed : 0;
+        }
+    }
+
+    public record Purchase(int typeId, long needed, long inStock, double unitPrice) {
+
+        public long toBuy() {
+            return needed - inStock;
+        }
+
+        public double cost() {
+            return toBuy() * unitPrice;
         }
     }
 
     public record Step(List<Component> jobs, Duration time) {
     }
 
-    public record Plan(List<MaterialLine> materials, List<Component> components, List<MaterialLine> shopping,
+    public record Plan(List<MaterialLine> materials, List<Component> components, List<Purchase> shopping,
                        List<Step> steps, double keptCost, double surplusCost, double surplusValue,
                        Surplus surplus) {
 
@@ -93,6 +111,24 @@ public final class BuildPlanner {
 
         public Optional<Component> component(int typeId) {
             return components.stream().filter(component -> component.typeId() == typeId).findFirst();
+        }
+
+        public double purchaseCost() {
+            return shopping.stream().mapToDouble(Purchase::cost).sum();
+        }
+
+        public double jobFees() {
+            return components.stream().mapToDouble(Component::fee).sum();
+        }
+
+        public double stockValue() {
+            double bought = shopping.stream().mapToDouble(purchase -> purchase.inStock() * purchase.unitPrice()).sum();
+            double built = components.stream()
+                    .filter(Component::built)
+                    .mapToDouble(component -> component.fromStock()
+                            * (component.marketPrice() > 0 ? component.marketPrice() : component.buildPrice()))
+                    .sum();
+            return bought + built;
         }
     }
 
@@ -117,19 +153,37 @@ public final class BuildPlanner {
     }
 
     public static Plan plan(List<MaterialLine> materials, Setup setup, int lines, int reactionLines) {
-        return new Planner(materials, setup).plan(lines, reactionLines);
+        return new Planner(materials, setup, Map.of()).plan(lines, reactionLines);
+    }
+
+    public static Plan withStock(List<MaterialLine> materials, Setup setup, Plan plan, Map<Integer, Long> stock,
+                                 int lines, int reactionLines) {
+        if (stock.isEmpty()) {
+            return plan;
+        }
+        Map<Integer, Boolean> decided = new HashMap<>(setup.choices());
+        for (Component component : plan.components()) {
+            decided.put(component.typeId(), component.built());
+        }
+        Planner planner = new Planner(materials, setup.withChoices(decided), stock);
+        for (Component component : plan.components()) {
+            planner.buildPrices.put(component.typeId(), component.buildPrice());
+        }
+        return planner.plan(lines, reactionLines);
     }
 
     private static final class Planner {
 
         private final List<MaterialLine> roots;
         private final Setup setup;
+        private final Map<Integer, Long> stock;
         private final Map<Integer, Optional<Recipe>> recipes = new HashMap<>();
         private final Map<Integer, Double> buildPrices = new HashMap<>();
 
-        private Planner(List<MaterialLine> roots, Setup setup) {
+        private Planner(List<MaterialLine> roots, Setup setup, Map<Integer, Long> stock) {
             this.roots = roots;
             this.setup = setup;
+            this.stock = stock;
         }
 
         private Plan plan(int lines, int reactionLines) {
@@ -190,7 +244,11 @@ public final class BuildPlanner {
             for (int type : built) {
                 Recipe recipe = recipe(type).orElseThrow();
                 long need = round.demand.getOrDefault(type, 0L);
-                int runs = (int) Math.max(1, Math.ceilDiv(need, recipe.portion()));
+                long toMake = need - fromStock(type, need);
+                if (toMake <= 0) {
+                    continue;
+                }
+                int runs = (int) Math.ceilDiv(toMake, recipe.portion());
                 List<TypeQuantity> inputs = new ArrayList<>();
                 for (TypeQuantity material : recipe.activity().materials()) {
                     long quantity = IndustryCalculator.materialQuantity(material.quantity(), runs, recipe.me(),
@@ -205,6 +263,9 @@ public final class BuildPlanner {
             }
             for (int type : built.reversed()) {
                 Job job = round.jobs.get(type);
+                if (job == null) {
+                    continue;
+                }
                 double cost = job.fee();
                 for (TypeQuantity input : job.inputs()) {
                     cost += input.quantity() * round.unitPrice(input.typeId());
@@ -219,6 +280,7 @@ public final class BuildPlanner {
         private Optional<Recipe> recipe(int type) {
             return recipes.computeIfAbsent(type, id -> setup.producer().apply(id)
                     .filter(activity -> activity.product() != null)
+                    .filter(activity -> activity.materials().stream().noneMatch(material -> material.typeId() == id))
                     .filter(activity -> activity.activityId() != IndustryActivity.REACTION || setup.reactionsAllowed())
                     .map(this::toRecipe));
         }
@@ -240,6 +302,10 @@ public final class BuildPlanner {
 
         private double market(int type) {
             return setup.prices().getOrDefault(type, 0.0);
+        }
+
+        private long fromStock(int type, long need) {
+            return Math.max(0, Math.min(need, stock.getOrDefault(type, 0L)));
         }
 
         private final class Round {
@@ -280,6 +346,9 @@ public final class BuildPlanner {
 
             private double unitPrice(int type) {
                 Double price = unitPrices.get(type);
+                if (price == null && levels.getOrDefault(type, 0) > 0) {
+                    price = buildPrices.get(type);
+                }
                 return price != null ? price : market(type);
             }
 
@@ -292,26 +361,33 @@ public final class BuildPlanner {
                     keptCost += root.quantity() * price;
                 }
                 List<Component> components = new ArrayList<>();
-                List<MaterialLine> shopping = new ArrayList<>();
+                List<Purchase> shopping = new ArrayList<>();
                 double surplusValue = 0;
                 double saleValue = 0;
                 for (int type : order) {
                     long need = demand.getOrDefault(type, 0L);
+                    if (need <= 0) {
+                        continue;
+                    }
+                    long inStock = fromStock(type, need);
                     Optional<Recipe> recipe = recipe(type);
                     int level = levels.getOrDefault(type, 0);
-                    if (level == 0 && need > 0) {
-                        shopping.add(new MaterialLine(type, need, market(type)));
+                    if (level == 0) {
+                        shopping.add(new Purchase(type, need, inStock, market(type)));
                     }
                     if (recipe.isEmpty()) {
                         continue;
                     }
                     Job job = jobs.get(type);
-                    int runs = job != null ? job.runs() : (int) Math.max(1, Math.ceilDiv(need, recipe.get().portion()));
-                    Component component = new Component(type, recipe.get().reaction(), need, runs,
+                    boolean built = level > 0;
+                    int runs = job != null ? job.runs()
+                            : built ? 0 : (int) Math.ceilDiv(need - inStock, recipe.get().portion());
+                    double seconds = job != null ? job.seconds() : built ? 0 : seconds(recipe.get(), runs);
+                    Component component = new Component(type, recipe.get().reaction(), need, inStock, runs,
                             runs * recipe.get().portion(), market(type),
-                            job != null ? unitPrice(type) : buildPrices.getOrDefault(type, market(type)), job != null,
-                            Duration.ofSeconds(Math.round(job != null ? job.seconds() : seconds(recipe.get(), runs))),
-                            level, job != null ? job.inputs() : List.of());
+                            job != null ? unitPrice(type) : buildPrices.getOrDefault(type, market(type)), built,
+                            Duration.ofSeconds(Math.round(seconds)), level, job != null ? job.inputs() : List.of(),
+                            job != null ? job.fee() : 0);
                     components.add(component);
                     surplusValue += component.surplus() * unitPrice(type);
                     if (market(type) > 0) {
@@ -331,7 +407,7 @@ public final class BuildPlanner {
             private List<Step> steps(List<Component> components, int lines, int reactionLines) {
                 Map<Integer, List<Component>> byLevel = new TreeMap<>();
                 for (Component component : components) {
-                    if (component.built()) {
+                    if (component.built() && component.runs() > 0) {
                         byLevel.computeIfAbsent(component.step(), level -> new ArrayList<>()).add(component);
                     }
                 }

@@ -49,7 +49,9 @@ public final class SkillPointFilterDialog extends JDialog {
         JPanel header = new JPanel(new GridLayout(1, 3));
         header.add(new JLabel("Character"));
         header.add(new JLabel("Tracked"));
-        header.add(new JLabel("Extra SP kept (above 5,000,000)"));
+        JLabel extraHeader = new JLabel("Extra SP kept");
+        extraHeader.setToolTipText("Skill points above 5,000,000 that you never want to extract");
+        header.add(extraHeader);
         rows.add(header);
 
         for (EveCharacter character : characters) {

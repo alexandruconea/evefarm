@@ -17,6 +17,7 @@ public record MarketOrderDto(
         @JsonProperty("issued") String issued,
         @JsonProperty("duration") Integer duration,
         @JsonProperty("range") String range,
-        @JsonProperty("min_volume") Long minVolume
+        @JsonProperty("min_volume") Long minVolume,
+        @JsonProperty("region_id") Long regionId
 ) {
 }

@@ -6,6 +6,7 @@ import com.evefarm.model.MiningRow;
 import com.evefarm.service.ItemIconService;
 import com.evefarm.service.MiningService;
 import com.evefarm.service.MiningStats;
+import com.evefarm.ui.column.ColumnDescriptions;
 import com.evefarm.util.IskFormatter;
 
 import javax.swing.BorderFactory;
@@ -210,9 +211,12 @@ public final class MiningPanel extends JPanel {
         add(split, BorderLayout.CENTER);
     }
 
-    private static final class StatsTableModel extends AbstractTableModel {
+    private static final class StatsTableModel extends AbstractTableModel implements ColumnDescriptions {
 
         private static final String[] COLUMNS = {"Group", "Volume", "Value", "Days", "Value per Day", "Share"};
+        private static final String[] DESCRIPTIONS = {"The day, character, ore, kind or system, as chosen in Group by",
+                "The volume mined, in m3", "What the ore mined is worth", "On how many days there was mining",
+                "The value divided by the days", "The group's share of the total value"};
 
         private List<MiningStats.Summary> summaries = List.of();
         private double total;
@@ -236,6 +240,11 @@ public final class MiningPanel extends JPanel {
         @Override
         public String getColumnName(int column) {
             return COLUMNS[column];
+        }
+
+        @Override
+        public String columnDescription(int column) {
+            return DESCRIPTIONS[column];
         }
 
         @Override

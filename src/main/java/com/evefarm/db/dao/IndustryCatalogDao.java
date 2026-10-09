@@ -197,6 +197,9 @@ public final class IndustryCatalogDao {
                 JOIN sde_industry_type t ON t.type_id = p.product_id
                 JOIN sde_industry_type b ON b.type_id = p.blueprint_id
                 WHERE p.activity_id = ? AND t.published = 1 AND b.published = 1
+                  AND NOT EXISTS (SELECT 1 FROM sde_industry_material m
+                                  WHERE m.blueprint_id = p.blueprint_id AND m.activity_id = p.activity_id
+                                    AND m.material_id = p.product_id)
                 ORDER BY t.name COLLATE NOCASE
                 """;
         synchronized (database) {

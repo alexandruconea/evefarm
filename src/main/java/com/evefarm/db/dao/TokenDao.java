@@ -1,8 +1,8 @@
 package com.evefarm.db.dao;
 
-import com.evefarm.auth.TokenCipher;
 import com.evefarm.db.Database;
 import com.evefarm.model.TokenRecord;
+import com.evefarm.util.TokenCipher;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;

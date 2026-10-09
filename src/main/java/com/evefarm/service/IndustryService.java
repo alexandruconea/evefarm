@@ -30,17 +30,35 @@ public final class IndustryService {
 
     private static final int ASSUMED_LEVEL = 4;
 
+    public enum Stock {
+        NONE("Don't use"),
+        SYSTEM("In the build system"),
+        ANYWHERE("Anywhere");
+
+        private final String label;
+
+        Stock(String label) {
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
+
     public record Settings(int blueprintId, Long characterId, int runs, int me, int te, boolean includeInvention,
                            String systemName, Structure structure, Rig materialRig, Rig timeRig, double facilityTax,
                            double brokerFee, BuildPlanner.Mode buildMode, int componentMe, int componentTe,
-                           Map<Integer, Boolean> buildChoices, BuildPlanner.Surplus surplus) {
+                           Map<Integer, Boolean> buildChoices, BuildPlanner.Surplus surplus, Stock stock) {
     }
 
     public record SkillEffects(boolean assumed, boolean canBuild, boolean canInvent, int lines, double salesTax) {
     }
 
     public record Option(Decryptor decryptor, Invention invention, Manufacturing manufacturing, Plan plan,
-                         double inventionCost, double totalCost, Sale sale, double profit, double iskPerHour) {
+                         double inventionCost, double totalCost, Sale sale, double profit, double iskPerHour,
+                         Plan stocked, double toSpend) {
 
         public double unitCost() {
             return manufacturing.units() > 0 ? totalCost / manufacturing.units() : 0;
@@ -60,13 +78,15 @@ public final class IndustryService {
     private final IndustryMarketService industryMarketService;
     private final PriceService priceService;
     private final SkillService skillService;
+    private final AssetService assetService;
 
     public IndustryService(IndustryCatalogService industryCatalogService, IndustryMarketService industryMarketService,
-                           PriceService priceService, SkillService skillService) {
+                           PriceService priceService, SkillService skillService, AssetService assetService) {
         this.industryCatalogService = industryCatalogService;
         this.industryMarketService = industryMarketService;
         this.priceService = priceService;
         this.skillService = skillService;
+        this.assetService = assetService;
     }
 
     public Result calculate(Settings settings) {
@@ -119,6 +139,11 @@ public final class IndustryService {
                 level, reactionsAllowed, settings.buildMode(), settings.buildChoices(), settings.surplus(),
                 skills.salesTax() + settings.brokerFee());
         int reactionLines = IndustryCalculator.reactionLines(level);
+        Map<Integer, Long> stock = switch (settings.stock()) {
+            case NONE -> Map.of();
+            case SYSTEM -> system == null ? Map.of() : assetService.usableStock(system.systemId());
+            case ANYWHERE -> assetService.usableStock(null);
+        };
 
         List<Option> options = new ArrayList<>();
         if (invention == null) {
@@ -126,7 +151,9 @@ public final class IndustryService {
                     new Jobs(settings.runs(), 0, skills.lines()), settings.me(), settings.te(), facility,
                     manufacturingIndex, timeMultiplier, prices, adjusted);
             Plan plan = BuildPlanner.plan(built.materials(), setup, skills.lines(), reactionLines);
-            options.add(option(null, null, built, plan, 0, productPrice, skills.salesTax(), settings));
+            Plan stocked = BuildPlanner.withStock(built.materials(), setup, plan, stock, skills.lines(),
+                    reactionLines);
+            options.add(option(null, null, built, plan, stocked, 0, productPrice, skills.salesTax(), settings));
         } else {
             double datacores = invention.materials().stream()
                     .mapToDouble(material -> material.quantity() * prices.getOrDefault(material.typeId(), 0.0))
@@ -148,7 +175,9 @@ public final class IndustryService {
                         new Jobs(settings.runs(), invented.runsPerCopy(), skills.lines()), invented.me(),
                         invented.te(), facility, manufacturingIndex, timeMultiplier, prices, adjusted);
                 Plan plan = BuildPlanner.plan(built.materials(), setup, skills.lines(), reactionLines);
-                options.add(option(decryptor, invented, built, plan, invented.costPerRun() * settings.runs(),
+                Plan stocked = BuildPlanner.withStock(built.materials(), setup, plan, stock, skills.lines(),
+                        reactionLines);
+                options.add(option(decryptor, invented, built, plan, stocked, invented.costPerRun() * settings.runs(),
                         productPrice, skills.salesTax(), settings));
             }
         }
@@ -169,12 +198,14 @@ public final class IndustryService {
     }
 
     private static Option option(Decryptor decryptor, Invention invention, Manufacturing built, Plan plan,
-                                 double inventionCost, double productPrice, double salesTax, Settings settings) {
+                                 Plan stocked, double inventionCost, double productPrice, double salesTax,
+                                 Settings settings) {
         Sale sale = IndustryCalculator.sell(built.units(), productPrice, salesTax, settings.brokerFee());
         double totalCost = plan.materialsCost() + built.jobFee() + inventionCost;
         double profit = sale.net() - totalCost;
+        double toSpend = stocked.purchaseCost() + stocked.jobFees() + built.jobFee() + inventionCost;
         return new Option(decryptor, invention, built, plan, inventionCost, totalCost, sale, profit,
-                IndustryCalculator.iskPerHour(profit, built.time().plus(plan.extraTime())));
+                IndustryCalculator.iskPerHour(profit, built.time().plus(plan.extraTime())), stocked, toSpend);
     }
 
     private CharacterSkills characterSkills(Long characterId) {

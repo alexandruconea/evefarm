@@ -35,6 +35,7 @@ import java.awt.Component;
 import java.awt.Font;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -301,7 +302,7 @@ public final class LpStorePanel extends JPanel {
                 .filter(b -> b.corporationId() == selectedCorporationId)
                 .mapToLong(LoyaltyPointRow::loyaltyPoints)
                 .findFirst().orElse(0);
-        yourLpLabel.setText("Your LP: " + String.format("%,d", yourLp));
+        yourLpLabel.setText("Your LP: " + String.format(Locale.US, "%,d", yourLp));
         updateWealthLabel();
     }
 

@@ -62,7 +62,7 @@ public final class IndustryPanel extends JPanel {
     private static final String MATERIALS_KEY = "industryMaterials";
     private static final String DECRYPTORS_KEY = "industryDecryptors";
     private static final String BUILD_KEY = "industryBuildOrBuy";
-    private static final String SHOPPING_KEY = "industryShopping";
+    private static final String SHOPPING_KEY = "industryShoppingList";
     private static final String CHAIN_KEY = "industryChain";
     private static final int SYSTEM_SUGGESTIONS = 12;
     private static final int DEFAULT_COMPONENT_ME = 10;
@@ -78,6 +78,7 @@ public final class IndustryPanel extends JPanel {
     private final JSpinner teSpinner = new JSpinner(new SpinnerNumberModel(0, 0, IndustryCalculator.MAX_TE, 2));
     private final JCheckBox inventionCheck = new JCheckBox("Include invention", true);
     private final JComboBox<BuildPlanner.Mode> buildCombo = new JComboBox<>(BuildPlanner.Mode.values());
+    private final JComboBox<IndustryService.Stock> stockCombo = new JComboBox<>(IndustryService.Stock.values());
     private final JTextField systemField = new JTextField(12);
     private final JLabel systemLabel = new JLabel(" ");
     private final JComboBox<Structure> structureCombo =
@@ -92,11 +93,10 @@ public final class IndustryPanel extends JPanel {
     private final JTable materialsTable = new JTable(materialsModel);
     private final BuildOrBuyTableModel buildModel = new BuildOrBuyTableModel(this::chooseSource);
     private final JTable buildTable = new JTable(buildModel);
-    private final IndustryMaterialsTableModel shoppingModel = new IndustryMaterialsTableModel();
+    private final ShoppingListTableModel shoppingModel = new ShoppingListTableModel();
     private final JTable shoppingTable = new JTable(shoppingModel);
     private final ChainTableModel chainModel = new ChainTableModel();
     private final JTable chainTable = new JTable(chainModel);
-    private final JLabel chainHint = UiColors.mutedLabel(" ");
     private final JComboBox<BuildPlanner.Surplus> surplusCombo = new JComboBox<>(BuildPlanner.Surplus.values());
     private final JSpinner componentMeSpinner =
             new JSpinner(new SpinnerNumberModel(DEFAULT_COMPONENT_ME, 0, IndustryCalculator.MAX_ME, 1));
@@ -106,6 +106,7 @@ public final class IndustryPanel extends JPanel {
     private final DecryptorOptionsTableModel decryptorModel = new DecryptorOptionsTableModel();
     private final JTable decryptorTable = new JTable(decryptorModel);
     private final JPanel inventionPanel = new JPanel(new BorderLayout(0, 4));
+    private final JPanel chainPanel = new JPanel(new BorderLayout(0, 4));
     private final JTabbedPane productionTabs = new JTabbedPane();
     private final JButton multibuyButton = new JButton("Copy for Multibuy", Icons.CLIPBOARD);
     private final IndustryResultCard resultCard = new IndustryResultCard();
@@ -147,6 +148,8 @@ public final class IndustryPanel extends JPanel {
             settings.getEnum(SettingsDao.INDUSTRY_TE_RIG, Rig.class).ifPresent(timeRigCombo::setSelectedItem);
             settings.getEnum(SettingsDao.INDUSTRY_SURPLUS, BuildPlanner.Surplus.class)
                     .ifPresent(surplusCombo::setSelectedItem);
+            settings.getEnum(SettingsDao.INDUSTRY_STOCK, IndustryService.Stock.class)
+                    .ifPresent(stockCombo::setSelectedItem);
             taxSpinner.setValue(savedPercent(SettingsDao.INDUSTRY_FACILITY_TAX, 0));
             brokerSpinner.setValue(savedPercent(SettingsDao.INDUSTRY_BROKER_FEE, 1.5));
             buildCombo.setSelectedItem(settings.getEnum(SettingsDao.INDUSTRY_BUILD_COMPONENTS, BuildPlanner.Mode.class)
@@ -209,6 +212,7 @@ public final class IndustryPanel extends JPanel {
         ColumnVisibilitySupport.install(buildTable, buildModel, BUILD_KEY, appContext.tableColumnStateDao);
         ColumnCopySupport.install(buildTable, buildModel);
         surplusCombo.addActionListener(e -> changed());
+        stockCombo.addActionListener(e -> changed());
         TableStyler.style(chainTable);
         ColumnVisibilitySupport.install(chainTable, chainModel, CHAIN_KEY, appContext.tableColumnStateDao);
         ColumnCopySupport.install(chainTable, chainModel);
@@ -369,7 +373,8 @@ public final class IndustryPanel extends JPanel {
                 (Rig) materialRigCombo.getSelectedItem(), (Rig) timeRigCombo.getSelectedItem(),
                 percent(taxSpinner), percent(brokerSpinner), buildMode(),
                 (Integer) componentMeSpinner.getValue(), (Integer) componentTeSpinner.getValue(),
-                Map.copyOf(buildChoices), (BuildPlanner.Surplus) surplusCombo.getSelectedItem());
+                Map.copyOf(buildChoices), (BuildPlanner.Surplus) surplusCombo.getSelectedItem(),
+                (IndustryService.Stock) stockCombo.getSelectedItem());
     }
 
     private BuildPlanner.Mode buildMode() {
@@ -392,6 +397,7 @@ public final class IndustryPanel extends JPanel {
         settings.set(SettingsDao.INDUSTRY_COMPONENT_ME, String.valueOf(componentMeSpinner.getValue()));
         settings.set(SettingsDao.INDUSTRY_COMPONENT_TE, String.valueOf(componentTeSpinner.getValue()));
         settings.set(SettingsDao.INDUSTRY_SURPLUS, ((BuildPlanner.Surplus) surplusCombo.getSelectedItem()).name());
+        settings.set(SettingsDao.INDUSTRY_STOCK, ((IndustryService.Stock) stockCombo.getSelectedItem()).name());
     }
 
     private void calculate() {
@@ -465,7 +471,8 @@ public final class IndustryPanel extends JPanel {
     private void showInventionTab(boolean shown) {
         int index = productionTabs.indexOfComponent(inventionPanel);
         if (shown && index < 0) {
-            productionTabs.addTab("Invention", inventionPanel);
+            productionTabs.addTab("Invention", null, inventionPanel, "Click a decryptor to see its materials and "
+                    + "numbers. The most profitable one is chosen for you.");
         } else if (!shown && index >= 0) {
             productionTabs.removeTabAt(index);
         }
@@ -483,15 +490,17 @@ public final class IndustryPanel extends JPanel {
         }
         materialsModel.setRows(rows);
         TableStyler.packColumns(materialsTable);
-        buildModel.setRows(plan.components().stream()
+        Plan stocked = option.stocked();
+        buildModel.setRows(stocked.components().stream()
                 .map(component -> new BuildOrBuyTableModel.Row(component.typeId(), name(component.typeId()),
-                        component.reaction(), component.needed(), component.runs(), component.surplus(),
-                        component.marketPrice(), component.buildPrice(), component.built(), component.time()))
+                        component.reaction(), component.needed(), component.fromStock(), component.runs(),
+                        component.surplus(), component.marketPrice(), component.buildPrice(), component.built(),
+                        component.time()))
                 .toList());
         TableStyler.packColumns(buildTable);
-        shoppingModel.setRows(plan.shopping().stream()
-                .map(line -> new IndustryMaterialsTableModel.Row(line.typeId(), name(line.typeId()), line.quantity(),
-                        line.unitPrice(), line.total(), ""))
+        shoppingModel.setRows(stocked.shopping().stream()
+                .map(purchase -> new ShoppingListTableModel.Row(purchase.typeId(), name(purchase.typeId()),
+                        purchase.needed(), purchase.inStock(), purchase.unitPrice()))
                 .toList());
         TableStyler.packColumns(shoppingTable);
         showChain(option);
@@ -500,27 +509,30 @@ public final class IndustryPanel extends JPanel {
     }
 
     private void showChain(IndustryService.Option option) {
-        Plan plan = option.plan();
+        Plan stocked = option.stocked();
         List<ChainTableModel.Row> rows = new ArrayList<>();
         int number = 2;
-        for (BuildPlanner.Step step : plan.steps()) {
+        for (BuildPlanner.Step step : stocked.steps()) {
             String label = String.format(Locale.US, "Step %d · %s", number++,
                     PlanTableModel.formatDuration(step.time()));
             for (BuildPlanner.Component job : step.jobs()) {
                 rows.add(new ChainTableModel.Row(label, job.typeId(), name(job.typeId()),
                         job.reaction() ? "Reaction" : "Manufacturing", job.runs(), job.produced(), job.needed(),
-                        job.surplus(), job.time(), uses(job.inputs())));
+                        job.fromStock(), job.surplus(), job.time(), uses(job.inputs())));
             }
         }
         IndustryCalculator.Manufacturing main = option.manufacturing();
         rows.add(new ChainTableModel.Row(String.format(Locale.US, "Step %d · final", number), result.productId(),
-                result.productName(), "Manufacturing", calculatedRuns, main.units(), main.units(), 0, main.time(),
-                uses(plan.materials().stream().map(line -> new TypeQuantity(line.typeId(), line.quantity()))
+                result.productName(), "Manufacturing", calculatedRuns, main.units(), main.units(), 0, 0, main.time(),
+                uses(option.plan().materials().stream().map(line -> new TypeQuantity(line.typeId(), line.quantity()))
                         .toList())));
         chainModel.setRows(rows);
         TableStyler.packColumns(chainTable);
-        chainHint.setText(String.format(Locale.US, "Step 1: buy the %d items of the Shopping list. Then run the "
-                + "steps in order - the jobs of one step run side by side.", plan.shopping().size()));
+        long toBuy = stocked.shopping().stream().filter(purchase -> purchase.toBuy() > 0).count();
+        String first = toBuy == 0 ? "Step 1: nothing to buy, your stock covers it."
+                : "Step 1: buy the " + items(toBuy) + " of the Shopping list.";
+        productionTabs.setToolTipTextAt(productionTabs.indexOfComponent(chainPanel),
+                first + " Then run the steps in order - the jobs of one step run side by side.");
     }
 
     private String uses(List<TypeQuantity> inputs) {
@@ -552,12 +564,23 @@ public final class IndustryPanel extends JPanel {
 
     private void copyMultibuy() {
         StringBuilder text = new StringBuilder();
-        for (IndustryMaterialsTableModel.Row row : shoppingModel.rows()) {
-            text.append(row.name()).append('\t').append(row.quantity()).append('\n');
+        int copied = 0;
+        for (ShoppingListTableModel.Row row : shoppingModel.rows()) {
+            if (row.toBuy() > 0) {
+                text.append(row.name()).append('\t').append(row.toBuy()).append('\n');
+                copied++;
+            }
+        }
+        if (copied == 0) {
+            hintLabel.setText("Nothing left to buy - your stock covers the whole shopping list.");
+            return;
         }
         Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(text.toString()), null);
-        hintLabel.setText("Copied the " + shoppingModel.getRowCount()
-                + " items of the shopping list - paste them into Multibuy in EVE.");
+        hintLabel.setText("Copied " + items(copied) + " of the shopping list - paste them into Multibuy in EVE.");
+    }
+
+    private static String items(long count) {
+        return count == 1 ? "1 item" : count + " items";
     }
 
     private void buildUi() {
@@ -573,6 +596,9 @@ public final class IndustryPanel extends JPanel {
                 + "whole chain from the reactions to the finished item. Change any of them in the Build or buy tab");
         componentMeSpinner.setToolTipText("The ME of your component blueprints");
         componentTeSpinner.setToolTipText("The TE of your component blueprints");
+        stockCombo.setToolTipText("Leave out what your characters already have: their assets as of the last update, "
+                + "in the build system or anywhere. The Shopping list, Chain and To spend count it; the profit "
+                + "doesn't, as those items are worth their price too");
         surplusCombo.setToolTipText("What happens to what a job makes beyond what you need, such as most of a "
                 + "reaction's output");
         multibuyButton.setToolTipText("Copies the shopping list: everything you need to buy");
@@ -598,6 +624,7 @@ public final class IndustryPanel extends JPanel {
         field(blueprintForm, "TE", teSpinner, 4, 2, 1);
         place(blueprintForm, inventionCheck, 0, 3, 6);
         field(blueprintForm, "Components", buildCombo, 0, 4, 5);
+        field(blueprintForm, "Stock", stockCombo, 0, 5, 5);
 
         JPanel facilityForm = new JPanel(new GridBagLayout());
         field(facilityForm, "System", systemField, 0, 0, 1);
@@ -641,30 +668,25 @@ public final class IndustryPanel extends JPanel {
         Dimension surplusSize = surplusCombo.getPreferredSize();
         surplusCombo.setPreferredSize(new Dimension(surplusSize.width + COMBO_SLACK, surplusSize.height));
         buildHeader.add(surplusCombo);
-        buildHeader.add(UiColors.mutedLabel("   Tick Build to make an item yourself."));
         JPanel buildPanel = new JPanel(new BorderLayout(0, 4));
         buildPanel.add(buildHeader, BorderLayout.NORTH);
         buildPanel.add(new JScrollPane(buildTable), BorderLayout.CENTER);
         JPanel shoppingHeader = new JPanel(new BorderLayout());
         shoppingHeader.setBorder(BorderFactory.createEmptyBorder(2, 8, 2, 2));
-        shoppingHeader.add(UiColors.mutedLabel("Everything you still need to buy."), BorderLayout.WEST);
         shoppingHeader.add(multibuyButton, BorderLayout.EAST);
         JPanel shoppingPanel = new JPanel(new BorderLayout(0, 4));
         shoppingPanel.add(shoppingHeader, BorderLayout.NORTH);
         shoppingPanel.add(new JScrollPane(shoppingTable), BorderLayout.CENTER);
-        JLabel inventionHint = UiColors.mutedLabel("Click a decryptor to see its materials and numbers. "
-                + "The most profitable one is chosen for you.");
-        inventionHint.setBorder(BorderFactory.createEmptyBorder(4, 8, 2, 2));
-        inventionPanel.add(inventionHint, BorderLayout.NORTH);
         inventionPanel.add(new JScrollPane(decryptorTable), BorderLayout.CENTER);
-        productionTabs.addTab("Materials", new JScrollPane(materialsTable));
-        productionTabs.addTab("Build or buy", buildPanel);
-        JPanel chainPanel = new JPanel(new BorderLayout(0, 4));
-        chainHint.setBorder(BorderFactory.createEmptyBorder(4, 8, 2, 2));
-        chainPanel.add(chainHint, BorderLayout.NORTH);
+        productionTabs.addTab("Materials", null, new JScrollPane(materialsTable), "What the final job uses, with "
+                + "the price you pay for each and whether you build it or buy it");
+        productionTabs.addTab("Build or buy", null, buildPanel, "Every item you could make, with its market price "
+                + "and build cost. Tick Build to make an item yourself.");
         chainPanel.add(new JScrollPane(chainTable), BorderLayout.CENTER);
-        productionTabs.addTab("Chain", chainPanel);
-        productionTabs.addTab("Shopping list", shoppingPanel);
+        productionTabs.addTab("Chain", null, chainPanel, "The order to build in: buy the Shopping list, then run "
+                + "the steps in order - the jobs of one step run side by side.");
+        productionTabs.addTab("Shopping list", null, shoppingPanel, "Everything you still need to buy. In Stock is "
+                + "what your characters already have - choose it in Stock.");
         JPanel production = new JPanel(new BorderLayout());
         production.setBorder(BorderFactory.createEmptyBorder(2, 8, 8, 8));
         production.add(productionTabs, BorderLayout.CENTER);

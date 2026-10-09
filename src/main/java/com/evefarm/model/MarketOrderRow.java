@@ -14,6 +14,7 @@ public record MarketOrderRow(
         long volumeRemain,
         long volumeTotal,
         Double escrow,
+        long locationId,
         String locationName,
         String issued,
         Integer duration,
@@ -26,6 +27,7 @@ public record MarketOrderRow(
         Double marketMarginPercent,
         Double marketProfit,
         Boolean outbid,
+        Double competitorPrice,
         Double brokerFee,
         Double brokerFeePercent
 ) {

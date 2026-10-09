@@ -63,7 +63,7 @@ public final class CharacterDao {
 
     private static final List<String> CURRENT_STATE_TABLES = List.of(
             "tokens", "asset_current", "character_loyalty_points", "character_standings",
-            "character_skill", "character_attributes");
+            "character_skill", "character_attributes", "order_competition");
 
     public void remove(long characterId) {
         database.transaction("Failed to remove character " + characterId, connection -> {

@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -18,6 +19,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -68,5 +70,23 @@ class PriceServiceTest {
         assertDoesNotThrow(() -> service.ensureFreshPrices(List.of(34, 35)));
 
         verify(prices, never()).replaceAllDetailed(ArgumentMatchers.anyMap());
+    }
+
+    @Test
+    void anItemTheProviderHasNoPriceForIsNotAskedForAgainWithinAnHour() {
+        SettingsDao settings = mock(SettingsDao.class);
+        FuzzworkApi fuzzwork = mock(FuzzworkApi.class);
+        PriceCacheDao prices = mock(PriceCacheDao.class);
+        when(settings.getOrDefault(SettingsDao.PRICE_PROVIDER, PriceService.PROVIDER_CCP))
+                .thenReturn(PriceService.PROVIDER_FUZZWORK);
+        when(prices.findStaleTypeIds(eq(List.of(34, 99)), any())).thenReturn(Set.of(99));
+        when(fuzzwork.fetchAggregates(List.of(99))).thenReturn(Map.of());
+        PriceService service = new PriceService(mock(MarketsApi.class), fuzzwork, mock(JaniceApi.class),
+                prices, mock(TypeCacheDao.class), settings);
+
+        service.ensureFreshPrices(List.of(34, 99));
+        service.ensureFreshPrices(List.of(34, 99));
+
+        verify(fuzzwork, times(1)).fetchAggregates(List.of(99));
     }
 }

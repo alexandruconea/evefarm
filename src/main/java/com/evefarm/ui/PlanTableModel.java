@@ -18,21 +18,34 @@ public final class PlanTableModel extends ColumnTableModel<PlanRow> {
             .withZone(ZoneId.systemDefault());
 
     private static final List<ColumnDef<PlanRow>> COLUMNS = List.of(
-            new ColumnDef<>("position", "#", Integer.class, PlanRow::position),
+            new ColumnDef<>("position", "#", Integer.class, PlanRow::position,
+                    "The training order"),
             new ColumnDef<>("skill", "Skill", String.class,
-                    r -> r.skillName() + " " + SkillPlanText.roman(r.entry().level())),
-            new ColumnDef<>("type", "Type", String.class, r -> r.entry().planned() ? "Planned" : "Prerequisite"),
-            new ColumnDef<>("time", "Training Time", String.class, r -> formatDuration(r.time())),
-            new ColumnDef<>("start", "Start", String.class, false, r -> formatDate(r.start())),
-            new ColumnDef<>("finish", "Finish", String.class, r -> formatDate(r.finish())),
-            new ColumnDef<>("done", "Done", String.class, r -> formatPercent(r.percentDone())),
-            new ColumnDef<>("sp", "SP", String.class, r -> String.format(Locale.US, "%,d", r.spNeeded())),
+                    r -> r.skillName() + " " + SkillPlanText.roman(r.entry().level()),
+                    "The skill and the level to train"),
+            new ColumnDef<>("type", "Type", String.class, r -> r.entry().planned() ? "Planned" : "Prerequisite",
+                    "Planned when you added it, Prerequisite when a planned skill needs it"),
+            new ColumnDef<>("time", "Training Time", String.class, r -> formatDuration(r.time()),
+                    "How long the level takes to train, with the character's attributes"),
+            new ColumnDef<>("start", "Start", String.class, false, r -> formatDate(r.start()),
+                    "When the level starts training, in your local time"),
+            new ColumnDef<>("finish", "Finish", String.class, r -> formatDate(r.finish()),
+                    "When the level finishes training, in your local time"),
+            new ColumnDef<>("done", "Done", String.class, r -> formatPercent(r.percentDone()),
+                    "How much of the level is already trained"),
+            new ColumnDef<>("sp", "SP", String.class, r -> String.format(Locale.US, "%,d", r.spNeeded()),
+                    "The skill points the level still needs"),
             new ColumnDef<>("spTotal", "Total SP After", String.class, false,
-                    r -> String.format(Locale.US, "%,d", r.spTotalAfter())),
-            new ColumnDef<>("rank", "Rank", Integer.class, false, PlanRow::rank),
-            new ColumnDef<>("attributes", "Attributes", String.class, PlanTableModel::attributes),
-            new ColumnDef<>("group", "Group", String.class, r -> nullToEmpty(r.groupName())),
-            new ColumnDef<>("notes", "Notes", String.class, r -> nullToEmpty(r.entry().notes()))
+                    r -> String.format(Locale.US, "%,d", r.spTotalAfter()),
+                    "The character's total skill points once the level is trained"),
+            new ColumnDef<>("rank", "Rank", Integer.class, false, PlanRow::rank,
+                    "The skill's rank: how many times longer it takes than a rank 1 skill"),
+            new ColumnDef<>("attributes", "Attributes", String.class, PlanTableModel::attributes,
+                    "The primary / secondary attributes that speed up the training"),
+            new ColumnDef<>("group", "Group", String.class, r -> nullToEmpty(r.groupName()),
+                    "The skill's group"),
+            new ColumnDef<>("notes", "Notes", String.class, r -> nullToEmpty(r.entry().notes()),
+                    "Your notes on the level")
     );
 
     public PlanTableModel() {

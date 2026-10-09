@@ -7,7 +7,6 @@ import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JDialog;
-import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -53,6 +52,8 @@ public final class TabVisibilityDialog extends JDialog {
             box.setForeground(isSelected ? jList.getSelectionForeground() : jList.getForeground());
             return box;
         });
+        list.setToolTipText("Tick the tabs to show. Move Up and Move Down change the order of the tab bar. "
+                + "Hidden tabs still refresh their data with Update.");
         list.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -83,9 +84,6 @@ public final class TabVisibilityDialog extends JDialog {
 
         JPanel content = new JPanel(new BorderLayout(8, 8));
         content.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        content.add(new JLabel("<html>Check the tabs to show.<br>Use Move Up/Down to change the "
-                + "tab bar's order.<br>Hidden tabs' data still refreshes normally via "
-                + "Update.</html>"), BorderLayout.NORTH);
         content.add(new JScrollPane(list), BorderLayout.CENTER);
         content.add(sideButtons, BorderLayout.EAST);
         content.add(buttonPanel, BorderLayout.SOUTH);

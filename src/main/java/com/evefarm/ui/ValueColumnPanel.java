@@ -2,6 +2,7 @@ package com.evefarm.ui;
 
 import com.evefarm.model.ValueSummary;
 import com.evefarm.util.IskFormatter;
+import com.evefarm.util.Text;
 
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
@@ -101,11 +102,7 @@ final class ValueColumnPanel extends JPanel {
         if (itemName == null || value <= 0) {
             return null;
         }
-        return "<html><div style='text-align:right'>" + escape(itemName) + "<br>"
+        return "<html><div style='text-align:right'>" + Text.escapeHtml(itemName) + "<br>"
                 + IskFormatter.format(value) + "</div></html>";
-    }
-
-    private static String escape(String text) {
-        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 }

@@ -3,6 +3,7 @@ package com.evefarm.ui;
 import com.evefarm.AppContext;
 import com.evefarm.model.EveCharacter;
 import com.evefarm.model.TrackerSnapshot;
+import com.evefarm.ui.column.ColumnDescriptions;
 import com.evefarm.util.DateUtil;
 import com.evefarm.util.IskFormatter;
 
@@ -89,8 +90,10 @@ public final class SnapshotManagerDialog extends JDialog {
         onChanged.run();
     }
 
-    private final class SnapshotTableModel extends AbstractTableModel {
+    private final class SnapshotTableModel extends AbstractTableModel implements ColumnDescriptions {
         private final String[] columns = {"Character", "Captured At", "Total"};
+        private final String[] descriptions = {"The character the snapshot is for",
+                "When the snapshot was taken, in your local time", "The character's total value in the snapshot"};
 
         @Override
         public int getRowCount() {
@@ -105,6 +108,11 @@ public final class SnapshotManagerDialog extends JDialog {
         @Override
         public String getColumnName(int column) {
             return columns[column];
+        }
+
+        @Override
+        public String columnDescription(int column) {
+            return descriptions[column];
         }
 
         @Override

@@ -650,9 +650,9 @@ public final class SkillsPanel extends JPanel {
         JTextArea area = new JTextArea(16, 50);
         JScrollPane scroll = new JScrollPane(area);
         JPanel content = new JPanel(new BorderLayout(0, 6));
-        content.add(new JLabel("<html>Paste a skill list, one skill per line (for example <b>Caldari Cruiser 4</b> "
-                + "or <b>Caldari Cruiser IV</b>),<br>or a ship fit copied from EVE. The skills it needs are added "
-                + "with their prerequisites.</html>"), BorderLayout.NORTH);
+        area.setToolTipText("One skill per line, for example Caldari Cruiser 4 or Caldari Cruiser IV, or a ship "
+                + "fit copied from EVE. The skills it needs are added with their prerequisites.");
+        content.add(new JLabel("Paste a skill list or a ship fit:"), BorderLayout.NORTH);
         content.add(scroll, BorderLayout.CENTER);
         if (JOptionPane.showConfirmDialog(this, content, "Import into " + plan.name(),
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) {

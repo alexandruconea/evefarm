@@ -56,6 +56,12 @@ final class IndustryResultCard {
         }
         lines.add(new Line("Total cost", IskFormatter.format(option.totalCost()), each(option.unitCost()), null,
                 false));
+        double fromStock = option.stocked().stockValue();
+        String spending = option.invention() == null ? "What is left to buy and the job fees"
+                : "What is left to buy, the job fees and the invention";
+        lines.add(new Line("To spend", IskFormatter.format(option.toSpend()), fromStock > 0
+                ? spending + ". " + IskFormatter.format(fromStock) + " is already in your stock" : spending,
+                null, false));
         lines.add(new Line("Profit", IskFormatter.format(option.profit()), each(option.unitProfit()),
                 profitColor(option.profit()), true));
         lines.add(new Line("Build time", PlanTableModel.formatDuration(option.manufacturing().time()),
@@ -73,9 +79,12 @@ final class IndustryResultCard {
         for (int i = 0; i < lines.size(); i++) {
             addLine(i + 1, lines.get(i));
         }
-        GridBagConstraints filler = cell(0, lines.size() + 1, 3, GridBagConstraints.WEST);
+        GridBagConstraints filler = cell(0, lines.size() + 1, 2, GridBagConstraints.WEST);
         filler.weighty = 1;
         card.add(Box.createVerticalGlue(), filler);
+        GridBagConstraints spacer = cell(2, lines.size() + 1, 1, GridBagConstraints.WEST);
+        spacer.weightx = 1;
+        card.add(Box.createHorizontalGlue(), spacer);
         card.revalidate();
         card.repaint();
     }
@@ -108,15 +117,14 @@ final class IndustryResultCard {
             label.setFont(label.getFont().deriveFont(Font.BOLD));
             value.setFont(value.getFont().deriveFont(Font.BOLD));
         }
-        JLabel detail = plainText(line.detail() == null ? "" : line.detail(), SwingConstants.LEFT);
-        detail.setForeground(UiColors.muted());
+        if (line.detail() != null) {
+            label.setToolTipText(line.detail());
+            value.setToolTipText(line.detail());
+        }
         card.add(label, cell(0, row, 1, GridBagConstraints.WEST));
         GridBagConstraints valueCell = cell(1, row, 1, GridBagConstraints.EAST);
         valueCell.ipadx = 6;
         card.add(value, valueCell);
-        GridBagConstraints detailCell = cell(2, row, 1, GridBagConstraints.WEST);
-        detailCell.weightx = 1;
-        card.add(detail, detailCell);
     }
 
     private static JLabel plainText(String text, int alignment) {

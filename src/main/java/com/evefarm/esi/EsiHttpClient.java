@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.IntConsumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -33,6 +34,17 @@ public final class EsiHttpClient {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final AtomicInteger errorLimitRemain = new AtomicInteger(100);
     private final AtomicInteger errorLimitResetSeconds = new AtomicInteger(0);
+    private final String baseUrl;
+    private final IntConsumer sleeper;
+
+    public EsiHttpClient() {
+        this(EsiConfig.BASE_URL, EsiHttpClient::sleepSeconds);
+    }
+
+    EsiHttpClient(String baseUrl, IntConsumer sleeper) {
+        this.baseUrl = baseUrl;
+        this.sleeper = sleeper;
+    }
 
     public ObjectMapper objectMapper() {
         return objectMapper;
@@ -72,14 +84,14 @@ public final class EsiHttpClient {
         String queryString = query.entrySet().stream()
                 .map(e -> encode(e.getKey()) + "=" + encode(e.getValue()))
                 .collect(Collectors.joining("&"));
-        String base = EsiConfig.BASE_URL + path + "?datasource=" + EsiConfig.DATASOURCE;
-        String url = queryString.isBlank() ? base : base + "&" + queryString;
+        String url = queryString.isBlank() ? baseUrl + path : baseUrl + path + "?" + queryString;
 
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .timeout(Duration.ofSeconds(20))
                 .header("User-Agent", EsiConfig.USER_AGENT)
-                .header("Accept", "application/json");
+                .header("Accept", "application/json")
+                .header("X-Compatibility-Date", EsiConfig.COMPATIBILITY_DATE);
         if (accessTokenOrNull != null) {
             builder.header("Authorization", "Bearer " + accessTokenOrNull);
         }
@@ -102,12 +114,12 @@ public final class EsiHttpClient {
 
         if (response.statusCode() == 420) {
             LOG.warning("ESI error limit hit (420); backing off for " + errorLimitResetSeconds.get() + "s");
-            sleepSeconds(errorLimitResetSeconds.get());
+            sleeper.accept(errorLimitResetSeconds.get());
             response = sendOnce(request);
         } else if (response.statusCode() == 429) {
             int waitSeconds = retryAfterSeconds(response.headers().firstValue("Retry-After"));
             LOG.warning("ESI rate limit hit (429); retrying in " + waitSeconds + "s");
-            sleepSeconds(waitSeconds);
+            sleeper.accept(waitSeconds);
             response = sendOnce(request);
         }
 
@@ -152,7 +164,7 @@ public final class EsiHttpClient {
         if (errorLimitRemain.get() < LOW_ERROR_BUDGET_THRESHOLD && errorLimitResetSeconds.get() > 0) {
             LOG.log(Level.WARNING, "ESI error budget low ({0}); pausing {1}s",
                     new Object[]{errorLimitRemain.get(), errorLimitResetSeconds.get()});
-            sleepSeconds(errorLimitResetSeconds.get());
+            sleeper.accept(errorLimitResetSeconds.get());
         }
     }
 

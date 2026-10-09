@@ -1,5 +1,7 @@
 package com.evefarm.ui;
 
+import com.evefarm.util.Text;
+
 import java.awt.Color;
 import java.awt.Font;
 import java.util.ArrayDeque;
@@ -71,7 +73,7 @@ final class MarkdownHtml {
                     code.add(lines[index]);
                     index++;
                 }
-                html.append("<pre>").append(escape(String.join("\n", code))).append("</pre>");
+                html.append("<pre>").append(Text.escapeHtml(String.join("\n", code))).append("</pre>");
                 afterBlank = false;
                 continue;
             }
@@ -177,14 +179,14 @@ final class MarkdownHtml {
         while (i < length) {
             char c = text.charAt(i);
             if (c == '\\' && i + 1 < length && isPunctuation(text.charAt(i + 1))) {
-                out.append(escape(String.valueOf(text.charAt(i + 1))));
+                out.append(Text.escapeHtml(String.valueOf(text.charAt(i + 1))));
                 i += 2;
                 continue;
             }
             if (c == '`') {
                 int end = text.indexOf('`', i + 1);
                 if (end > i + 1) {
-                    out.append("<code>").append(escape(text.substring(i + 1, end))).append("</code>");
+                    out.append("<code>").append(Text.escapeHtml(text.substring(i + 1, end))).append("</code>");
                     i = end + 1;
                     continue;
                 }
@@ -209,7 +211,7 @@ final class MarkdownHtml {
                 int end = text.indexOf('>', i + 1);
                 if (end > i && isWebUrl(text.substring(i + 1, end))) {
                     String url = text.substring(i + 1, end);
-                    out.append(anchor(url, escape(url)));
+                    out.append(anchor(url, Text.escapeHtml(url)));
                     i = end + 1;
                     continue;
                 }
@@ -224,7 +226,7 @@ final class MarkdownHtml {
                     end--;
                 }
                 String url = text.substring(i, end);
-                out.append(anchor(url, escape(url)));
+                out.append(anchor(url, Text.escapeHtml(url)));
                 i = end;
                 continue;
             }
@@ -247,7 +249,7 @@ final class MarkdownHtml {
                     continue;
                 }
             }
-            out.append(escape(String.valueOf(c)));
+            out.append(Text.escapeHtml(String.valueOf(c)));
             i++;
         }
         return out.toString();
@@ -307,7 +309,7 @@ final class MarkdownHtml {
     }
 
     private static String anchor(String url, String label) {
-        return isWebUrl(url) ? "<a href=\"" + escape(url) + "\">" + label + "</a>" : label;
+        return isWebUrl(url) ? "<a href=\"" + Text.escapeHtml(url) + "\">" + label + "</a>" : label;
     }
 
     static boolean isWebUrl(String url) {
@@ -321,19 +323,5 @@ final class MarkdownHtml {
 
     private static boolean isPunctuation(char c) {
         return c < 128 && !Character.isLetterOrDigit(c) && !Character.isWhitespace(c);
-    }
-
-    private static String escape(String text) {
-        StringBuilder out = new StringBuilder(text.length());
-        for (char c : text.toCharArray()) {
-            switch (c) {
-                case '&' -> out.append("&amp;");
-                case '<' -> out.append("&lt;");
-                case '>' -> out.append("&gt;");
-                case '"' -> out.append("&quot;");
-                default -> out.append(c);
-            }
-        }
-        return out.toString();
     }
 }

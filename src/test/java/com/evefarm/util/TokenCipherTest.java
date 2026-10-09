@@ -1,4 +1,4 @@
-package com.evefarm.auth;
+package com.evefarm.util;
 
 import org.junit.jupiter.api.Test;
 
