@@ -23,7 +23,23 @@ public record LpOfferRow(
         Double iskPerLpBuy,
         Double profitSell,
         Double profitBuy,
-        Double fivePercentSellVolume,
-        Double fivePercentBuyVolume
+        int outputTypeId,
+        long outputUnits,
+        Double unitsForSale,
+        Double dailyVolume
 ) {
+
+    public Double daysToSell() {
+        if (dailyVolume == null) {
+            return null;
+        }
+        return dailyVolume <= 0 ? Double.POSITIVE_INFINITY : outputUnits / dailyVolume;
+    }
+
+    public LpOfferRow withDailyVolume(Double volume) {
+        return new LpOfferRow(offerId, typeId, itemName, categoryName, quantity, lpCost, iskCost, akCost,
+                requiredItemsSummary, requiredItems, requiredItemsCost, buildMaterialsSummary, buildMaterials,
+                buildMaterialsCost, sellPricePerUnit, buyPricePerUnit, iskPerLpSell, iskPerLpBuy, profitSell,
+                profitBuy, outputTypeId, outputUnits, unitsForSale, volume);
+    }
 }

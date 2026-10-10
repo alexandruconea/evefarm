@@ -1,5 +1,6 @@
 package com.evefarm.esi;
 
+import com.evefarm.esi.dto.MarketHistoryDto;
 import com.evefarm.esi.dto.MarketOrderDto;
 import com.evefarm.esi.dto.MarketPriceDto;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -54,6 +55,17 @@ public final class MarketsApi {
             throw new IllegalStateException("Failed to parse the market orders of type " + typeId, e);
         }
         return result;
+    }
+
+    public List<MarketHistoryDto> listRegionHistory(long regionId, int typeId) {
+        String body = client.get("/markets/" + regionId + "/history/", null,
+                Map.of("type_id", String.valueOf(typeId)));
+        try {
+            return client.objectMapper().readValue(body, new TypeReference<List<MarketHistoryDto>>() {
+            });
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to parse the market history of type " + typeId, e);
+        }
     }
 
     public List<MarketPriceDto> listPrices() {

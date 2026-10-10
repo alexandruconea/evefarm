@@ -60,7 +60,8 @@ public final class MigrationRunner {
             "db/migrations/V35__industry_catalog.sql",
             "db/migrations/V36__solar_systems.sql",
             "db/migrations/V37__notification_sent.sql",
-            "db/migrations/V38__order_competition.sql"
+            "db/migrations/V38__order_competition.sql",
+            "db/migrations/V39__market_daily_volume.sql"
     );
 
     public static void run(Database database) {

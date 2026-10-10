@@ -11,6 +11,7 @@ import com.evefarm.model.AssetRow;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,7 +43,10 @@ public final class AssetService {
 
     public double refreshAssetsForCharacter(long characterId) {
         String accessToken = authService.getValidAccessToken(characterId);
-        List<AssetDto> assets = assetsApi.listAssets(characterId, accessToken);
+        List<AssetDto> assets = List.copyOf(assetsApi.listAssets(characterId, accessToken).stream()
+                .collect(Collectors.toMap(AssetDto::itemId, asset -> asset, (earlier, later) -> later,
+                        LinkedHashMap::new))
+                .values());
 
         Map<Long, String> customNames = fetchCustomNames(characterId, accessToken, assets);
 

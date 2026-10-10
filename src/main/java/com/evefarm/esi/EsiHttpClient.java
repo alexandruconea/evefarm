@@ -27,6 +27,7 @@ public final class EsiHttpClient {
     private static final int LOW_ERROR_BUDGET_THRESHOLD = 5;
     private static final int DEFAULT_RETRY_AFTER_SECONDS = 5;
     private static final int MAX_RETRY_AFTER_SECONDS = 60;
+    private static final int PAGED_READ_ATTEMPTS = 3;
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -64,19 +65,29 @@ public final class EsiHttpClient {
     }
 
     public List<String> getAllPages(String path, String accessTokenOrNull, Map<String, String> query) {
-        List<String> pages = new ArrayList<>();
-        Map<String, String> pageQuery = new HashMap<>(query);
-        pageQuery.put("page", "1");
-        HttpResponse<String> first = sendRaw(buildRequest("GET", path, accessTokenOrNull, pageQuery, null));
-        pages.add(first.body());
+        for (int attempt = 1; ; attempt++) {
+            List<String> pages = new ArrayList<>();
+            Map<String, String> pageQuery = new HashMap<>(query);
+            pageQuery.put("page", "1");
+            HttpResponse<String> first = sendRaw(buildRequest("GET", path, accessTokenOrNull, pageQuery, null));
+            pages.add(first.body());
+            Optional<String> snapshot = first.headers().firstValue("Last-Modified");
+            boolean sameSnapshot = true;
 
-        int totalPages = first.headers().firstValue("X-Pages").map(Integer::parseInt).orElse(1);
-        for (int page = 2; page <= totalPages; page++) {
-            pageQuery.put("page", String.valueOf(page));
-            HttpResponse<String> response = sendRaw(buildRequest("GET", path, accessTokenOrNull, pageQuery, null));
-            pages.add(response.body());
+            int totalPages = first.headers().firstValue("X-Pages").map(Integer::parseInt).orElse(1);
+            for (int page = 2; page <= totalPages; page++) {
+                pageQuery.put("page", String.valueOf(page));
+                HttpResponse<String> response = sendRaw(buildRequest("GET", path, accessTokenOrNull, pageQuery, null));
+                pages.add(response.body());
+                if (snapshot.isPresent() && !snapshot.equals(response.headers().firstValue("Last-Modified"))) {
+                    sameSnapshot = false;
+                }
+            }
+            if (sameSnapshot || attempt == PAGED_READ_ATTEMPTS) {
+                return pages;
+            }
+            LOG.info("ESI refreshed " + path + " while its pages were being read; reading them again");
         }
-        return pages;
     }
 
     private HttpRequest buildRequest(String method, String path, String accessTokenOrNull,

@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 class LpOfferPricingServiceTest {
 
-    private final LpOfferPricingService service = new LpOfferPricingService(null, null, null, null);
+    private final LpOfferPricingService service = new LpOfferPricingService(null, null, null, null, null);
 
     @Test
     void computeProfitSubtractsIskCostAndOtherCostFromOutputValue() {

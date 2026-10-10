@@ -9,6 +9,7 @@ import com.evefarm.db.dao.AssetDao;
 import com.evefarm.db.dao.CharacterDao;
 import com.evefarm.db.dao.CharacterSkillDao;
 import com.evefarm.db.dao.ContractDao;
+import com.evefarm.db.dao.DailyVolumeDao;
 import com.evefarm.db.dao.EncounterDao;
 import com.evefarm.db.dao.EntityNameCacheDao;
 import com.evefarm.db.dao.ImplantBonusDao;
@@ -77,6 +78,7 @@ import com.evefarm.service.KillsReportService;
 import com.evefarm.service.LocationNameCacheService;
 import com.evefarm.service.LoyaltyPointService;
 import com.evefarm.service.LpOfferPricingService;
+import com.evefarm.service.MarketHistoryService;
 import com.evefarm.service.MarketOrderService;
 import com.evefarm.service.MarketWatchService;
 import com.evefarm.service.MiningService;
@@ -229,7 +231,7 @@ public final class AppContext {
         this.aggroWatchService = new AggroWatchService(killService, characterDao);
         this.voiceService = new VoiceService();
         this.lpOfferPricingService = new LpOfferPricingService(loyaltyApi, fuzzworkApi, typeNameCacheService,
-                priceService);
+                priceService, new MarketHistoryService(marketsApi, new DailyVolumeDao(database)));
         this.itemIconService = new ItemIconService();
         SkillCatalogApi skillCatalogApi = new SkillCatalogApi(esiHttpClient);
         this.industryCatalogService = new IndustryCatalogService(fuzzworkApi, skillCatalogApi,

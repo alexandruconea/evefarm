@@ -80,6 +80,17 @@ class EsiHttpClientTest {
     }
 
     @Test
+    void pagesFromTwoDifferentSnapshotsAreReadAgain() {
+        replies.add(new Reply(200, Map.of("X-Pages", "2", "Last-Modified", "Fri, 09 Oct 2026 10:00:00 GMT"), "[1a]"));
+        replies.add(new Reply(200, Map.of("X-Pages", "2", "Last-Modified", "Fri, 09 Oct 2026 11:00:00 GMT"), "[2b]"));
+        replies.add(new Reply(200, Map.of("X-Pages", "2", "Last-Modified", "Fri, 09 Oct 2026 11:00:00 GMT"), "[1b]"));
+        replies.add(new Reply(200, Map.of("X-Pages", "2", "Last-Modified", "Fri, 09 Oct 2026 11:00:00 GMT"), "[2b]"));
+
+        assertEquals(List.of("[1b]", "[2b]"), client.getAllPages("/characters/1/assets/", "token", Map.of()));
+        assertEquals(4, seen.size());
+    }
+
+    @Test
     void aRateLimitedRequestIsRetriedAfterTheWaitEsiAsksFor() {
         replies.add(new Reply(429, Map.of("Retry-After", "7"), ""));
         replies.add(new Reply(200, Map.of(), "[]"));

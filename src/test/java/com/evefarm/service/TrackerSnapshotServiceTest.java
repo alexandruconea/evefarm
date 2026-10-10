@@ -41,28 +41,21 @@ class TrackerSnapshotServiceTest {
             null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
     @Test
-    void keepsIskPerLpWhenBookDepthCoversTheOffer() {
-        assertEquals(9.3, service.liquidIskPerLp(9.3, 25.0, 10));
+    void keepsIskPerLpWhenTheOfferSellsWithinAWeek() {
+        assertEquals(9.3, service.liquidIskPerLp(9.3, 2.5));
+        assertEquals(9.3, service.liquidIskPerLp(9.3, 7.0));
     }
 
     @Test
-    void keepsIskPerLpWhenBookDepthExactlyMatchesTheOffer() {
-        assertEquals(9.3, service.liquidIskPerLp(9.3, 10.0, 10));
+    void dropsIskPerLpWhenTheOfferTakesLongerThanAWeekToSell() {
+        assertNull(service.liquidIskPerLp(999999.0, 7.5));
+        assertNull(service.liquidIskPerLp(999999.0, Double.POSITIVE_INFINITY));
     }
 
     @Test
-    void dropsIskPerLpWhenBookDepthIsThinnerThanTheOffer() {
-        assertNull(service.liquidIskPerLp(999999.0, 1.0, 10));
-    }
-
-    @Test
-    void dropsIskPerLpWhenVolumeIsUnknown() {
-        assertNull(service.liquidIskPerLp(9.3, null, 10));
-    }
-
-    @Test
-    void staysNullWhenIskPerLpIsAlreadyNull() {
-        assertNull(service.liquidIskPerLp(null, 10.0, 10));
+    void dropsIskPerLpWhenTheDailyVolumeIsUnknown() {
+        assertNull(service.liquidIskPerLp(9.3, null));
+        assertNull(service.liquidIskPerLp(null, 1.0));
     }
 
     @Test

@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public final class LpOfferPricingService {
 
@@ -27,13 +28,16 @@ public final class LpOfferPricingService {
     private final FuzzworkApi fuzzworkApi;
     private final TypeNameCacheService typeNameCacheService;
     private final PriceService priceService;
+    private final MarketHistoryService marketHistoryService;
 
     public LpOfferPricingService(LoyaltyApi loyaltyApi, FuzzworkApi fuzzworkApi,
-                                  TypeNameCacheService typeNameCacheService, PriceService priceService) {
+                                  TypeNameCacheService typeNameCacheService, PriceService priceService,
+                                  MarketHistoryService marketHistoryService) {
         this.loyaltyApi = loyaltyApi;
         this.fuzzworkApi = fuzzworkApi;
         this.typeNameCacheService = typeNameCacheService;
         this.priceService = priceService;
+        this.marketHistoryService = marketHistoryService;
     }
 
     public List<LpOfferRow> listPricedOffers(long corporationId) {
@@ -49,17 +53,17 @@ public final class LpOfferPricingService {
         typeNameCacheService.resolveTypes(typeIds);
         priceService.ensureFreshPrices(typeIds);
 
-        Map<Integer, Double> sellVolumes = priceService.getSellVolumes();
-        Map<Integer, Double> buyVolumes = priceService.getBuyVolumes();
-
-        List<LpOfferRow> result = new ArrayList<>();
+        Map<Integer, Double> unitsForSale = priceService.getSellVolumes();
+        List<LpOfferRow> priced = new ArrayList<>();
         for (LoyaltyOfferDto offer : offers) {
-            result.add(price(offer, sellVolumes, buyVolumes));
+            priced.add(price(offer, unitsForSale));
         }
-        return result;
+        Map<Integer, Double> dailyVolumes = marketHistoryService.dailyVolumes(
+                priced.stream().map(LpOfferRow::outputTypeId).collect(Collectors.toSet()));
+        return priced.stream().map(row -> row.withDailyVolume(dailyVolumes.get(row.outputTypeId()))).toList();
     }
 
-    private LpOfferRow price(LoyaltyOfferDto offer, Map<Integer, Double> sellVolumes, Map<Integer, Double> buyVolumes) {
+    private LpOfferRow price(LoyaltyOfferDto offer, Map<Integer, Double> unitsForSale) {
         TypeInfo type = typeNameCacheService.resolveType(offer.typeId());
 
         int outputTypeId = offer.typeId();
@@ -106,15 +110,12 @@ public final class LpOfferPricingService {
         Double profitSell = computeProfit(sellPrice, outputUnits, offer.iskCost(), otherCost);
         Double profitBuy = computeProfit(buyPrice, outputUnits, offer.iskCost(), otherCost);
 
-        Double fivePercentSellVolume = sellVolumes.get(outputTypeId);
-        Double fivePercentBuyVolume = buyVolumes.get(outputTypeId);
-
         return new LpOfferRow(offer.offerId(), offer.typeId(), type.name(), type.categoryName(),
                 offer.quantity(), offer.lpCost(), offer.iskCost(), offer.akCost(),
                 String.join(", ", summaryParts), requiredItems, requiredItemsCost,
                 buildMaterialsSummary, buildMaterials, buildMaterialsCost, sellPrice, buyPrice,
-                iskPerLpSell, iskPerLpBuy, profitSell, profitBuy, fivePercentSellVolume,
-                fivePercentBuyVolume);
+                iskPerLpSell, iskPerLpBuy, profitSell, profitBuy, outputTypeId, outputUnits,
+                unitsForSale.get(outputTypeId), null);
     }
 
     private record BlueprintPricing(int productTypeId, int productQuantityPerRun, String summary,

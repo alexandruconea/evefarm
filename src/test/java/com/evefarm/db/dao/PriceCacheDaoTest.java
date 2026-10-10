@@ -43,6 +43,5 @@ class PriceCacheDaoTest {
         assertEquals(5.0, dao.findUnitPrice(34, PriceMode.SELL_AVG).orElseThrow(), 1e-9);
         assertEquals(5.0, dao.findUnitPrice(34, PriceMode.BUY_AVG).orElseThrow(), 1e-9);
         assertEquals(Map.of(), dao.findAllSellVolumes());
-        assertEquals(Map.of(), dao.findAllBuyVolumes());
     }
 }

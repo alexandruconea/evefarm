@@ -65,4 +65,27 @@ class AssetServiceTest {
         assertEquals(999L, byItem.get(5L).locationId(), "an item whose container isn't listed keeps its location");
         assertNull(byItem.get(1L).containerName());
     }
+
+    @Test
+    void anItemListedTwiceByEsiIsSavedOnce() {
+        AuthService auth = mock(AuthService.class);
+        AssetsApi assets = mock(AssetsApi.class);
+        PriceService prices = mock(PriceService.class);
+        AssetDao dao = mock(AssetDao.class);
+        when(auth.getValidAccessToken(PILOT)).thenReturn("token");
+        when(assets.listAssets(PILOT, "token")).thenReturn(List.of(
+                new AssetDto(4, 215, 1_000, JITA, "station", "Hangar", false),
+                new AssetDto(4, 215, 2_000, JITA, "station", "Hangar", false)));
+        when(prices.getUnitPrices()).thenReturn(Map.of(215, 10.0));
+        AssetService service = new AssetService(auth, assets, mock(TypeNameCacheService.class),
+                mock(LocationNameCacheService.class), prices, dao);
+
+        assertEquals(20_000.0, service.refreshAssetsForCharacter(PILOT), 1e-9);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<AssetEntry>> saved = ArgumentCaptor.forClass(List.class);
+        verify(dao).replaceForCharacter(eq(PILOT), saved.capture());
+        assertEquals(1, saved.getValue().size());
+        assertEquals(2_000L, saved.getValue().getFirst().quantity());
+    }
 }

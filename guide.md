@@ -125,7 +125,7 @@ A chart of your net worth over time. Each point is a snapshot, taken when EVE Fa
   - Skill Points and LP Value.
 - Hover the chart to see the values at a date. Scroll to zoom, drag to move, and double-click to show everything again.
 - **Skill Point Filters...** chooses, per character, whether its skill points count in the total. The value counted is what you would get by extracting the skill points above 5,000,000: the number of 500,000 SP extractions times the price of a Large Skill Injector minus the price of a Skill Extractor. **Extra SP kept** raises that floor if you never want to extract below a certain amount.
-- **LP Value** is the LP you hold with your favorite corporation in the LP Store tab, times the best ISK per LP of its offers whose market is deep enough to sell the whole offer.
+- **LP Value** is the LP you hold with your favorite corporation in the LP Store tab, times the best ISK per LP of its offers that sell within a week, going by **Days to Sell**.
 - **Manage Snapshots...** lists every snapshot. Select some and click **Delete Selected** to remove wrong points. You can also right-click a point in the chart and choose **Delete Snapshot**.
 
 ### Assets
@@ -173,7 +173,9 @@ For each offer you see the item, quantity, LP cost, ISK cost, the other items it
 
 - **ISK/LP (Sell)** and **ISK/LP (Buy)**: the ISK you make per LP, selling at the lowest sell price or to the highest buy order, after the ISK cost and the other costs.
 - **Profit (Sell)** and **Profit (Buy)**: the ISK you make on the whole offer.
-- **5% Volume**: 5% of the units currently for sale in Jita. It helps you judge whether you could sell the item without flooding the market.
+- **Sold per Day**: how many units change hands per day in The Forge, the region of Jita: the average of the last 30 days from EVE's market history, refreshed once a day. For a blueprint, it is the item the blueprint builds. Check it before you buy an offer, so you don't end up with items nobody buys.
+- **Days to Sell**: the units of the offer divided by **Sold per Day**, that is how many days of trading the whole offer equals. **No sales** means nothing traded in the last 30 days. You share the market with other sellers, so expect it to take longer.
+- **For Sale** (hidden at first): how many units are for sale in Jita 4-4 right now, with Fuzzwork prices.
 - **Set ISK/LP Target...** sets the ISK per LP you aim for. ISK/LP cells at or above it turn green, those below it turn red. **Estimated Value** at the bottom is your LP times that target.
 - **Favorite** remembers the corporation. It opens first next time, and the Tracker uses it for **LP Value**.
 - Right-click an **Other Requirements** or **Build Materials** cell and choose **Copy** to copy the items of the selected offers as a list you can paste into EVE's multibuy window.

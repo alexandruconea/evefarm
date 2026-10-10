@@ -177,10 +177,6 @@ public final class PriceService {
         return priceCacheDao.findAllSellVolumes();
     }
 
-    public Map<Integer, Double> getBuyVolumes() {
-        return priceCacheDao.findAllBuyVolumes();
-    }
-
     public void ensureFreshPrices(Collection<Integer> typeIds) {
         String provider = settingsDao.getOrDefault(SettingsDao.PRICE_PROVIDER, PROVIDER_CCP);
         if (!PROVIDER_FUZZWORK.equals(provider) && !PROVIDER_JANICE.equals(provider)) {

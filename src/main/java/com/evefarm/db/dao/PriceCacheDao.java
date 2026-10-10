@@ -227,23 +227,6 @@ public final class PriceCacheDao {
         }
     }
 
-    public Map<Integer, Double> findAllBuyVolumes() {
-        synchronized (database) {
-            Map<Integer, Double> result = new HashMap<>();
-            Connection connection = database.connection();
-            try (PreparedStatement ps = connection.prepareStatement(
-                    "SELECT type_id, buy_volume FROM price_cache WHERE buy_volume IS NOT NULL");
-                 ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    result.put(rs.getInt("type_id"), rs.getDouble("buy_volume"));
-                }
-            } catch (SQLException e) {
-                throw new IllegalStateException("Failed to read price_cache buy volumes", e);
-            }
-            return result;
-        }
-    }
-
     public Set<Integer> findStaleTypeIds(Collection<Integer> typeIds, Instant freshSince) {
         List<Integer> distinct = typeIds.stream().distinct().toList();
         Set<Integer> known = new HashSet<>();

@@ -33,6 +33,7 @@ public final class TrackerSnapshotService {
     private static final String COURIER = "courier";
     private static final String OUTSTANDING = "outstanding";
     private static final String IN_PROGRESS = "in_progress";
+    private static final double LIQUID_DAYS = 7;
 
     private static final int TYPE_ID_SKILL_EXTRACTOR = 40519;
     private static final int TYPE_ID_LARGE_SKILL_INJECTOR = 40520;
@@ -189,8 +190,8 @@ public final class TrackerSnapshotService {
 
         double bestIskPerLp = lpOfferPricingService.listPricedOffers(corporationId).stream()
                 .flatMap(offer -> Stream.of(
-                        liquidIskPerLp(offer.iskPerLpSell(), offer.fivePercentSellVolume(), offer.quantity()),
-                        liquidIskPerLp(offer.iskPerLpBuy(), offer.fivePercentBuyVolume(), offer.quantity())))
+                        liquidIskPerLp(offer.iskPerLpSell(), offer.daysToSell()),
+                        liquidIskPerLp(offer.iskPerLpBuy(), offer.daysToSell())))
                 .filter(Objects::nonNull)
                 .mapToDouble(Double::doubleValue)
                 .max().orElse(0);
@@ -198,8 +199,8 @@ public final class TrackerSnapshotService {
         return bestIskPerLp * lpBalance;
     }
 
-    Double liquidIskPerLp(Double iskPerLp, Double fivePercentVolume, long offerQuantity) {
-        if (iskPerLp == null || fivePercentVolume == null || fivePercentVolume < offerQuantity) {
+    Double liquidIskPerLp(Double iskPerLp, Double daysToSell) {
+        if (iskPerLp == null || daysToSell == null || daysToSell > LIQUID_DAYS) {
             return null;
         }
         return iskPerLp;
