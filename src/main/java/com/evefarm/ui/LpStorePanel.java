@@ -87,6 +87,7 @@ public final class LpStorePanel extends JPanel {
         ColumnCopySupport.install(table, tableModel, this::copyLpColumn);
 
         characterCombo.addActionListener(e -> updateYourLpLabel());
+        appContext.loyaltyPointService.addChangeListener(() -> SwingUtilities.invokeLater(this::updateYourLpLabel));
         characterCombo.setRenderer(MainCharacterMarks.comboRenderer(() -> mainCharacterName));
         ComboSizing.names(characterCombo);
         ComboSizing.names(corporationCombo);

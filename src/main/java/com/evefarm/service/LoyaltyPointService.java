@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public final class LoyaltyPointService {
 
@@ -32,6 +33,7 @@ public final class LoyaltyPointService {
     private final EntityNameCacheDao entityNameCacheDao;
     private final LoyaltyPointDao loyaltyPointDao;
     private final Clock clock;
+    private final List<Runnable> changeListeners = new CopyOnWriteArrayList<>();
 
     public LoyaltyPointService(AuthService authService, LoyaltyApi loyaltyApi,
                                 EntityNameCacheService entityNameCacheService, EntityNameCacheDao entityNameCacheDao,
@@ -68,8 +70,18 @@ public final class LoyaltyPointService {
         List<LoyaltyPointEntry> entries = points.stream()
                 .map(point -> new LoyaltyPointEntry(point.corporationId(), point.loyaltyPoints()))
                 .toList();
-        return loyaltyPointDao.replaceForCharacter(characterId, entries, readAt.minus(read.age()),
+        boolean saved = loyaltyPointDao.replaceForCharacter(characterId, entries, readAt.minus(read.age()),
                 nextRead(readAt, read));
+        if (saved) {
+            for (Runnable listener : changeListeners) {
+                listener.run();
+            }
+        }
+        return saved;
+    }
+
+    public void addChangeListener(Runnable listener) {
+        changeListeners.add(listener);
     }
 
     static Instant nextRead(Instant readAt, LoyaltyApi.LoyaltyPoints read) {

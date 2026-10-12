@@ -17,6 +17,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.table.TableRowSorter;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
@@ -72,6 +73,11 @@ public final class LpProductionPanel extends JPanel {
         super(new BorderLayout());
         this.appContext = appContext;
         buildUi();
+        appContext.loyaltyPointService.addChangeListener(() -> SwingUtilities.invokeLater(() -> {
+            if (isShowing()) {
+                onShown();
+            }
+        }));
     }
 
     public void onShown() {

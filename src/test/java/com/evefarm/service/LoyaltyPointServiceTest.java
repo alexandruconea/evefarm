@@ -17,6 +17,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -81,6 +82,27 @@ class LoyaltyPointServiceTest {
         verify(loyalty, times(2)).readLoyaltyPoints(PILOT, "token");
         assertEquals(559_258, points.listForCharacter(PILOT).getFirst().loyaltyPoints());
         assertEquals(List.of(90_769L), points.listGains().stream().map(gain -> gain.points()).toList());
+    }
+
+    @Test
+    void theScreensAreToldOnlyWhenNewLpIsSaved() {
+        AtomicInteger told = new AtomicInteger();
+        eveAnswers(1_226_179, Duration.ZERO, Duration.ofHours(1));
+        LoyaltyPointService first = serviceAt(NOW);
+        first.addChangeListener(told::incrementAndGet);
+        first.refreshLoyaltyPointsForCharacter(PILOT);
+        assertEquals(1, told.get());
+
+        LoyaltyPointService tooSoon = serviceAt(NOW.plus(Duration.ofMinutes(30)));
+        tooSoon.addChangeListener(told::incrementAndGet);
+        tooSoon.refreshLoyaltyPointsForCharacter(PILOT);
+        assertEquals(1, told.get(), "nothing new before EVE renews the LP");
+
+        eveAnswers(1_407_717, Duration.ZERO, Duration.ofHours(1));
+        LoyaltyPointService nextHour = serviceAt(NOW.plus(Duration.ofMinutes(61)));
+        nextHour.addChangeListener(told::incrementAndGet);
+        nextHour.refreshLoyaltyPointsForCharacter(PILOT);
+        assertEquals(2, told.get());
     }
 
     @Test
