@@ -40,10 +40,11 @@ public final class LpStoreTableModel extends ColumnTableModel<LpOfferRow> {
             new ColumnDef<>("buyPrice", "Buy Price", String.class, r -> formatIsk(r.buyPricePerUnit()),
                     "The highest buy order price of the item, or of what a blueprint builds"),
             new ColumnDef<>("dailyVolume", "Sold per Day", String.class, r -> formatPerDay(r.dailyVolume()),
-                    "How many units change hands per day in The Forge, the region of Jita: the average of the last "
-                            + "30 days from EVE's market history. For a blueprint, of what it builds"),
+                    "How many units people buy from sell orders per day in The Forge, the region of Jita, estimated "
+                            + "from the last 30 days of EVE's market history. Sales into buy orders are left out. For "
+                            + "a blueprint, of what it builds"),
             new ColumnDef<>("daysToSell", "Days to Sell", String.class, r -> formatDays(r.daysToSell()),
-                    "How many days of trading in The Forge the whole offer equals: its units divided by Sold per "
+                    "How many days of sales in The Forge the whole offer equals: its units divided by Sold per "
                             + "Day. The higher it is, the longer you may wait to sell it all"),
             new ColumnDef<>("forSale", "For Sale", String.class, false, r -> formatVolume(r.unitsForSale()),
                     "How many units are for sale in Jita 4-4 right now. Only with Fuzzwork prices"),
@@ -72,14 +73,14 @@ public final class LpStoreTableModel extends ColumnTableModel<LpOfferRow> {
         return value == null ? "" : String.format(Locale.US, "%,.2f", value);
     }
 
-    private static String formatPerDay(Double value) {
+    static String formatPerDay(Double value) {
         if (value == null) {
             return "";
         }
         return String.format(Locale.US, value < 10 ? "%,.1f" : "%,.0f", value);
     }
 
-    private static String formatDays(Double days) {
+    static String formatDays(Double days) {
         if (days == null) {
             return "";
         }

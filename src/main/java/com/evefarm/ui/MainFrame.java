@@ -15,13 +15,17 @@ import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
+import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.JTabbedPane;
+import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.Timer;
@@ -50,6 +54,7 @@ import java.io.File;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -86,6 +91,7 @@ public final class MainFrame extends JFrame {
     private IndustryJobsPanel industryJobsPanel;
     private ValuesPanel valuesPanel;
     private LpStorePanel lpStorePanel;
+    private LpPurchasesPanel lpPurchasesPanel;
     private NpcKillsPanel killsPanel;
     private AgentsPanel agentsPanel;
     private AbyssPanel abyssPanel;
@@ -93,6 +99,7 @@ public final class MainFrame extends JFrame {
     private StandingsPanel standingsPanel;
     private SkillsPanel skillsPanel;
     private IndustryPanel industryPanel;
+    private DataUpdater dataUpdater;
 
     public MainFrame(AppContext appContext) {
         initComponents();
@@ -121,6 +128,7 @@ public final class MainFrame extends JFrame {
         industryJobsPanel = new IndustryJobsPanel(appContext);
         valuesPanel = new ValuesPanel(appContext);
         lpStorePanel = new LpStorePanel(appContext);
+        lpPurchasesPanel = new LpPurchasesPanel(appContext);
         killsPanel = new NpcKillsPanel(appContext);
         agentsPanel = new AgentsPanel(appContext);
         abyssPanel = new AbyssPanel(appContext, this::showTrayNotification);
@@ -138,6 +146,7 @@ public final class MainFrame extends JFrame {
         tabSpecs.put("industryJobs", new TabSpec("Industry Jobs", Icons.FACTORY, industryJobsPanel));
         tabSpecs.put("values", new TabSpec("Values", Icons.VALUE, valuesPanel));
         tabSpecs.put("lpStore", new TabSpec("LP Store", Icons.LP, lpStorePanel));
+        tabSpecs.put("lpPurchases", new TabSpec("LP Purchases", Icons.PACKAGE, lpPurchasesPanel));
         tabSpecs.put("kills", new TabSpec("NPC Kills", Icons.CROSSHAIR, killsPanel));
         tabSpecs.put("abyss", new TabSpec("Abyss", Icons.ABYSS, abyssPanel));
         tabSpecs.put("mining", new TabSpec("Mining", Icons.MINING, miningPanel));
@@ -148,6 +157,13 @@ public final class MainFrame extends JFrame {
 
         rebuildTabs();
         installTabMenu();
+        dataUpdater = new DataUpdater(appContext);
+        dataUpdater.addFinishedListener(failures -> {
+            onDataUpdated();
+            showUpdateFailures(failures);
+        });
+        getContentPane().remove(tabbedPane);
+        getContentPane().add(TabBarOverlay.wrap(tabbedPane, new UpdateButton(dataUpdater)), BorderLayout.CENTER);
 
         tabbedPane.addChangeListener(e -> {
             Component selected = tabbedPane.getSelectedComponent();
@@ -169,6 +185,8 @@ public final class MainFrame extends JFrame {
                 valuesPanel.onShown();
             } else if (selected == lpStorePanel) {
                 lpStorePanel.onShown();
+            } else if (selected == lpPurchasesPanel) {
+                lpPurchasesPanel.onShown();
             } else if (selected == killsPanel) {
                 killsPanel.onShown();
             } else if (selected == agentsPanel) {
@@ -225,7 +243,10 @@ public final class MainFrame extends JFrame {
                 marketOrdersPanel.onShown();
             }
         }));
-        appContext.schedulerService.addSnapshotListener(() -> SwingUtilities.invokeLater(this::onDataUpdated));
+        appContext.schedulerService.addSnapshotListener(() -> SwingUtilities.invokeLater(() -> {
+            dataUpdater.reloadCooldowns();
+            onDataUpdated();
+        }));
     }
 
     private void setupBeltKillAlerts() {
@@ -586,17 +607,21 @@ public final class MainFrame extends JFrame {
     }
 
     private Map<String, TabSpec> orderedTabSpecs() {
-        List<String> savedOrder = TabVisibility.readOrder(appContext.settingsDao);
-        Map<String, TabSpec> ordered = new LinkedHashMap<>();
-        for (String key : savedOrder) {
-            TabSpec spec = tabSpecs.get(key);
-            if (spec != null) {
-                ordered.put(key, spec);
+        List<String> order = new ArrayList<>();
+        for (String key : TabVisibility.readOrder(appContext.settingsDao)) {
+            if (tabSpecs.containsKey(key) && !order.contains(key)) {
+                order.add(key);
             }
         }
-        for (Map.Entry<String, TabSpec> entry : tabSpecs.entrySet()) {
-            ordered.putIfAbsent(entry.getKey(), entry.getValue());
+        String previous = null;
+        for (String key : tabSpecs.keySet()) {
+            if (!order.contains(key)) {
+                order.add(previous == null ? 0 : order.indexOf(previous) + 1, key);
+            }
+            previous = key;
         }
+        Map<String, TabSpec> ordered = new LinkedHashMap<>();
+        order.forEach(key -> ordered.put(key, tabSpecs.get(key)));
         return ordered;
     }
 
@@ -806,8 +831,22 @@ public final class MainFrame extends JFrame {
     }
 
     private void updateItemActionPerformed(ActionEvent evt) {
-        UpdateDialog dialog = new UpdateDialog(this, appContext, this::onDataUpdated);
-        dialog.setVisible(true);
+        new UpdateDialog(this, dataUpdater).setVisible(true);
+    }
+
+    private void showUpdateFailures(List<String> failures) {
+        if (failures.isEmpty()) {
+            return;
+        }
+        JTextArea text = new JTextArea(String.join("\n", failures));
+        TextAreaStyler.scrollable(text);
+        JScrollPane scroll = new JScrollPane(text);
+        scroll.setPreferredSize(new Dimension(520, 180));
+        JPanel panel = new JPanel(new BorderLayout(0, 8));
+        panel.add(new JLabel("<html>These updates failed and weren't counted as done, so you can retry them right "
+                + "away.<br>Details are also in the log (%USERPROFILE%\\.evefarm\\logs).</html>"), BorderLayout.NORTH);
+        panel.add(scroll, BorderLayout.CENTER);
+        JOptionPane.showMessageDialog(this, panel, "Some updates failed", JOptionPane.WARNING_MESSAGE);
     }
 
     private void onDataUpdated() {
@@ -820,6 +859,9 @@ public final class MainFrame extends JFrame {
         industryJobsPanel.onShown();
         valuesPanel.onShown();
         lpStorePanel.onShown();
+        if (tabbedPane.getSelectedComponent() == lpPurchasesPanel) {
+            lpPurchasesPanel.onShown();
+        }
         killsPanel.onShown();
         miningPanel.onShown();
         standingsPanel.onShown();

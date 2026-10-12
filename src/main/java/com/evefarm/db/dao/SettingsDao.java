@@ -66,6 +66,7 @@ public final class SettingsDao {
     public static final String NOTIFY_OUTBID_ORDERS = "notify_outbid_orders";
     public static final String NOTIFY_SKILL_QUEUE = "notify_skill_queue";
     public static final String NOTIFY_CONTRACTS = "notify_contracts";
+    public static final String NOTIFY_LP_TARGET = "notify_lp_target";
 
     private final Database database;
 

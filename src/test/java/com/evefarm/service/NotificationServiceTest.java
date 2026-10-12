@@ -15,6 +15,7 @@ import com.evefarm.esi.dto.MarketOrderDto;
 import com.evefarm.esi.dto.SkillQueueDto;
 import com.evefarm.model.EveCharacter;
 import com.evefarm.model.IndustryJobRow;
+import com.evefarm.model.LpPurchase;
 import com.evefarm.model.TypeInfo;
 import com.evefarm.service.NotificationService.Notification;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,6 +51,7 @@ class NotificationServiceTest {
     private final SkillsApi skills = mock(SkillsApi.class);
     private final ContractsApi contracts = mock(ContractsApi.class);
     private final TypeNameCacheService types = mock(TypeNameCacheService.class);
+    private final LpPurchaseService lpPurchases = mock(LpPurchaseService.class);
     private final List<Notification> sent = new ArrayList<>();
     private SettingsDao settings;
     private NotificationService service;
@@ -60,7 +62,7 @@ class NotificationServiceTest {
         MigrationRunner.run(database);
         settings = new SettingsDao(database);
         for (String key : List.of(SettingsDao.NOTIFY_INDUSTRY_JOBS, SettingsDao.NOTIFY_OUTBID_ORDERS,
-                SettingsDao.NOTIFY_SKILL_QUEUE, SettingsDao.NOTIFY_CONTRACTS)) {
+                SettingsDao.NOTIFY_SKILL_QUEUE, SettingsDao.NOTIFY_CONTRACTS, SettingsDao.NOTIFY_LP_TARGET)) {
             settings.set(key, "false");
         }
         when(auth.getValidAccessToken(PILOT)).thenReturn("token");
@@ -70,7 +72,7 @@ class NotificationServiceTest {
         Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
         MarketWatchService watch = new MarketWatchService(auth, markets, new OrderCompetitionDao(database), clock);
         service = new NotificationService(auth, characters, jobs, watch, skills, contracts, types,
-                new NotificationDao(database), settings, clock);
+                new NotificationDao(database), settings, lpPurchases, clock);
         service.addListener(sent::add);
     }
 
@@ -190,6 +192,34 @@ class NotificationServiceTest {
         assertTrue(NotificationService.acceptedRecently(recent, NOW));
         assertFalse(NotificationService.acceptedRecently(old, NOW));
         assertFalse(NotificationService.acceptedRecently(open, NOW));
+    }
+
+    private static LpPurchaseService.Lot lot(LpPurchase purchase, Double sellNow) {
+        return new LpPurchaseService.Lot(purchase, 0, 0, 0.05, sellNow, null, null);
+    }
+
+    @Test
+    void anLpPurchaseIsNotifiedWhenItsPriceClimbsBackToItsTarget() {
+        settings.set(SettingsDao.NOTIFY_LP_TARGET, "true");
+        LpPurchase webifiers = new LpPurchase(7, PILOT, "Pilot", 1000035L, "Caldari Navy", 1, 17559,
+                "Caldari Navy Stasis Webifier", 30, 30, 45_000, 30_000_000, 0, 1_500.0, NOW.minus(Duration.ofDays(3)),
+                null, 0, null);
+        when(lpPurchases.lots()).thenReturn(List.of(lot(webifiers, 3_250_000.0)));
+        service.check();
+        when(lpPurchases.lots()).thenReturn(List.of(lot(webifiers, 3_000_000.0)));
+        service.check();
+        when(lpPurchases.lots()).thenReturn(List.of(lot(webifiers, null)));
+        service.check();
+
+        assertTrue(sent.isEmpty(), "bought at the target, then below it, then no price");
+
+        when(lpPurchases.lots()).thenReturn(List.of(lot(webifiers, 3_300_000.0)));
+        service.check();
+        service.check();
+
+        assertEquals(List.of(new Notification("LP Store purchase back at its target price",
+                "Pilot: Caldari Navy Stasis Webifier sells at 3,300,000.00 ISK, target 3,250,000.00 ISK (30 left)")),
+                sent);
     }
 
     @Test

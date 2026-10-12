@@ -164,4 +164,30 @@ public final class WalletJournalDao {
             return result;
         }
     }
+
+    public record LpStorePayment(long characterId, long entryId, Instant date, double amount, long corporationId) {
+    }
+
+    public List<LpStorePayment> findLpStorePayments() {
+        String sql = """
+                SELECT character_id, entry_id, date, amount, second_party_id
+                FROM wallet_journal_entry
+                WHERE ref_type = 'lp_store' AND amount < 0 AND second_party_id IS NOT NULL
+                ORDER BY date
+                """;
+        synchronized (database) {
+            List<LpStorePayment> result = new ArrayList<>();
+            try (PreparedStatement ps = database.connection().prepareStatement(sql);
+                 ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    result.add(new LpStorePayment(rs.getLong("character_id"), rs.getLong("entry_id"),
+                            Instant.parse(rs.getString("date")), -rs.getDouble("amount"),
+                            rs.getLong("second_party_id")));
+                }
+            } catch (SQLException e) {
+                throw new IllegalStateException("Failed to read the LP Store payments", e);
+            }
+            return result;
+        }
+    }
 }

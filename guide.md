@@ -19,6 +19,7 @@ This guide walks through every part of the app. Menu and button names are writte
    - [Contracts](#contracts)
    - [Industry Jobs](#industry-jobs)
    - [LP Store](#lp-store)
+   - [LP Purchases](#lp-purchases)
    - [NPC Kills](#npc-kills)
    - [Abyss](#abyss)
    - [Mining](#mining)
@@ -59,9 +60,11 @@ When a new version of EVE Farm needs a new permission from EVE, the release note
 
 ## Updating your data
 
-Open **Update > Update...** to fetch fresh data from EVE.
+The round button at the right end of the tabs updates everything that can be updated, for all your characters. Hover it to see what it will update and how long the rest has to wait. It is gray when everything was updated recently, and it spins while an update runs.
 
-- Tick what you want to update and click **Update**, or click **Now** next to a single line.
+To choose what to update, open **Update > Update...**:
+
+- Tick what you want to update and click **Update**. The window closes and the update runs in the background while the round button spins. Click **Now** next to a single line to update only that line.
 - **All** ticks or clears every line.
 - **All Characters** updates every character. **First Character** updates only the first one.
 
@@ -173,13 +176,39 @@ For each offer you see the item, quantity, LP cost, ISK cost, the other items it
 
 - **ISK/LP (Sell)** and **ISK/LP (Buy)**: the ISK you make per LP, selling at the lowest sell price or to the highest buy order, after the ISK cost and the other costs.
 - **Profit (Sell)** and **Profit (Buy)**: the ISK you make on the whole offer.
-- **Sold per Day**: how many units change hands per day in The Forge, the region of Jita: the average of the last 30 days from EVE's market history, refreshed once a day. For a blueprint, it is the item the blueprint builds. Check it before you buy an offer, so you don't end up with items nobody buys.
-- **Days to Sell**: the units of the offer divided by **Sold per Day**, that is how many days of trading the whole offer equals. **No sales** means nothing traded in the last 30 days. You share the market with other sellers, so expect it to take longer.
+- **Sold per Day**: how many units people buy from sell orders per day in The Forge, the region of Jita, over the last 30 days. EVE's market history doesn't say which side each sale was on, so EVE Farm estimates it from each day's average, lowest and highest price; sales into buy orders are left out. It is refreshed once a day. For a blueprint, it is the item the blueprint builds. Check it before you buy an offer, so you don't end up with items nobody buys.
+- **Days to Sell**: the units of the offer divided by **Sold per Day**, that is how many days of sales the whole offer equals. **No sales** means nobody bought from sell orders in the last 30 days. You share the market with other sellers, so expect it to take longer.
 - **For Sale** (hidden at first): how many units are for sale in Jita 4-4 right now, with Fuzzwork prices.
 - **Set ISK/LP Target...** sets the ISK per LP you aim for. ISK/LP cells at or above it turn green, those below it turn red. **Estimated Value** at the bottom is your LP times that target.
 - **Favorite** remembers the corporation. It opens first next time, and the Tracker uses it for **LP Value**.
 - Right-click an **Other Requirements** or **Build Materials** cell and choose **Copy** to copy the items of the selected offers as a list you can paste into EVE's multibuy window.
 - **LP History...** shows every change in your LP that EVE Farm has seen, per character and corporation.
+- **Record Purchase...** saves what you bought from the selected offer, so the **LP Purchases** tab can tell you when selling it pays.
+
+### LP Purchases
+
+What you bought in LP stores and what it is worth now, so you know when you can sell without losing ISK. Buy the same item at different ISK/LP over time and each purchase is kept apart.
+
+To record a purchase:
+
+- In the **LP Store** tab, select the offer and click **Record Purchase...**. Set **Times bought**, check **Bought on** and click **Save**. The LP and ISK come from the offer. **Other cost per offer** is what the required items and build materials cost now; change it if you paid a different amount.
+- Or click **Review Payments...** here. It lists the payments to LP stores in your wallet journal that are not recorded yet, with the offers of that store whose ISK cost fits the amount paid. The offer that best fits what you listed, sold and have of each item in the 30 days after the payment comes first, and **Find** narrows the list by name. Pick the offer, click **Record...** and save. **Ignore** hides a payment for good. Offers with no ISK cost leave no payment in the journal, so record those from the LP Store tab. When payments are waiting, the button shows how many.
+- A purchase you recorded from the LP Store tab is matched to its payment by itself: same character, same store and the same ISK, paid within a week of the **Bought on** date. It isn't listed again, and its **Bought on** becomes the exact time of the payment.
+- **Target ISK/LP** starts as the **ISK/LP (Sell)** the LP Store showed when you recorded the purchase. When the offer showed no ISK/LP above 0, it starts as your **Set ISK/LP Target...** value instead. Set it to what you want to make, or to 0 for no target.
+
+The top table has one row per item. The bottom table shows each purchase of the item you select, or every purchase when none is selected.
+
+- **Left**: the units you still have: what you bought, less what you sold and used.
+- **Avg Cost**: what one unit cost you in ISK: the ISK paid and the other items. The LP is not counted.
+- **Break-even**: the lowest sell price that gets that ISK back after the sales tax and broker fee. Below it you lose ISK.
+- **Target Price**: the sell price at which the purchase makes its **Target ISK/LP**, counted the way the LP Store tab counts ISK/LP.
+- **Sell Now**: the lowest sell price right now. It is green at or above the Target Price, yellow between the Break-even and the Target Price, and red below the Break-even.
+- **If Sold Now**: what you would make on what is left, selling at Sell Now after the tax and fee, against what it cost you in ISK. **Realized** is the same for what you already sold.
+- **Sold per Day** and **Days to Sell** work as in the LP Store tab, for the units you have left.
+- **ISK/LP Now** (bottom table): the ISK/LP the purchase makes at today's lowest sell price.
+- The bottom table also has **Corporation**, **Offers**, **Used**, **LP Spent**, **ISK Spent** and **Other Cost**, hidden at first. Right-click a header and choose **Choose Columns...** to show them.
+
+Your market sales come from **Update**: each sale of the item by any of your characters counts against the oldest purchase made before it. Sales of the same item that did not come from an LP store count too. Used some units yourself? Select the purchase, click **Edit...** and set **Units used**. **Show sold** also lists what you have sold or used up. The sales tax comes from each character's Accounting skill (IV when EVE Farm doesn't know the skills), and the broker fee is the **Broker fee %** of the Industry Calculator.
 
 ### NPC Kills
 
@@ -434,7 +463,8 @@ A backup restored on another computer or Windows account keeps all the history, 
   - **industry jobs** that are ready to deliver;
   - **market orders** that someone else has outbid at the same station: a cheaper sell order or a higher buy order. Orders of your own characters don't count;
   - **skill queues** that end within 24 hours or are empty;
-  - **your contracts** that someone accepted in the last day, or that expire within 24 hours. Contracts for your corporation don't count.
+  - **your contracts** that someone accepted in the last day, or that expire within 24 hours. Contracts for your corporation don't count;
+  - **LP Store purchases** whose lowest sell price climbs back to their **Target Price** after being below it. See [LP Purchases](#lp-purchases).
 
   Each event is shown once. An order that is outbid again after leading is shown again. The market order check runs even when its notification is off, as it keeps the **Outbid** column of Market Orders up to date. When several things happen at once, they come in one notification per kind. Turn each kind on or off under **Notifications** in **Options > Settings...**. Skill queue notifications need the character added with EVE Farm 1.0.16 or later.
 

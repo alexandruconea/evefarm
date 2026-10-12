@@ -51,6 +51,17 @@ class TableStylerTest {
     }
 
     @Test
+    void columnsAreSeparatedByLinesAndRowsByStripes() {
+        JTable table = new JTable(new DefaultTableModel(new Object[][]{{"a", "b"}}, new Object[]{"One", "Two"}));
+        TableStyler.style(table);
+
+        assertTrue(table.getShowVerticalLines());
+        assertFalse(table.getShowHorizontalLines());
+        assertEquals(1, table.getIntercellSpacing().width);
+        assertEquals(TableStyler.gridColor(), table.getGridColor());
+    }
+
+    @Test
     void iconCellsNeverShowTheSelectionBackground() {
         JTable table = new JTable(new DefaultTableModel(new Object[][]{{Icons.INFO, "a"}}, new Object[]{"Info", "Name"}) {
             @Override

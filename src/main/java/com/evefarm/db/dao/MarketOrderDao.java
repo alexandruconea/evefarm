@@ -11,7 +11,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -133,6 +135,30 @@ public final class MarketOrderDao {
                 throw new IllegalStateException("Failed to list market order rows", e);
             }
             return result;
+        }
+    }
+
+    public Map<Integer, Long> listedForSale(Instant from, Instant to) {
+        String sql = """
+                SELECT type_id, SUM(volume_total) AS quantity
+                FROM market_order_current
+                WHERE is_buy_order = 0 AND issued >= ? AND issued < ?
+                GROUP BY type_id
+                """;
+        synchronized (database) {
+            try (PreparedStatement ps = database.connection().prepareStatement(sql)) {
+                ps.setString(1, from.toString());
+                ps.setString(2, to.toString());
+                Map<Integer, Long> listed = new HashMap<>();
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        listed.put(rs.getInt("type_id"), rs.getLong("quantity"));
+                    }
+                }
+                return listed;
+            } catch (SQLException e) {
+                throw new IllegalStateException("Failed to read the sell orders placed", e);
+            }
         }
     }
 }

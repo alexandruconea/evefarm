@@ -8,6 +8,7 @@ import com.evefarm.ui.CompactMenuItemUI;
 import com.evefarm.ui.CompactToolTips;
 import com.evefarm.ui.EveLaf;
 import com.evefarm.ui.MainFrame;
+import com.evefarm.ui.TableStyler;
 import com.evefarm.ui.UnderlineTabbedPaneUI;
 import com.evefarm.util.AppLogging;
 import com.evefarm.util.AppPaths;
@@ -159,6 +160,7 @@ public final class Main {
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
                 CompactMenuItemUI.install();
                 UnderlineTabbedPaneUI.install();
+                TableStyler.installCellPadding();
             }
             CompactToolTips.install();
             boolean flat = UIManager.getLookAndFeel() instanceof FlatLaf;

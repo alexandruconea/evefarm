@@ -80,14 +80,22 @@ public final class MarketHistoryService {
 
     static double dailyVolume(List<MarketHistoryDto> history, LocalDate lastDay) {
         LocalDate before = lastDay.minusDays(DAYS);
-        long total = 0;
+        double total = 0;
         for (MarketHistoryDto day : history) {
             LocalDate date = LocalDate.parse(day.date());
             if (date.isAfter(before) && !date.isAfter(lastDay)) {
-                total += day.volume();
+                total += day.volume() * boughtFromSellOrders(day);
             }
         }
-        return total / (double) DAYS;
+        return total / DAYS;
+    }
+
+    static double boughtFromSellOrders(MarketHistoryDto day) {
+        double spread = day.highest() - day.lowest();
+        if (spread <= 0) {
+            return 0.5;
+        }
+        return Math.clamp((day.average() - day.lowest()) / spread, 0.0, 1.0);
     }
 
     static Instant lastRefresh(Instant now) {

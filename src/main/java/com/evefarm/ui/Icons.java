@@ -190,6 +190,13 @@ public final class Icons {
 
     public static final Icon LP = icon(Tone.NEUTRAL, g -> g.draw(star(6.5, 2.9)));
 
+    public static final Icon PACKAGE = icon(Tone.NEUTRAL, g -> {
+        g.draw(closed(2.5, 5.5, 13.5, 5.5, 13.5, 13.5, 2.5, 13.5));
+        g.draw(path(2.5, 5.5, 4.5, 2.5, 11.5, 2.5, 13.5, 5.5));
+        g.draw(line(8, 2.5, 8, 5.5));
+        g.draw(line(6, 8.5, 10, 8.5));
+    });
+
     public static final Icon MAIN = icon(Tone.FAVORITE, g -> {
         Path2D star = star(4.8, 2.1);
         g.setStroke(new BasicStroke(1f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));

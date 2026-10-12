@@ -5,6 +5,7 @@ import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.model.EveCharacter;
 import com.evefarm.model.LoyaltyPointRow;
 import com.evefarm.model.LpOfferRow;
+import com.evefarm.model.LpPurchase;
 import com.evefarm.model.LpRequiredItem;
 import com.evefarm.model.NpcCorporationRow;
 import com.evefarm.service.ItemIconService;
@@ -33,6 +34,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Font;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -88,6 +90,12 @@ public final class LpStorePanel extends JPanel {
         favoriteCheckBox.addActionListener(e -> onFavoriteToggled());
         refreshOffersButton.addActionListener(e -> fetchOffers());
         setTargetButton.addActionListener(e -> openTargetDialog());
+        recordButton.setIcon(Icons.PACKAGE);
+        recordButton.setEnabled(false);
+        recordButton.setToolTipText("Note that you bought the selected offer, so the LP Purchases tab can tell you "
+                + "the price you need to sell it without a loss");
+        recordButton.addActionListener(e -> recordPurchase());
+        table.getSelectionModel().addListSelectionListener(e -> recordButton.setEnabled(table.getSelectedRow() >= 0));
         historyButton.setIcon(Icons.CHART);
         historyButton.addActionListener(e -> LoyaltyPointHistoryDialog.open(
                 SwingUtilities.getWindowAncestor(this), appContext));
@@ -307,6 +315,25 @@ public final class LpStorePanel extends JPanel {
         updateWealthLabel();
     }
 
+    private void recordPurchase() {
+        int viewRow = table.getSelectedRow();
+        String selectedCharacterName = (String) characterCombo.getSelectedItem();
+        EveCharacter character = characters.stream()
+                .filter(c -> c.characterName().equals(selectedCharacterName))
+                .findFirst().orElse(null);
+        if (viewRow < 0 || character == null || selectedCorporationId < 0) {
+            return;
+        }
+        LpOfferRow offer = tableModel.rowAt(table.convertRowIndexToModel(viewRow));
+        LpPurchase base = appContext.lpPurchaseService.purchaseFrom(offer, 1, character.characterId(),
+                selectedCorporationId, (String) corporationCombo.getSelectedItem(), Instant.now(), null);
+        new LpPurchaseDialog(SwingUtilities.getWindowAncestor(this), "Record Purchase", base, purchase -> {
+            appContext.lpPurchaseService.record(purchase);
+            offerCountLabel.setText("Recorded " + purchase.offers() + " x " + offer.itemName()
+                    + " - see the LP Purchases tab");
+        }).setVisible(true);
+    }
+
     private void updateWealthLabel() {
         if (yourLp <= 0 || targetIskPerLp <= 0) {
             wealthLabel.setText("Estimated Value: -");
@@ -355,6 +382,7 @@ public final class LpStorePanel extends JPanel {
     private JButton refreshOffersButton;
     private JButton setTargetButton;
     private JButton historyButton;
+    private JButton recordButton;
     private JTable table;
     private JLabel wealthLabel;
     private JLabel yourLpLabel;
@@ -371,6 +399,7 @@ public final class LpStorePanel extends JPanel {
         refreshOffersButton = new JButton();
         setTargetButton = new JButton();
         historyButton = new JButton("LP History...");
+        recordButton = new JButton("Record Purchase...");
         filterBarContainer = new JPanel();
         jScrollPane2 = new JScrollPane();
         table = new JTable();
@@ -437,7 +466,9 @@ public final class LpStorePanel extends JPanel {
                                 .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(setTargetButton)
                                 .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(historyButton)))
+                                .addComponent(historyButton)
+                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(recordButton)))
                         .addGap(0, 167, Short.MAX_VALUE)))
                 .addContainerGap())
         );
@@ -453,7 +484,8 @@ public final class LpStorePanel extends JPanel {
                     .addComponent(favoriteCheckBox)
                     .addComponent(refreshOffersButton)
                     .addComponent(setTargetButton)
-                    .addComponent(historyButton))
+                    .addComponent(historyButton)
+                    .addComponent(recordButton))
                 .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(filterBarContainer, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)

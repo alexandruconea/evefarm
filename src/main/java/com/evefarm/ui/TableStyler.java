@@ -3,6 +3,7 @@ package com.evefarm.ui;
 import com.evefarm.ui.column.ColumnDescriptions;
 import com.formdev.flatlaf.FlatLaf;
 
+import javax.swing.BorderFactory;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JComponent;
@@ -10,6 +11,8 @@ import javax.swing.JLabel;
 import javax.swing.JTable;
 import javax.swing.SwingConstants;
 import javax.swing.UIManager;
+import javax.swing.border.Border;
+import javax.swing.plaf.BorderUIResource;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableCellRenderer;
@@ -28,8 +31,10 @@ public final class TableStyler {
         table.setRowHeight(26);
         table.setCellSelectionEnabled(true);
         table.setFillsViewportHeight(true);
-        table.setShowGrid(false);
-        table.setIntercellSpacing(new Dimension(0, 0));
+        table.setShowHorizontalLines(false);
+        table.setShowVerticalLines(true);
+        table.setIntercellSpacing(new Dimension(1, 0));
+        table.setGridColor(gridColor());
         JTableHeader header = table.getTableHeader();
         if (header.getDefaultRenderer() instanceof JLabel headerLabel) {
             headerLabel.setHorizontalAlignment(SwingConstants.LEADING);
@@ -90,6 +95,22 @@ public final class TableStyler {
             }
             return component;
         }
+    }
+
+    public static void installCellPadding() {
+        UIManager.put("Table.cellNoFocusBorder", new BorderUIResource(BorderFactory.createEmptyBorder(1, 4, 1, 4)));
+        for (String key : new String[]{"Table.focusCellHighlightBorder", "Table.focusSelectedCellHighlightBorder"}) {
+            Border focus = UIManager.getBorder(key);
+            if (focus != null) {
+                UIManager.put(key, new BorderUIResource(BorderFactory.createCompoundBorder(focus,
+                        BorderFactory.createEmptyBorder(0, 3, 0, 3))));
+            }
+        }
+    }
+
+    static Color gridColor() {
+        Color themed = UIManager.getLookAndFeel() instanceof FlatLaf ? UIManager.getColor("Table.gridColor") : null;
+        return themed != null ? themed : new Color(196, 200, 206);
     }
 
     static Color stripeColor(JTable table) {

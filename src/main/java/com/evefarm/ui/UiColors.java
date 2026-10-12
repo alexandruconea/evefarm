@@ -11,6 +11,11 @@ final class UiColors {
         return themed != null ? themed : Color.GRAY;
     }
 
+    static Color danger() {
+        Color themed = UIManager.getColor("Actions.Red");
+        return themed != null ? themed : new Color(0xDB5860);
+    }
+
     static JLabel mutedLabel(String text) {
         JLabel label = new JLabel(text);
         label.setForeground(muted());

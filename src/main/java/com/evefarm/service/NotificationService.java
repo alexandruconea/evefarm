@@ -19,7 +19,9 @@ import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -33,6 +35,7 @@ public final class NotificationService {
     private static final Logger LOG = Logger.getLogger(NotificationService.class.getName());
     private static final Duration SOON = Duration.ofHours(24);
     private static final int MAX_LINES = 4;
+    private static final String LP_BELOW_TARGET = "lp_below_target";
     private static final Set<String> ACCEPTED = Set.of("in_progress", "finished", "finished_issuer",
             "finished_contractor");
 
@@ -43,6 +46,7 @@ public final class NotificationService {
     private final CharacterService characterService;
     private final IndustryJobService industryJobService;
     private final MarketWatchService marketWatchService;
+    private final LpPurchaseService lpPurchaseService;
     private final SkillsApi skillsApi;
     private final ContractsApi contractsApi;
     private final TypeNameCacheService typeNameCacheService;
@@ -55,19 +59,21 @@ public final class NotificationService {
                                IndustryJobService industryJobService, MarketWatchService marketWatchService,
                                SkillsApi skillsApi, ContractsApi contractsApi,
                                TypeNameCacheService typeNameCacheService, NotificationDao notificationDao,
-                               SettingsDao settingsDao) {
+                               SettingsDao settingsDao, LpPurchaseService lpPurchaseService) {
         this(authService, characterService, industryJobService, marketWatchService, skillsApi, contractsApi,
-                typeNameCacheService, notificationDao, settingsDao, Clock.systemUTC());
+                typeNameCacheService, notificationDao, settingsDao, lpPurchaseService, Clock.systemUTC());
     }
 
     NotificationService(AuthService authService, CharacterService characterService,
                         IndustryJobService industryJobService, MarketWatchService marketWatchService,
                         SkillsApi skillsApi, ContractsApi contractsApi, TypeNameCacheService typeNameCacheService,
-                        NotificationDao notificationDao, SettingsDao settingsDao, Clock clock) {
+                        NotificationDao notificationDao, SettingsDao settingsDao, LpPurchaseService lpPurchaseService,
+                        Clock clock) {
         this.authService = authService;
         this.characterService = characterService;
         this.industryJobService = industryJobService;
         this.marketWatchService = marketWatchService;
+        this.lpPurchaseService = lpPurchaseService;
         this.skillsApi = skillsApi;
         this.contractsApi = contractsApi;
         this.typeNameCacheService = typeNameCacheService;
@@ -98,6 +104,10 @@ public final class NotificationService {
             contracts(characters, accepted, expiring);
             send("Contract accepted", "contracts accepted", accepted);
             send("Contract expiring", "contracts expiring", expiring);
+        }
+        if (enabled(SettingsDao.NOTIFY_LP_TARGET)) {
+            send("LP Store purchase back at its target price", "LP Store purchases back at their target price",
+                    lpTargetLines());
         }
     }
 
@@ -157,6 +167,41 @@ public final class NotificationService {
             }
         });
         return lines;
+    }
+
+    private List<String> lpTargetLines() {
+        List<String> lines = new ArrayList<>();
+        try {
+            Map<Long, List<LpPurchaseService.Lot>> byCharacter = new LinkedHashMap<>();
+            for (LpPurchaseService.Lot lot : lpPurchaseService.lots()) {
+                byCharacter.computeIfAbsent(lot.purchase().characterId(), id -> new ArrayList<>()).add(lot);
+            }
+            byCharacter.forEach((characterId, lots) -> {
+                Set<String> wasBelow = notificationDao.sentKeys(LP_BELOW_TARGET, characterId);
+                Set<String> below = new LinkedHashSet<>();
+                for (LpPurchaseService.Lot lot : lots) {
+                    String key = String.valueOf(lot.purchase().purchaseId());
+                    if (lot.atTarget() && wasBelow.contains(key)) {
+                        lines.add(lpTargetLine(lot));
+                    } else if (lot.belowTarget() || lot.sellNow() == null && wasBelow.contains(key)) {
+                        below.add(key);
+                    }
+                }
+                if (!below.equals(wasBelow)) {
+                    notificationDao.replace(LP_BELOW_TARGET, characterId, below);
+                }
+            });
+        } catch (RuntimeException e) {
+            LOG.warning("Couldn't check the LP Store purchases for notifications: " + e.getMessage());
+        }
+        return lines;
+    }
+
+    static String lpTargetLine(LpPurchaseService.Lot lot) {
+        String character = lot.purchase().characterName();
+        return (character == null ? "" : character + ": ") + lot.purchase().typeName() + " sells at "
+                + IskFormatter.format(lot.sellNow()) + ", target " + IskFormatter.format(lot.targetPrice())
+                + String.format(Locale.US, " (%,d left)", lot.remaining());
     }
 
     private List<String> skillQueues(List<EveCharacter> characters) {

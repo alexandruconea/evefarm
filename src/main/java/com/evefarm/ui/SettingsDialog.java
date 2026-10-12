@@ -53,6 +53,7 @@ public final class SettingsDialog extends JDialog {
     private final JCheckBox notifyOrdersBox = new JCheckBox("Market orders that are outbid");
     private final JCheckBox notifySkillsBox = new JCheckBox("Skill queues that end within 24 hours");
     private final JCheckBox notifyContractsBox = new JCheckBox("Your contracts: accepted, or expiring within 24 hours");
+    private final JCheckBox notifyLpTargetBox = new JCheckBox("LP Store purchases back at their target price");
 
     public SettingsDialog(Frame owner, SettingsDao settingsDao) {
         super(owner, "Settings", true);
@@ -119,7 +120,9 @@ public final class SettingsDialog extends JDialog {
         notificationsPanel.add(notifyOrdersBox);
         notificationsPanel.add(notifySkillsBox);
         notificationsPanel.add(notifyContractsBox);
-        for (JCheckBox box : List.of(notifyJobsBox, notifyOrdersBox, notifySkillsBox, notifyContractsBox)) {
+        notificationsPanel.add(notifyLpTargetBox);
+        for (JCheckBox box : List.of(notifyJobsBox, notifyOrdersBox, notifySkillsBox, notifyContractsBox,
+                notifyLpTargetBox)) {
             box.setToolTipText("A Windows notification, checked every 15 minutes while EVE Farm runs");
         }
         c.anchor = GridBagConstraints.NORTHWEST;
@@ -227,6 +230,7 @@ public final class SettingsDialog extends JDialog {
         notifyOrdersBox.setSelected(isOn(SettingsDao.NOTIFY_OUTBID_ORDERS));
         notifySkillsBox.setSelected(isOn(SettingsDao.NOTIFY_SKILL_QUEUE));
         notifyContractsBox.setSelected(isOn(SettingsDao.NOTIFY_CONTRACTS));
+        notifyLpTargetBox.setSelected(isOn(SettingsDao.NOTIFY_LP_TARGET));
     }
 
     private boolean isOn(String key) {
@@ -262,6 +266,7 @@ public final class SettingsDialog extends JDialog {
         settingsDao.set(SettingsDao.NOTIFY_OUTBID_ORDERS, String.valueOf(notifyOrdersBox.isSelected()));
         settingsDao.set(SettingsDao.NOTIFY_SKILL_QUEUE, String.valueOf(notifySkillsBox.isSelected()));
         settingsDao.set(SettingsDao.NOTIFY_CONTRACTS, String.valueOf(notifyContractsBox.isSelected()));
+        settingsDao.set(SettingsDao.NOTIFY_LP_TARGET, String.valueOf(notifyLpTargetBox.isSelected()));
 
         JOptionPane.showMessageDialog(this,
                 "Saved. Restart EVE Farm for theme changes to take effect. For price provider or "

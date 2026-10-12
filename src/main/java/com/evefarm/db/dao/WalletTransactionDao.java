@@ -9,8 +9,12 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -113,6 +117,60 @@ public final class WalletTransactionDao {
                 throw new IllegalStateException("Failed to list wallet transaction rows", e);
             }
             return result;
+        }
+    }
+
+    public record Sale(long transactionId, Instant date, int typeId, long quantity, double price) {
+    }
+
+    public List<Sale> findSales(Collection<Integer> typeIds) {
+        if (typeIds.isEmpty()) {
+            return List.of();
+        }
+        String placeholders = typeIds.stream().map(id -> "?").collect(Collectors.joining(","));
+        String sql = "SELECT transaction_id, date, type_id, quantity, price FROM wallet_transaction "
+                + "WHERE is_buy = 0 AND type_id IN (" + placeholders + ") ORDER BY date, transaction_id";
+        synchronized (database) {
+            List<Sale> result = new ArrayList<>();
+            try (PreparedStatement ps = database.connection().prepareStatement(sql)) {
+                int index = 1;
+                for (Integer typeId : typeIds) {
+                    ps.setInt(index++, typeId);
+                }
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        result.add(new Sale(rs.getLong("transaction_id"), Instant.parse(rs.getString("date")),
+                                rs.getInt("type_id"), rs.getLong("quantity"), rs.getDouble("price")));
+                    }
+                }
+            } catch (SQLException e) {
+                throw new IllegalStateException("Failed to read the market sales", e);
+            }
+            return result;
+        }
+    }
+
+    public Map<Integer, Long> soldUnits(Instant from, Instant to) {
+        String sql = """
+                SELECT type_id, SUM(quantity) AS quantity
+                FROM wallet_transaction
+                WHERE is_buy = 0 AND date >= ? AND date < ?
+                GROUP BY type_id
+                """;
+        synchronized (database) {
+            try (PreparedStatement ps = database.connection().prepareStatement(sql)) {
+                ps.setString(1, from.toString());
+                ps.setString(2, to.toString());
+                Map<Integer, Long> sold = new HashMap<>();
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        sold.put(rs.getInt("type_id"), rs.getLong("quantity"));
+                    }
+                }
+                return sold;
+            } catch (SQLException e) {
+                throw new IllegalStateException("Failed to read the market sales", e);
+            }
         }
     }
 }

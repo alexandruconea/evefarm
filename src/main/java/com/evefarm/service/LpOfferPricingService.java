@@ -10,10 +10,10 @@ import com.evefarm.model.PriceMode;
 import com.evefarm.model.TypeInfo;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -51,19 +51,50 @@ public final class LpOfferPricingService {
             }
         }
         typeNameCacheService.resolveTypes(typeIds);
+        Map<Integer, FuzzworkBlueprintDto> blueprints = blueprints(offers);
+        Set<Integer> products = new HashSet<>();
+        for (FuzzworkBlueprintDto blueprint : blueprints.values()) {
+            products.add(blueprint.blueprintDetails().productTypeId());
+            manufacturingMaterials(blueprint).forEach(material -> typeIds.add(material.typeId()));
+        }
+        typeNameCacheService.resolveTypes(products);
+        typeIds.addAll(products);
         priceService.ensureFreshPrices(typeIds);
 
         Map<Integer, Double> unitsForSale = priceService.getSellVolumes();
         List<LpOfferRow> priced = new ArrayList<>();
         for (LoyaltyOfferDto offer : offers) {
-            priced.add(price(offer, unitsForSale));
+            priced.add(price(offer, unitsForSale, blueprints.get(offer.typeId())));
         }
         Map<Integer, Double> dailyVolumes = marketHistoryService.dailyVolumes(
                 priced.stream().map(LpOfferRow::outputTypeId).collect(Collectors.toSet()));
         return priced.stream().map(row -> row.withDailyVolume(dailyVolumes.get(row.outputTypeId()))).toList();
     }
 
-    private LpOfferRow price(LoyaltyOfferDto offer, Map<Integer, Double> unitsForSale) {
+    private Map<Integer, FuzzworkBlueprintDto> blueprints(List<LoyaltyOfferDto> offers) {
+        Map<Integer, FuzzworkBlueprintDto> blueprints = new HashMap<>();
+        Set<Integer> checked = new HashSet<>();
+        for (LoyaltyOfferDto offer : offers) {
+            if (checked.add(offer.typeId())
+                    && CATEGORY_BLUEPRINT.equals(typeNameCacheService.resolveType(offer.typeId()).categoryName())) {
+                fuzzworkApi.fetchBlueprintMaterials(offer.typeId())
+                        .filter(blueprint -> blueprint.blueprintDetails() != null
+                                && blueprint.blueprintDetails().productTypeId() != null
+                                && !manufacturingMaterials(blueprint).isEmpty())
+                        .ifPresent(blueprint -> blueprints.put(offer.typeId(), blueprint));
+            }
+        }
+        return blueprints;
+    }
+
+    private static List<FuzzworkBlueprintDto.MaterialEntry> manufacturingMaterials(FuzzworkBlueprintDto blueprint) {
+        List<FuzzworkBlueprintDto.MaterialEntry> materials = blueprint.activityMaterials() == null ? null
+                : blueprint.activityMaterials().get(FuzzworkBlueprintDto.ACTIVITY_MANUFACTURING);
+        return materials == null ? List.of() : materials;
+    }
+
+    private LpOfferRow price(LoyaltyOfferDto offer, Map<Integer, Double> unitsForSale,
+                             FuzzworkBlueprintDto blueprintData) {
         TypeInfo type = typeNameCacheService.resolveType(offer.typeId());
 
         int outputTypeId = offer.typeId();
@@ -72,16 +103,14 @@ public final class LpOfferPricingService {
         List<LpRequiredItem> buildMaterials = List.of();
         Double buildMaterialsCost = 0.0;
 
-        if (CATEGORY_BLUEPRINT.equals(type.categoryName())) {
+        if (blueprintData != null) {
             long totalRuns = offer.quantity() * (long) RUNS_PER_COPY;
-            BlueprintPricing blueprint = priceBlueprintOffer(offer.typeId(), totalRuns);
-            if (blueprint != null) {
-                outputTypeId = blueprint.productTypeId;
-                outputUnits = offer.quantity() * (long) RUNS_PER_COPY * blueprint.productQuantityPerRun;
-                buildMaterialsSummary = blueprint.summary;
-                buildMaterials = blueprint.materials;
-                buildMaterialsCost = blueprint.cost;
-            }
+            BlueprintPricing blueprint = priceBlueprintOffer(blueprintData, totalRuns);
+            outputTypeId = blueprint.productTypeId;
+            outputUnits = offer.quantity() * (long) RUNS_PER_COPY * blueprint.productQuantityPerRun;
+            buildMaterialsSummary = blueprint.summary;
+            buildMaterials = blueprint.materials;
+            buildMaterialsCost = blueprint.cost;
         }
 
         Double sellPrice = toNullable(priceService.getUnitPrice(outputTypeId, PriceMode.SELL_MIN));
@@ -122,24 +151,12 @@ public final class LpOfferPricingService {
                                      List<LpRequiredItem> materials, Double cost) {
     }
 
-    private BlueprintPricing priceBlueprintOffer(int blueprintTypeId, long totalRuns) {
-        Optional<FuzzworkBlueprintDto> response = fuzzworkApi.fetchBlueprintMaterials(blueprintTypeId);
-        if (response.isEmpty() || response.get().blueprintDetails() == null
-                || response.get().blueprintDetails().productTypeId() == null) {
-            return null;
-        }
-        FuzzworkBlueprintDto blueprint = response.get();
-        List<FuzzworkBlueprintDto.MaterialEntry> materials = blueprint.activityMaterials() == null ? null
-                : blueprint.activityMaterials().get(FuzzworkBlueprintDto.ACTIVITY_MANUFACTURING);
-        if (materials == null || materials.isEmpty()) {
-            return null;
-        }
-
+    private BlueprintPricing priceBlueprintOffer(FuzzworkBlueprintDto blueprint, long totalRuns) {
         double cost = 0;
         boolean allPriced = true;
         List<String> summaryParts = new ArrayList<>();
         List<LpRequiredItem> materialItems = new ArrayList<>();
-        for (FuzzworkBlueprintDto.MaterialEntry material : materials) {
+        for (FuzzworkBlueprintDto.MaterialEntry material : manufacturingMaterials(blueprint)) {
             long quantityAtMe = applyMaterialEfficiency(material.quantity(), totalRuns, MATERIAL_EFFICIENCY_LEVEL);
             summaryParts.add(quantityAtMe + "x " + material.name());
             materialItems.add(new LpRequiredItem(material.name(), quantityAtMe));

@@ -19,6 +19,7 @@ import com.evefarm.db.dao.ItemTypeDao;
 import com.evefarm.db.dao.KillDao;
 import com.evefarm.db.dao.LocationCacheDao;
 import com.evefarm.db.dao.LoyaltyPointDao;
+import com.evefarm.db.dao.LpPurchaseDao;
 import com.evefarm.db.dao.MarketOrderDao;
 import com.evefarm.db.dao.MiningLedgerDao;
 import com.evefarm.db.dao.NotificationDao;
@@ -78,6 +79,7 @@ import com.evefarm.service.KillsReportService;
 import com.evefarm.service.LocationNameCacheService;
 import com.evefarm.service.LoyaltyPointService;
 import com.evefarm.service.LpOfferPricingService;
+import com.evefarm.service.LpPurchaseService;
 import com.evefarm.service.MarketHistoryService;
 import com.evefarm.service.MarketOrderService;
 import com.evefarm.service.MarketWatchService;
@@ -155,6 +157,8 @@ public final class AppContext {
     public final AggroWatchService aggroWatchService;
     public final VoiceService voiceService;
     public final LpOfferPricingService lpOfferPricingService;
+    public final MarketHistoryService marketHistoryService;
+    public final LpPurchaseService lpPurchaseService;
     public final ItemIconService itemIconService;
     public final ValueSummaryService valueSummaryService;
     public final NotificationService notificationService;
@@ -230,8 +234,9 @@ public final class AppContext {
                 abyssLootService, abyssalRunDao);
         this.aggroWatchService = new AggroWatchService(killService, characterDao);
         this.voiceService = new VoiceService();
+        this.marketHistoryService = new MarketHistoryService(marketsApi, new DailyVolumeDao(database));
         this.lpOfferPricingService = new LpOfferPricingService(loyaltyApi, fuzzworkApi, typeNameCacheService,
-                priceService, new MarketHistoryService(marketsApi, new DailyVolumeDao(database)));
+                priceService, marketHistoryService);
         this.itemIconService = new ItemIconService();
         SkillCatalogApi skillCatalogApi = new SkillCatalogApi(esiHttpClient);
         this.industryCatalogService = new IndustryCatalogService(fuzzworkApi, skillCatalogApi,
@@ -267,9 +272,12 @@ public final class AppContext {
         this.eveSettingsService = new EveSettingsService(settingsDao);
         this.updateService = new UpdateService(settingsDao);
         this.updateInstaller = new UpdateInstaller(backupRestoreService);
+        this.lpPurchaseService = new LpPurchaseService(new LpPurchaseDao(database), walletJournalDao,
+                walletTransactionDao, marketOrderDao, assetDao, priceService, marketHistoryService, skillService,
+                settingsDao, lpOfferPricingService, loyaltyPointService, characterService, typeNameCacheService);
         this.notificationService = new NotificationService(authService, characterService, industryJobService,
                 marketWatchService, skillsApi, contractsApi, typeNameCacheService, new NotificationDao(database),
-                settingsDao);
+                settingsDao, lpPurchaseService);
         this.schedulerService = new SchedulerService(authService, characterService, priceService, assetService,
                 trackerSnapshotService, updateCooldownDao, backupRestoreService, killService, skillService,
                 notificationService);

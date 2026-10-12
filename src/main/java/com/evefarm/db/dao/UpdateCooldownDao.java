@@ -7,6 +7,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 public final class UpdateCooldownDao {
@@ -31,6 +33,23 @@ public final class UpdateCooldownDao {
                 }
             } catch (SQLException e) {
                 throw new IllegalStateException("Failed to read update cooldown for " + category, e);
+            }
+        }
+    }
+
+    public Map<String, Instant> findAll() {
+        String sql = "SELECT category, last_refreshed_at FROM update_cooldown";
+        synchronized (database) {
+            Connection connection = database.connection();
+            try (PreparedStatement ps = connection.prepareStatement(sql);
+                 ResultSet rs = ps.executeQuery()) {
+                Map<String, Instant> result = new HashMap<>();
+                while (rs.next()) {
+                    result.put(rs.getString("category"), Instant.parse(rs.getString("last_refreshed_at")));
+                }
+                return result;
+            } catch (SQLException e) {
+                throw new IllegalStateException("Failed to read the update cooldowns", e);
             }
         }
     }
