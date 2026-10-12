@@ -117,6 +117,9 @@ public final class TrackerPanel extends JPanel {
         fromSpinner.setEditor(new JSpinner.DateEditor(fromSpinner, "yyyy-MM-dd"));
         toSpinner.setModel(new SpinnerDateModel());
         toSpinner.setEditor(new JSpinner.DateEditor(toSpinner, "yyyy-MM-dd"));
+        ComboSizing.fix(quickDateCombo, ComboSizing.NAME_WIDTH);
+        ComboSizing.fix(fromSpinner, ComboSizing.NAME_WIDTH);
+        ComboSizing.fix(toSpinner, ComboSizing.NAME_WIDTH);
 
         showButton.setIcon(Icons.EYE);
         showButton.addActionListener(e -> reloadChart());

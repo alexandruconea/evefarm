@@ -9,7 +9,6 @@ import com.evefarm.util.TokenCipher;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
-import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
@@ -21,7 +20,6 @@ import javax.swing.border.EmptyBorder;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Desktop;
-import java.awt.Dimension;
 import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -34,7 +32,6 @@ import java.util.List;
 public final class SettingsDialog extends JDialog {
 
     private static final int FIELD_WIDTH = 320;
-    private static final int FIELD_HEIGHT = 26;
 
     private final SettingsDao settingsDao;
     private static final List<String> THEME_KEYS = List.of("system", "flatlaf-dark", "eve");
@@ -69,9 +66,9 @@ public final class SettingsDialog extends JDialog {
     }
 
     private JPanel buildForm() {
-        fixWidth(themeCombo, FIELD_WIDTH);
-        fixWidth(priceProviderCombo, FIELD_WIDTH);
-        fixWidth(defaultPriceCombo, FIELD_WIDTH);
+        ComboSizing.fix(themeCombo, FIELD_WIDTH);
+        ComboSizing.fix(priceProviderCombo, FIELD_WIDTH);
+        ComboSizing.fix(defaultPriceCombo, FIELD_WIDTH);
 
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBorder(new EmptyBorder(12, 12, 12, 12));
@@ -85,7 +82,7 @@ public final class SettingsDialog extends JDialog {
         addRow(panel, c, row++, "Price provider:", priceProviderCombo);
 
         JPanel janiceKeyPanel = new JPanel(new BorderLayout(4, 0));
-        janiceKeyPanel.setPreferredSize(new Dimension(FIELD_WIDTH, FIELD_HEIGHT));
+        ComboSizing.fix(janiceKeyPanel, FIELD_WIDTH);
         janiceKeyPanel.add(janiceApiKeyField, BorderLayout.CENTER);
         janiceKeyPanel.add(janiceGetApiKeyButton, BorderLayout.EAST);
         addRow(panel, c, row++, "Janice API key:", janiceKeyPanel);
@@ -93,7 +90,7 @@ public final class SettingsDialog extends JDialog {
         addRow(panel, c, row++, "Default price:", defaultPriceCombo);
 
         JPanel gameLogPanel = new JPanel(new BorderLayout(4, 0));
-        gameLogPanel.setPreferredSize(new Dimension(FIELD_WIDTH, FIELD_HEIGHT));
+        ComboSizing.fix(gameLogPanel, FIELD_WIDTH);
         gameLogPanel.add(gameLogDirectoryField, BorderLayout.CENTER);
         gameLogPanel.add(gameLogDirectoryBrowseButton, BorderLayout.EAST);
         String gameLogTip = "Where EVE writes its Gamelogs, used by NPC Kills and the Abyss voice. "
@@ -103,7 +100,7 @@ public final class SettingsDialog extends JDialog {
         addRow(panel, c, row++, "Gamelogs folder:", gameLogPanel);
 
         JPanel backupCopyPanel = new JPanel(new BorderLayout(4, 0));
-        backupCopyPanel.setPreferredSize(new Dimension(FIELD_WIDTH, FIELD_HEIGHT));
+        ComboSizing.fix(backupCopyPanel, FIELD_WIDTH);
         backupCopyPanel.add(backupCopyDirectoryField, BorderLayout.CENTER);
         backupCopyPanel.add(backupCopyDirectoryBrowseButton, BorderLayout.EAST);
         String backupTip = "Automatic backups run once a day to " + AppPaths.backupDir() + " (last 7 days + one "
@@ -135,13 +132,6 @@ public final class SettingsDialog extends JDialog {
         backupCopyDirectoryBrowseButton.addActionListener(e -> browseForBackupCopyDirectory());
 
         return panel;
-    }
-
-    private void fixWidth(JComponent component, int width) {
-        Dimension size = new Dimension(width, FIELD_HEIGHT);
-        component.setPreferredSize(size);
-        component.setMinimumSize(size);
-        component.setMaximumSize(size);
     }
 
     private void updateJaniceFieldEnabled() {

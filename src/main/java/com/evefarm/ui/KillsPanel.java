@@ -48,7 +48,6 @@ import java.util.stream.Collectors;
 public final class KillsPanel extends JPanel {
 
     private static final Logger LOG = Logger.getLogger(KillsPanel.class.getName());
-    private static final Dimension FIELD_SIZE = new Dimension(220, 26);
     private static final String ALL_SYSTEMS = "All Systems";
 
     private final AppContext appContext;
@@ -124,7 +123,7 @@ public final class KillsPanel extends JPanel {
         shipTypePanel.setLayout(new BoxLayout(shipTypePanel, BoxLayout.Y_AXIS));
         JScrollPane shipTypeScrollPane = new JScrollPane(shipTypePanel);
         shipTypeScrollPane.setAlignmentX(Component.LEFT_ALIGNMENT);
-        shipTypeScrollPane.setPreferredSize(new Dimension(220, 140));
+        shipTypeScrollPane.setPreferredSize(new Dimension(ComboSizing.NAME_WIDTH, 140));
 
         allProfilesCheckBox.addActionListener(e -> {
             characterList.setEnabled(!allProfilesCheckBox.isSelected());
@@ -148,15 +147,12 @@ public final class KillsPanel extends JPanel {
         });
         JScrollPane characterScrollPane = new JScrollPane(characterList);
         characterScrollPane.setAlignmentX(Component.LEFT_ALIGNMENT);
-        characterScrollPane.setPreferredSize(new Dimension(220, 140));
+        characterScrollPane.setPreferredSize(new Dimension(ComboSizing.NAME_WIDTH, 140));
 
-        fixWidth(quickDateCombo);
-        fixWidth(fromSpinner);
-        fixWidth(toSpinner);
-        fixWidth(showButton);
-        fixWidth(exportPdfButton);
-        fixWidth(factionCombo);
-        fixWidth(systemCombo);
+        for (JComponent field : List.of(quickDateCombo, fromSpinner, toSpinner, showButton, exportPdfButton,
+                factionCombo, systemCombo)) {
+            ComboSizing.fix(field, ComboSizing.NAME_WIDTH);
+        }
 
         JPanel sidebarPanel = new JPanel();
         sidebarPanel.setLayout(new BoxLayout(sidebarPanel, BoxLayout.Y_AXIS));
@@ -201,11 +197,6 @@ public final class KillsPanel extends JPanel {
     private static void addLeftAligned(JPanel panel, JComponent component) {
         component.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(component);
-    }
-
-    private static void fixWidth(JComponent component) {
-        component.setMaximumSize(FIELD_SIZE);
-        component.setPreferredSize(FIELD_SIZE);
     }
 
     public void onShown() {

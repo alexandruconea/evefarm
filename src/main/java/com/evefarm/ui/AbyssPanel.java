@@ -614,7 +614,10 @@ public final class AbyssPanel extends JPanel {
         timerLabel.setFont(timerLabel.getFont().deriveFont(Font.BOLD, timerLabel.getFont().getSize2D() * 1.8f));
         JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         controls.add(new JLabel("Character:"));
-        characterCombo.setPreferredSize(new Dimension(200, characterCombo.getPreferredSize().height));
+        ComboSizing.names(characterCombo);
+        ComboSizing.options(tierCombo);
+        ComboSizing.options(weatherCombo);
+        ComboSizing.options(fleetCombo);
         controls.add(characterCombo);
         controls.add(Box.createHorizontalStrut(8));
         controls.add(new JLabel("Filament:"));
@@ -670,6 +673,7 @@ public final class AbyssPanel extends JPanel {
         statsTitle.setFont(statsTitle.getFont().deriveFont(Font.BOLD));
         JPanel groupBy = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         groupBy.add(new JLabel("Group by:"));
+        ComboSizing.options(groupByCombo);
         groupBy.add(groupByCombo);
         statsHeader.add(statsTitle, BorderLayout.WEST);
         statsHeader.add(overallLabel, BorderLayout.CENTER);

@@ -63,7 +63,9 @@ public final class MigrationRunner {
             "db/migrations/V38__order_competition.sql",
             "db/migrations/V39__market_daily_volume.sql",
             "db/migrations/V40__lp_purchase.sql",
-            "db/migrations/V41__market_volume_sell_orders.sql"
+            "db/migrations/V41__market_volume_sell_orders.sql",
+            "db/migrations/V42__loyalty_point_checks.sql",
+            "db/migrations/V43__loyalty_point_next_read.sql"
     );
 
     public static void run(Database database) {

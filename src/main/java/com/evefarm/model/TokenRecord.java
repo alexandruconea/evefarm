@@ -12,4 +12,9 @@ public record TokenRecord(
                 && accessTokenExpiresAt != null
                 && accessTokenExpiresAt.isAfter(Instant.now().plusSeconds(60));
     }
+
+    @Override
+    public String toString() {
+        return "TokenRecord[accessTokenExpiresAt=" + accessTokenExpiresAt + "]";
+    }
 }

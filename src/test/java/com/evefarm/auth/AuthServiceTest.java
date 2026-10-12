@@ -2,10 +2,12 @@ package com.evefarm.auth;
 
 import com.evefarm.db.dao.CharacterDao;
 import com.evefarm.db.dao.TokenDao;
+import com.evefarm.model.EveCharacter;
 import com.evefarm.model.TokenRecord;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -14,6 +16,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -65,6 +69,36 @@ class AuthServiceTest {
 
         verify(sso, times(1)).refreshAccessToken(any(), eq("old-refresh"));
         verify(tokens, times(1)).upsert(eq(characterId), eq("new-refresh"), eq("new-access"), any());
+    }
+
+    @Test
+    void aLoginEveNoLongerAcceptsAsksToAddTheCharacterAgain() {
+        long characterId = 2124165849L;
+        CharacterDao characters = mock(CharacterDao.class);
+        TokenDao tokens = mock(TokenDao.class);
+        EveSsoClient sso = mock(EveSsoClient.class);
+        AuthService service = new AuthService(characters, tokens, sso, mock(JwtValidator.class));
+        when(characters.listAll()).thenReturn(List.of(
+                new EveCharacter(characterId, "Malpais Legate", List.of(), Instant.EPOCH)));
+        when(tokens.find(characterId)).thenReturn(Optional.of(new TokenRecord("revoked", "old", Instant.EPOCH)));
+        when(sso.refreshAccessToken(any(), eq("revoked"))).thenThrow(new LoginRejectedException());
+
+        IllegalStateException error = assertThrows(IllegalStateException.class,
+                () -> service.getValidAccessToken(characterId));
+
+        assertEquals("Add Malpais Legate again (File > Characters... > Add Character...) - EVE no longer accepts "
+                + "its login.", error.getMessage());
+        verify(tokens, times(0)).upsert(anyLong(), any(), any(), any());
+    }
+
+    @Test
+    void tokensNeverShowUpWhenPrinted() {
+        String record = new TokenRecord("refresh-secret", "access-secret", Instant.EPOCH).toString();
+        String response = new TokenResponse("access-secret", "refresh-secret", 1199).toString();
+
+        assertFalse(record.contains("secret"), record);
+        assertFalse(response.contains("secret"), response);
+        assertEquals("TokenResponse[expiresIn=1199]", response);
     }
 
     @Test

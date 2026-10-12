@@ -9,4 +9,8 @@ public record TokenResponse(
         @JsonProperty("refresh_token") String refreshToken,
         @JsonProperty("expires_in") long expiresIn
 ) {
+    @Override
+    public String toString() {
+        return "TokenResponse[expiresIn=" + expiresIn + "]";
+    }
 }

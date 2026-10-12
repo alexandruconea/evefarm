@@ -36,7 +36,6 @@ import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.Timer;
 import java.awt.BorderLayout;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
@@ -67,7 +66,6 @@ public final class IndustryPanel extends JPanel {
     private static final int SYSTEM_SUGGESTIONS = 12;
     private static final int DEFAULT_COMPONENT_ME = 10;
     private static final int DEFAULT_COMPONENT_TE = 20;
-    private static final int COMBO_SLACK = 12;
 
     private final AppContext appContext;
     private final JLabel blueprintLabel = new JLabel("No blueprint chosen");
@@ -132,7 +130,7 @@ public final class IndustryPanel extends JPanel {
 
     private static JSpinner percentSpinner(double value) {
         JSpinner spinner = new JSpinner(new SpinnerNumberModel(value, 0.0, 100.0, 0.1));
-        spinner.setPreferredSize(new Dimension(70, spinner.getPreferredSize().height));
+        ComboSizing.fix(spinner, 70);
         return spinner;
     }
 
@@ -589,7 +587,8 @@ public final class IndustryPanel extends JPanel {
                 blueprintLabel.getFont().getSize2D() + 2f));
         blueprintLabel.putClientProperty("html.disable", Boolean.TRUE);
         blueprintLabel.setIconTextGap(10);
-        runsSpinner.setPreferredSize(new Dimension(90, runsSpinner.getPreferredSize().height));
+        ComboSizing.fix(runsSpinner, 90);
+        ComboSizing.names(characterCombo);
         inventionCheck.setOpaque(false);
         inventionCheck.setToolTipText("For Tech II blueprints: count the cost of inventing the blueprint copies");
         buildCombo.setToolTipText("Buy the components, make those that cost less to build than to buy, or build the "
@@ -661,12 +660,13 @@ public final class IndustryPanel extends JPanel {
         JPanel buildHeader = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 2));
         buildHeader.add(UiColors.mutedLabel("Component blueprints"));
         buildHeader.add(UiColors.mutedLabel("ME"));
+        ComboSizing.input(componentMeSpinner);
         buildHeader.add(componentMeSpinner);
         buildHeader.add(UiColors.mutedLabel("TE"));
+        ComboSizing.input(componentTeSpinner);
         buildHeader.add(componentTeSpinner);
         buildHeader.add(UiColors.mutedLabel("   Surplus"));
-        Dimension surplusSize = surplusCombo.getPreferredSize();
-        surplusCombo.setPreferredSize(new Dimension(surplusSize.width + COMBO_SLACK, surplusSize.height));
+        ComboSizing.options(surplusCombo);
         buildHeader.add(surplusCombo);
         JPanel buildPanel = new JPanel(new BorderLayout(0, 4));
         buildPanel.add(buildHeader, BorderLayout.NORTH);
@@ -716,6 +716,13 @@ public final class IndustryPanel extends JPanel {
     }
 
     private static void field(JPanel form, String label, JComponent component, int column, int row, int width) {
+        if (!component.isPreferredSizeSet()) {
+            if (component instanceof JComboBox<?> combo) {
+                ComboSizing.options(combo);
+            } else if (component instanceof JSpinner || component instanceof JTextField) {
+                ComboSizing.input(component);
+            }
+        }
         place(form, UiColors.mutedLabel(label), column, row, 1);
         place(form, component, column + 1, row, width);
     }

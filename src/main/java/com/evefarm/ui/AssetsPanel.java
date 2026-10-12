@@ -150,6 +150,8 @@ public final class AssetsPanel extends JPanel {
         table = new JTable();
         totalLabel = new JLabel();
         snapshotCombo = new JComboBox<>();
+        snapshotCombo.setPrototypeDisplayValue(new Snapshot("2026-09", "September 2026 (saved 2026-09-30 23:59)"));
+        ComboSizing.options(snapshotCombo);
         JPanel snapshotPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         snapshotPanel.add(new JLabel("Show:"));
         snapshotPanel.add(snapshotCombo);

@@ -2,6 +2,7 @@ package com.evefarm.auth;
 
 import com.evefarm.db.dao.CharacterDao;
 import com.evefarm.db.dao.TokenDao;
+import com.evefarm.model.EveCharacter;
 import com.evefarm.model.TokenRecord;
 
 import java.awt.Desktop;
@@ -91,11 +92,25 @@ public final class AuthService {
             }
 
             LOG.info("Refreshing access token for character " + characterId);
-            TokenResponse refreshed = ssoClient.refreshAccessToken(OAuthConfig.DEFAULT, record.refreshToken());
+            TokenResponse refreshed;
+            try {
+                refreshed = ssoClient.refreshAccessToken(OAuthConfig.DEFAULT, record.refreshToken());
+            } catch (LoginRejectedException e) {
+                throw new IllegalStateException("Add " + characterName(characterId)
+                        + " again (File > Characters... > Add Character...) - EVE no longer accepts its login.");
+            }
             Instant expiresAt = Instant.now().plusSeconds(refreshed.expiresIn());
             tokenDao.upsert(characterId, refreshed.refreshToken(), refreshed.accessToken(), expiresAt);
             return refreshed.accessToken();
         }
+    }
+
+    private String characterName(long characterId) {
+        return characterDao.listAll().stream()
+                .filter(character -> character.characterId() == characterId)
+                .map(EveCharacter::characterName)
+                .findFirst()
+                .orElse("character " + characterId);
     }
 
     private void openBrowser(URI uri) throws Exception {

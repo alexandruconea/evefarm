@@ -242,8 +242,8 @@ public final class AppContext {
         this.industryCatalogService = new IndustryCatalogService(fuzzworkApi, skillCatalogApi,
                 new IndustryCatalogDao(database), settingsDao);
         this.trackerSnapshotService = new TrackerSnapshotService(authService, walletApi, clonesApi, marketsApi,
-                contractsApi, industryApi, skillsApi, loyaltyApi, priceService, lpOfferPricingService, assetDao,
-                snapshotDao, skillPointFilterDao, settingsDao, industryCatalogService);
+                contractsApi, industryApi, skillsApi, loyaltyPointService, priceService, lpOfferPricingService,
+                assetDao, snapshotDao, skillPointFilterDao, settingsDao, industryCatalogService);
         this.journalService = new JournalService(authService, walletApi, entityNameCacheService, walletJournalDao);
         this.marketWatchService = new MarketWatchService(authService, marketsApi, new OrderCompetitionDao(database));
         this.marketOrderService = new MarketOrderService(authService, marketsApi, typeNameCacheService,
@@ -280,6 +280,6 @@ public final class AppContext {
                 settingsDao, lpPurchaseService);
         this.schedulerService = new SchedulerService(authService, characterService, priceService, assetService,
                 trackerSnapshotService, updateCooldownDao, backupRestoreService, killService, skillService,
-                notificationService);
+                notificationService, loyaltyPointService);
     }
 }

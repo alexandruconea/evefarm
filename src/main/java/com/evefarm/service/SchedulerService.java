@@ -6,7 +6,9 @@ import com.evefarm.model.EveCharacter;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -19,6 +21,8 @@ public final class SchedulerService {
 
     private static final Logger LOG = Logger.getLogger(SchedulerService.class.getName());
     private static final Duration MIN_PRICE_REFRESH_INTERVAL = Duration.ofHours(1);
+    private static final int LOYALTY_POINT_CHECK_MINUTES = 5;
+    static final Duration LOYALTY_POINT_RETRY = Duration.ofMinutes(30);
     private static final int GAMELOG_SCAN_SECONDS = 600;
     private static final int NOTIFICATION_CHECK_MINUTES = 15;
 
@@ -53,13 +57,15 @@ public final class SchedulerService {
     private final KillService killService;
     private final SkillService skillService;
     private final NotificationService notificationService;
+    private final LoyaltyPointService loyaltyPointService;
     private final List<Runnable> snapshotListeners = new CopyOnWriteArrayList<>();
+    private final Map<Long, Instant> loyaltyPointRetries = new HashMap<>();
 
     public SchedulerService(AuthService authService, CharacterService characterService, PriceService priceService,
                              AssetService assetService, TrackerSnapshotService trackerSnapshotService,
                              UpdateCooldownDao updateCooldownDao, BackupRestoreService backupRestoreService,
                              KillService killService, SkillService skillService,
-                             NotificationService notificationService) {
+                             NotificationService notificationService, LoyaltyPointService loyaltyPointService) {
         this.authService = authService;
         this.characterService = characterService;
         this.priceService = priceService;
@@ -70,6 +76,7 @@ public final class SchedulerService {
         this.killService = killService;
         this.skillService = skillService;
         this.notificationService = notificationService;
+        this.loyaltyPointService = loyaltyPointService;
     }
 
     public void start() {
@@ -77,6 +84,7 @@ public final class SchedulerService {
         executor.scheduleWithFixedDelay(this::refreshPrices, 0, 24, TimeUnit.HOURS);
         backupExecutor.scheduleWithFixedDelay(backupRestoreService::autoBackupIfDue, 10, 6 * 60 * 60, TimeUnit.SECONDS);
         executor.schedule(this::captureAllSnapshots, 0, TimeUnit.SECONDS);
+        executor.scheduleWithFixedDelay(this::refreshLoyaltyPoints, 0, LOYALTY_POINT_CHECK_MINUTES, TimeUnit.MINUTES);
         gamelogExecutor.scheduleWithFixedDelay(this::scanGamelogs, 15, GAMELOG_SCAN_SECONDS, TimeUnit.SECONDS);
         notificationExecutor.scheduleWithFixedDelay(this::checkNotifications, 1, NOTIFICATION_CHECK_MINUTES,
                 TimeUnit.MINUTES);
@@ -147,6 +155,31 @@ public final class SchedulerService {
             updateCooldownDao.markRefreshed(UpdateCategories.MARKET_PRICES);
         } catch (Exception e) {
             LOG.log(Level.WARNING, "Failed to refresh market prices", e);
+        }
+    }
+
+    void refreshLoyaltyPoints() {
+        Instant now = Instant.now();
+        boolean read = false;
+        boolean allCurrent = true;
+        for (EveCharacter character : characterService.listCharacters()) {
+            long characterId = character.characterId();
+            Instant retry = loyaltyPointRetries.get(characterId);
+            if (retry != null && retry.isAfter(now)) {
+                allCurrent = false;
+                continue;
+            }
+            try {
+                read |= loyaltyPointService.refreshLoyaltyPointsForCharacter(characterId);
+                loyaltyPointRetries.remove(characterId);
+            } catch (Exception e) {
+                allCurrent = false;
+                loyaltyPointRetries.put(characterId, now.plus(LOYALTY_POINT_RETRY));
+                LOG.log(Level.WARNING, "Failed to read the loyalty points of character " + characterId, e);
+            }
+        }
+        if (read && allCurrent) {
+            updateCooldownDao.markRefreshed(UpdateCategories.LOYALTY_POINTS);
         }
     }
 

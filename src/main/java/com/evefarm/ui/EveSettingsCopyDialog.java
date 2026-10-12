@@ -12,6 +12,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
@@ -167,6 +168,9 @@ public final class EveSettingsCopyDialog extends JDialog {
 
         constraints.gridx = 1;
         constraints.weightx = 1;
+        if (field instanceof JComponent input) {
+            ComboSizing.input(input);
+        }
         panel.add(field, constraints);
 
         if (trailing != null) {

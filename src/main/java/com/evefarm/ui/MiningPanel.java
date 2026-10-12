@@ -171,13 +171,15 @@ public final class MiningPanel extends JPanel {
         JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         controls.setBorder(BorderFactory.createEmptyBorder(8, 2, 0, 8));
         controls.add(new JLabel("Show:"));
+        ComboSizing.options(periodCombo);
         controls.add(periodCombo);
         controls.add(Box.createHorizontalStrut(8));
         controls.add(new JLabel("Value:"));
+        ComboSizing.options(valuationCombo);
         controls.add(valuationCombo);
         controls.add(Box.createHorizontalStrut(8));
         controls.add(rateLabel);
-        rateSpinner.setPreferredSize(new Dimension(70, rateSpinner.getPreferredSize().height));
+        ComboSizing.fix(rateSpinner, 70);
         controls.add(rateSpinner);
 
         JPanel ledgerTop = new JPanel(new BorderLayout(0, 6));
@@ -194,6 +196,7 @@ public final class MiningPanel extends JPanel {
         statsTitle.setFont(statsTitle.getFont().deriveFont(Font.BOLD));
         JPanel groupBy = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         groupBy.add(new JLabel("Group by:"));
+        ComboSizing.options(groupByCombo);
         groupBy.add(groupByCombo);
         statsHeader.add(statsTitle, BorderLayout.WEST);
         statsHeader.add(overallLabel, BorderLayout.CENTER);

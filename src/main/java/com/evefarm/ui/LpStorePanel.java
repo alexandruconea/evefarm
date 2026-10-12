@@ -3,6 +3,7 @@ package com.evefarm.ui;
 import com.evefarm.AppContext;
 import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.model.EveCharacter;
+import com.evefarm.model.LoyaltyPointCheck;
 import com.evefarm.model.LoyaltyPointRow;
 import com.evefarm.model.LpOfferRow;
 import com.evefarm.model.LpPurchase;
@@ -35,6 +36,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Font;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -86,6 +88,8 @@ public final class LpStorePanel extends JPanel {
 
         characterCombo.addActionListener(e -> updateYourLpLabel());
         characterCombo.setRenderer(MainCharacterMarks.comboRenderer(() -> mainCharacterName));
+        ComboSizing.names(characterCombo);
+        ComboSizing.names(corporationCombo);
         corporationCombo.addActionListener(e -> onCorporationSelected());
         favoriteCheckBox.addActionListener(e -> onFavoriteToggled());
         refreshOffersButton.addActionListener(e -> fetchOffers());
@@ -303,6 +307,7 @@ public final class LpStorePanel extends JPanel {
         if (character == null || selectedCorporationId < 0) {
             yourLp = 0;
             yourLpLabel.setText("Your LP: -");
+            yourLpLabel.setToolTipText(null);
             updateWealthLabel();
             return;
         }
@@ -312,6 +317,9 @@ public final class LpStorePanel extends JPanel {
                 .mapToLong(LoyaltyPointRow::loyaltyPoints)
                 .findFirst().orElse(0);
         yourLpLabel.setText("Your LP: " + String.format(Locale.US, "%,d", yourLp));
+        LoyaltyPointCheck check = appContext.loyaltyPointService.checks().get(character.characterId());
+        yourLpLabel.setToolTipText(LpProductionPanel.syncText(check == null ? null : check.dataFrom(),
+                check == null ? null : check.nextRead(), Instant.now(), ZoneId.systemDefault()));
         updateWealthLabel();
     }
 
@@ -454,11 +462,11 @@ public final class LpStorePanel extends JPanel {
                             .addGroup(layout.createSequentialGroup()
                                 .addComponent(characterLabel)
                                 .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(characterCombo, GroupLayout.PREFERRED_SIZE, 160, GroupLayout.PREFERRED_SIZE)
+                                .addComponent(characterCombo, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(corporationLabel)
                                 .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(corporationCombo, GroupLayout.PREFERRED_SIZE, 260, GroupLayout.PREFERRED_SIZE)
+                                .addComponent(corporationCombo, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(favoriteCheckBox)
                                 .addPreferredGap(LayoutStyle.ComponentPlacement.UNRELATED)

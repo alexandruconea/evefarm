@@ -20,7 +20,6 @@ import javax.swing.SwingWorker;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.BorderLayout;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -66,10 +65,11 @@ final class LpPaymentsDialog extends JDialog {
             }
         });
         TableStyler.style(table);
-        offerCombo.setPreferredSize(new Dimension(300, offerCombo.getPreferredSize().height));
+        ComboSizing.fix(offerCombo, 300);
         offerCombo.setToolTipText("The offer you bought with this payment, and how many times. Listed and sold "
                 + "count the units of the item put up for sale and sold in the 30 days after the payment, in assets "
                 + "what you have now. The offers that fit them best come first");
+        ComboSizing.input(findField);
         findField.putClientProperty("JTextField.placeholderText", "Find an offer");
         findField.setToolTipText("Show only the offers whose name has this text");
         findField.getDocument().addDocumentListener(new DocumentListener() {

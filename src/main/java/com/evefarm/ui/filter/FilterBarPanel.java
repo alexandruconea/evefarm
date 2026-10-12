@@ -1,6 +1,7 @@
 package com.evefarm.ui.filter;
 
 import com.evefarm.db.dao.SavedFilterDao;
+import com.evefarm.ui.ComboSizing;
 import com.evefarm.ui.Icons;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -232,6 +233,7 @@ public final class FilterBarPanel extends JPanel {
             return;
         }
         JComboBox<String> combo = new JComboBox<>(names.toArray(new String[0]));
+        ComboSizing.options(combo);
         int result = JOptionPane.showConfirmDialog(this, combo, "Load Filter",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (result != JOptionPane.OK_OPTION) {

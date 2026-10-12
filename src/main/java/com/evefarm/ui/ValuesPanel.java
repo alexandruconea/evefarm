@@ -38,6 +38,7 @@ public final class ValuesPanel extends JPanel {
 
         characterCombo.addActionListener(e -> refreshCharacterColumn());
         characterCombo.setRenderer(MainCharacterMarks.comboRenderer(() -> mainCharacterName));
+        ComboSizing.names(characterCombo);
 
         reloadCharacters(true);
     }
@@ -129,8 +130,8 @@ public final class ValuesPanel extends JPanel {
                     .addComponent(columnsScrollPane, GroupLayout.DEFAULT_SIZE, 880, Short.MAX_VALUE)
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(characterLabel)
-                        .addGap(18, 18, 18)
-                        .addComponent(characterCombo, GroupLayout.PREFERRED_SIZE, 220, GroupLayout.PREFERRED_SIZE)))
+                        .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(characterCombo, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap())
         );
         layout.setVerticalGroup(

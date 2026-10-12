@@ -128,7 +128,8 @@ public final class OfficersPanel extends JPanel {
         addLeftAligned(header, payoutText);
 
         beltCombo.setEditable(true);
-        beltCombo.setPreferredSize(new Dimension(280, beltCombo.getPreferredSize().height));
+        ComboSizing.fix(beltCombo, 280);
+        ComboSizing.fix(notesField, notesField.getPreferredSize().width);
         saveButton.addActionListener(e -> saveDetails());
         JPanel form = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
         form.add(new JLabel("Belt:"));

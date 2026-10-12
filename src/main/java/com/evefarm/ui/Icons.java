@@ -197,6 +197,17 @@ public final class Icons {
         g.draw(line(6, 8.5, 10, 8.5));
     });
 
+    public static final Icon CALENDAR = icon(Tone.NEUTRAL, g -> {
+        g.draw(new RoundRectangle2D.Double(2.5, 3.5, 11, 10, 2.5, 2.5));
+        g.draw(line(2.5, 6.5, 13.5, 6.5));
+        g.draw(line(5.5, 2, 5.5, 4.5));
+        g.draw(line(10.5, 2, 10.5, 4.5));
+        for (double x : new double[]{5.5, 8, 10.5}) {
+            g.fill(new Ellipse2D.Double(x - 0.8, 8.4, 1.6, 1.6));
+            g.fill(new Ellipse2D.Double(x - 0.8, 10.9, 1.6, 1.6));
+        }
+    });
+
     public static final Icon MAIN = icon(Tone.FAVORITE, g -> {
         Path2D star = star(4.8, 2.1);
         g.setStroke(new BasicStroke(1f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));

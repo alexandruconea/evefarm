@@ -106,6 +106,7 @@ final class UpdateDialog extends JDialog {
 
     private JPanel row(Category category) {
         JCheckBox box = new JCheckBox(category.label(), true);
+        box.addActionListener(e -> syncAllBox());
         if (UpdateCategories.TRACKER.equals(category.key())) {
             box.setToolTipText("Wallet, net worth, skill points and the other values of the Tracker");
         }
@@ -144,6 +145,16 @@ final class UpdateDialog extends JDialog {
         }
         allBox.setEnabled(anyReady);
         updateButton.setEnabled(anyReady);
+        syncAllBox();
+    }
+
+    private void syncAllBox() {
+        allBox.setSelected(allTicked(rows.stream().map(Row::box).toList()));
+    }
+
+    static boolean allTicked(List<JCheckBox> boxes) {
+        List<JCheckBox> enabled = boxes.stream().filter(JCheckBox::isEnabled).toList();
+        return !enabled.isEmpty() && enabled.stream().allMatch(JCheckBox::isSelected);
     }
 
     static String formatRemaining(Duration duration) {

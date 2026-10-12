@@ -41,7 +41,6 @@ import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.Timer;
 import java.awt.BorderLayout;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
@@ -765,7 +764,7 @@ public final class SkillsPanel extends JPanel {
 
         JPanel characterRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         characterRow.add(new JLabel("Character:"));
-        characterCombo.setPreferredSize(new Dimension(180, characterCombo.getPreferredSize().height));
+        ComboSizing.names(characterCombo);
         characterRow.add(characterCombo);
         characterRow.add(Box.createHorizontalStrut(12));
         characterRow.add(attributesLabel);

@@ -15,6 +15,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -130,10 +131,66 @@ class SchedulerServiceTest {
         verify(kills, never()).refreshKillsFromLogs();
     }
 
+    @Test
+    void everyCharacterWhoseLpEveHasRenewedIsRead() {
+        CharacterService characters = mock(CharacterService.class);
+        LoyaltyPointService loyalty = mock(LoyaltyPointService.class);
+        UpdateCooldownDao cooldowns = mock(UpdateCooldownDao.class);
+        when(characters.listCharacters()).thenReturn(List.of(character(42L), character(43L)));
+        when(loyalty.refreshLoyaltyPointsForCharacter(42L)).thenReturn(true);
+        when(loyalty.refreshLoyaltyPointsForCharacter(43L)).thenReturn(false);
+
+        scheduler(characters, loyalty, cooldowns).refreshLoyaltyPoints();
+
+        verify(loyalty).refreshLoyaltyPointsForCharacter(42L);
+        verify(loyalty).refreshLoyaltyPointsForCharacter(43L);
+        verify(cooldowns).markRefreshed(UpdateCategories.LOYALTY_POINTS);
+    }
+
+    @Test
+    void nothingCountsAsUpdatedWhileEveHasNoNewLp() {
+        CharacterService characters = mock(CharacterService.class);
+        LoyaltyPointService loyalty = mock(LoyaltyPointService.class);
+        UpdateCooldownDao cooldowns = mock(UpdateCooldownDao.class);
+        when(characters.listCharacters()).thenReturn(List.of(character(42L)));
+        when(loyalty.refreshLoyaltyPointsForCharacter(42L)).thenReturn(false);
+
+        scheduler(characters, loyalty, cooldowns).refreshLoyaltyPoints();
+
+        verify(cooldowns, never()).markRefreshed(UpdateCategories.LOYALTY_POINTS);
+    }
+
+    @Test
+    void aCharacterWhoseLpCantBeReadIsTriedAgainHalfAnHourLater() {
+        CharacterService characters = mock(CharacterService.class);
+        LoyaltyPointService loyalty = mock(LoyaltyPointService.class);
+        UpdateCooldownDao cooldowns = mock(UpdateCooldownDao.class);
+        when(characters.listCharacters()).thenReturn(List.of(character(42L), character(43L)));
+        when(loyalty.refreshLoyaltyPointsForCharacter(42L)).thenThrow(new IllegalStateException("ESI down"));
+        when(loyalty.refreshLoyaltyPointsForCharacter(43L)).thenReturn(true);
+        SchedulerService scheduler = scheduler(characters, loyalty, cooldowns);
+
+        scheduler.refreshLoyaltyPoints();
+        scheduler.refreshLoyaltyPoints();
+
+        verify(loyalty, times(1)).refreshLoyaltyPointsForCharacter(42L);
+        verify(loyalty, times(2)).refreshLoyaltyPointsForCharacter(43L);
+        verify(cooldowns, never()).markRefreshed(UpdateCategories.LOYALTY_POINTS);
+    }
+
     private static SchedulerService scheduler(KillService kills) {
         return new SchedulerService(mock(AuthService.class), mock(CharacterService.class), mock(PriceService.class),
                 mock(AssetService.class), mock(TrackerSnapshotService.class), mock(UpdateCooldownDao.class),
-                mock(BackupRestoreService.class), kills, mock(SkillService.class), mock(NotificationService.class));
+                mock(BackupRestoreService.class), kills, mock(SkillService.class), mock(NotificationService.class),
+                mock(LoyaltyPointService.class));
+    }
+
+    private static SchedulerService scheduler(CharacterService characters, LoyaltyPointService loyalty,
+                                               UpdateCooldownDao cooldowns) {
+        return new SchedulerService(mock(AuthService.class), characters, mock(PriceService.class),
+                mock(AssetService.class), mock(TrackerSnapshotService.class), cooldowns,
+                mock(BackupRestoreService.class), mock(KillService.class), mock(SkillService.class),
+                mock(NotificationService.class), loyalty);
     }
 
     private static SchedulerService scheduler(PriceService prices, CharacterService characters,
@@ -141,7 +198,7 @@ class SchedulerServiceTest {
                                                UpdateCooldownDao cooldowns) {
         return new SchedulerService(mock(AuthService.class), characters, prices, assets, snapshots,
                 cooldowns, mock(BackupRestoreService.class), mock(KillService.class), mock(SkillService.class),
-                mock(NotificationService.class));
+                mock(NotificationService.class), mock(LoyaltyPointService.class));
     }
 
     private static EveCharacter character(long id) {

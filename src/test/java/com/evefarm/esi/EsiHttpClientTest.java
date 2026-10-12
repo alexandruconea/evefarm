@@ -9,6 +9,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -18,7 +22,9 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class EsiHttpClientTest {
 
@@ -129,5 +135,36 @@ class EsiHttpClientTest {
                 "an HTTP-date isn't parsed -> default wait");
         assertEquals(60, EsiHttpClient.retryAfterSeconds(Optional.of("3600")), "never block a thread for an hour");
         assertEquals(1, EsiHttpClient.retryAfterSeconds(Optional.of("0")));
+    }
+
+    @Test
+    void cacheTimesSayHowOldTheDataIsAndWhenEveHasNewData() {
+        Instant served = Instant.parse("2026-10-12T15:18:22Z");
+
+        EsiHttpClient.Cached cached = EsiHttpClient.cached("[]", served, Instant.parse("2026-10-12T14:22:08Z"),
+                Instant.parse("2026-10-12T15:22:08Z"));
+
+        assertEquals(Duration.ofSeconds(56 * 60 + 14), cached.age());
+        assertEquals(Duration.ofSeconds(3 * 60 + 46), cached.freshFor());
+        assertNull(EsiHttpClient.cached("[]", served, null, null).freshFor(), "unknown without the headers");
+        assertEquals(Duration.ZERO, EsiHttpClient.cached("[]", served, null, null).age());
+        assertEquals(Duration.ZERO, EsiHttpClient.cached("[]", served, served, served.minusSeconds(5)).freshFor());
+    }
+
+    @Test
+    void cacheHeadersAreReadAsEveSendsThem() {
+        Instant now = Instant.now();
+        replies.add(new Reply(200, Map.of(
+                "Last-Modified", DateTimeFormatter.RFC_1123_DATE_TIME.format(now.minus(Duration.ofMinutes(10))
+                        .atZone(ZoneOffset.UTC)),
+                "Expires", DateTimeFormatter.RFC_1123_DATE_TIME.format(now.plus(Duration.ofMinutes(50))
+                        .atZone(ZoneOffset.UTC))), "[{\"corporation_id\":1000043,\"loyalty_points\":500}]"));
+
+        EsiHttpClient.Cached cached = client.getCached("/characters/42/loyalty/points/", "token", Map.of());
+
+        assertEquals("[{\"corporation_id\":1000043,\"loyalty_points\":500}]", cached.body());
+        assertTrue(Math.abs(cached.age().minus(Duration.ofMinutes(10)).toSeconds()) <= 5, cached.age().toString());
+        assertTrue(Math.abs(cached.freshFor().minus(Duration.ofMinutes(50)).toSeconds()) <= 5,
+                cached.freshFor().toString());
     }
 }

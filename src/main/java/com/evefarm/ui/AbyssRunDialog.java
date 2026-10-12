@@ -137,6 +137,13 @@ final class AbyssRunDialog extends JDialog {
     }
 
     private void buildUi() {
+        ComboSizing.names(characterCombo);
+        for (JComboBox<?> combo : List.of(tierCombo, weatherCombo, fleetCombo)) {
+            ComboSizing.options(combo);
+        }
+        for (JComponent field : List.of(startedField, durationField, shipField, filamentField, lootField, notesField)) {
+            ComboSizing.input(field);
+        }
         JPanel form = new JPanel(new GridBagLayout());
         GridBagConstraints c = new GridBagConstraints();
         c.anchor = GridBagConstraints.WEST;

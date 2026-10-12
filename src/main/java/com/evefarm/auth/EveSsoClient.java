@@ -1,5 +1,6 @@
 package com.evefarm.auth;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -15,11 +16,13 @@ public final class EveSsoClient {
 
     private static final String AUTHORIZE_URL = "https://login.eveonline.com/v2/oauth/authorize/";
     private static final String TOKEN_URL = "https://login.eveonline.com/v2/oauth/token";
+    private static final int HTTP_BAD_REQUEST = 400;
+    private static final String INVALID_GRANT = "invalid_grant";
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .build();
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public URI buildAuthorizeUrl(OAuthConfig config, String state, String codeChallenge) {
         String scope = String.join(" ", OAuthConfig.SCOPES);
@@ -58,14 +61,32 @@ public final class EveSsoClient {
         try {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() / 100 != 2) {
-                throw new IllegalStateException("EVE SSO token request failed: HTTP " + response.statusCode());
+                throw failure(response.statusCode(), response.body());
             }
-            return objectMapper.readValue(response.body(), TokenResponse.class);
+            return JSON.readValue(response.body(), TokenResponse.class);
         } catch (IOException | InterruptedException e) {
             if (e instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
             throw new IllegalStateException("Failed to reach EVE SSO token endpoint", e);
+        }
+    }
+
+    static IllegalStateException failure(int statusCode, String body) {
+        if (statusCode == HTTP_BAD_REQUEST && INVALID_GRANT.equals(errorCode(body))) {
+            return new LoginRejectedException();
+        }
+        return new IllegalStateException("EVE SSO token request failed: HTTP " + statusCode);
+    }
+
+    private static String errorCode(String body) {
+        if (body == null || body.isBlank()) {
+            return "";
+        }
+        try {
+            return JSON.readTree(body).path("error").asText("");
+        } catch (JsonProcessingException e) {
+            return "";
         }
     }
 

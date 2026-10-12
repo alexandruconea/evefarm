@@ -56,6 +56,8 @@ Open **File > Characters...** to manage your characters.
 
 If a character changes owner (it was sold or transferred to another account), EVE Farm refuses to log it in again under the new owner. Remove it and add it again to keep tracking it. Its history so far is kept.
 
+If EVE no longer accepts a character's login, for example after you revoked EVE Farm's access to the account, its updates fail with a message that asks you to add it again. Click **Add Character...** and log in with that character. Its history is kept.
+
 When a new version of EVE Farm needs a new permission from EVE, the release notes say so, and characters added before that version must be added again.
 
 ## Updating your data
@@ -89,6 +91,7 @@ While a line is waiting, its **Now** button shows the time left. The waits follo
 Some things happen by themselves:
 
 - when EVE Farm starts, it updates the assets and skills and takes a Tracker snapshot of every character;
+- the LP of every character is read once an hour, as soon as EVE renews it, for **LP per Day** in the LP Store tab;
 - market prices refresh once a day;
 - the Gamelogs are scanned for new kills every 10 minutes;
 - logins are kept alive in the background, so you don't have to log in again.
@@ -148,7 +151,7 @@ Your buy and sell orders with price, quantity, location, issue and expiry date, 
 
 - **Show closed orders** adds the orders that were filled, cancelled or expired. EVE only shows those for 90 days; EVE Farm keeps them.
 - **Outbid** says whether someone else has a better price than you at the same station: a cheaper sell order or a higher buy order. Orders of your own characters don't count. EVE Farm checks every 15 minutes while it runs, so the column fills in about a minute after it starts. **Competitor Price** (hidden at first) shows that best price.
-- **Broker's Fee** and **Broker's Fee %** show what you paid to place the order, matched from your wallet journal.
+- **Broker's Fee** and **Broker's Fee %** show what you paid to place the order: the broker's fee in your wallet journal from the second the order was issued. They stay empty when the journal has no fee from that second, for example for orders placed before EVE Farm saved your journal.
 - Hidden columns (right-click a column header and choose **Choose Columns...** to show them): **Market Sell Min**, **Market Buy Max**, **Market Price**, **Market Margin %** and **Market Profit +**, which compare your price with the market.
 
 ### Transactions
@@ -167,7 +170,9 @@ Your industry jobs: activity (manufacturing, research, copying, invention, react
 
 ### LP Store
 
-What your loyalty points are worth in each corporation's LP store.
+What your loyalty points are worth in each corporation's LP store, and how much LP you earn each day. It has two tabs: **Offers** and **LP per Day**.
+
+In **Offers**:
 
 1. Pick a **Character:** and a **Corporation:**. **Your LP** at the bottom shows the character's LP with that corporation.
 2. Click **Show Offers** to load and price the store.
@@ -184,6 +189,15 @@ For each offer you see the item, quantity, LP cost, ISK cost, the other items it
 - Right-click an **Other Requirements** or **Build Materials** cell and choose **Copy** to copy the items of the selected offers as a list you can paste into EVE's multibuy window.
 - **LP History...** shows every change in your LP that EVE Farm has seen, per character and corporation.
 - **Record Purchase...** saves what you bought from the selected offer, so the **LP Purchases** tab can tell you when selling it pays.
+
+**LP per Day** is a calendar of the last year, one square per day, like the contributions chart on GitHub. The darker the square, the more LP your characters earned that day.
+
+- Pick a **Character:** and a **Corporation:** to see only theirs.
+- Hover a day to see its LP, where it came from and what it is worth at your ISK/LP target. Click it to list it under the calendar.
+- The line under the calendar adds up the last 7 and 30 days and shows your best day.
+- EVE only shows how much LP you have, not when you earned it, and it renews that number once an hour. EVE Farm reads it as soon as EVE has new data, counts what went up since the read before, and puts it at the time EVE's data is from. Reading more often wouldn't bring anything new, so **Update** doesn't read it again before EVE renews it either. The line under the summary says how fresh your LP is and when the next read is; hover **Your LP** in **Offers** to see the same.
+- LP you earned while EVE Farm was closed shows on the day it reads it next, with a mark in the corner of the square, and the hover tip says since when. LP you spend between two reads isn't seen.
+- Squares with only an outline are days before EVE Farm started saving your LP.
 
 ### LP Purchases
 

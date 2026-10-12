@@ -4,6 +4,7 @@ import com.evefarm.esi.dto.LoyaltyOfferDto;
 import com.evefarm.esi.dto.LoyaltyPointDto;
 import com.fasterxml.jackson.core.type.TypeReference;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -15,11 +16,16 @@ public final class LoyaltyApi {
         this.client = client;
     }
 
-    public List<LoyaltyPointDto> listLoyaltyPoints(long characterId, String accessToken) {
-        String body = client.get("/characters/" + characterId + "/loyalty/points/", accessToken, Map.of());
+    public record LoyaltyPoints(List<LoyaltyPointDto> points, Duration age, Duration freshFor) {
+    }
+
+    public LoyaltyPoints readLoyaltyPoints(long characterId, String accessToken) {
+        EsiHttpClient.Cached response = client.getCached("/characters/" + characterId + "/loyalty/points/",
+                accessToken, Map.of());
         try {
-            return client.objectMapper().readValue(body, new TypeReference<List<LoyaltyPointDto>>() {
-            });
+            return new LoyaltyPoints(client.objectMapper().readValue(response.body(),
+                    new TypeReference<List<LoyaltyPointDto>>() {
+                    }), response.age(), response.freshFor());
         } catch (Exception e) {
             throw new IllegalStateException("Failed to parse loyalty points", e);
         }

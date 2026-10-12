@@ -90,7 +90,7 @@ public final class MainFrame extends JFrame {
     private ContractsPanel contractsPanel;
     private IndustryJobsPanel industryJobsPanel;
     private ValuesPanel valuesPanel;
-    private LpStorePanel lpStorePanel;
+    private LpStoreTabs lpStoreTabs;
     private LpPurchasesPanel lpPurchasesPanel;
     private NpcKillsPanel killsPanel;
     private AgentsPanel agentsPanel;
@@ -127,7 +127,7 @@ public final class MainFrame extends JFrame {
         contractsPanel = new ContractsPanel(appContext);
         industryJobsPanel = new IndustryJobsPanel(appContext);
         valuesPanel = new ValuesPanel(appContext);
-        lpStorePanel = new LpStorePanel(appContext);
+        lpStoreTabs = new LpStoreTabs(appContext);
         lpPurchasesPanel = new LpPurchasesPanel(appContext);
         killsPanel = new NpcKillsPanel(appContext);
         agentsPanel = new AgentsPanel(appContext);
@@ -145,7 +145,7 @@ public final class MainFrame extends JFrame {
         tabSpecs.put("contracts", new TabSpec("Contracts", Icons.DOCUMENT, contractsPanel));
         tabSpecs.put("industryJobs", new TabSpec("Industry Jobs", Icons.FACTORY, industryJobsPanel));
         tabSpecs.put("values", new TabSpec("Values", Icons.VALUE, valuesPanel));
-        tabSpecs.put("lpStore", new TabSpec("LP Store", Icons.LP, lpStorePanel));
+        tabSpecs.put("lpStore", new TabSpec("LP Store", Icons.LP, lpStoreTabs));
         tabSpecs.put("lpPurchases", new TabSpec("LP Purchases", Icons.PACKAGE, lpPurchasesPanel));
         tabSpecs.put("kills", new TabSpec("NPC Kills", Icons.CROSSHAIR, killsPanel));
         tabSpecs.put("abyss", new TabSpec("Abyss", Icons.ABYSS, abyssPanel));
@@ -183,8 +183,8 @@ public final class MainFrame extends JFrame {
                 industryJobsPanel.onShown();
             } else if (selected == valuesPanel) {
                 valuesPanel.onShown();
-            } else if (selected == lpStorePanel) {
-                lpStorePanel.onShown();
+            } else if (selected == lpStoreTabs) {
+                lpStoreTabs.onShown();
             } else if (selected == lpPurchasesPanel) {
                 lpPurchasesPanel.onShown();
             } else if (selected == killsPanel) {
@@ -597,7 +597,7 @@ public final class MainFrame extends JFrame {
         contractsPanel.refreshCharacterFilter();
         industryJobsPanel.refreshCharacterFilter();
         valuesPanel.refreshCharacterFilter();
-        lpStorePanel.refreshCharacterFilter();
+        lpStoreTabs.refreshCharacterFilter();
         killsPanel.refreshCharacterFilter();
         abyssPanel.refreshCharacterFilter();
         miningPanel.refreshCharacterFilter();
@@ -858,7 +858,7 @@ public final class MainFrame extends JFrame {
         contractsPanel.onShown();
         industryJobsPanel.onShown();
         valuesPanel.onShown();
-        lpStorePanel.onShown();
+        lpStoreTabs.onShown();
         if (tabbedPane.getSelectedComponent() == lpPurchasesPanel) {
             lpPurchasesPanel.onShown();
         }

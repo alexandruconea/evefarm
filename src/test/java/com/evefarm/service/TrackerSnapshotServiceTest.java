@@ -8,7 +8,6 @@ import com.evefarm.db.dao.SnapshotDao;
 import com.evefarm.esi.ClonesApi;
 import com.evefarm.esi.ContractsApi;
 import com.evefarm.esi.IndustryApi;
-import com.evefarm.esi.LoyaltyApi;
 import com.evefarm.esi.MarketsApi;
 import com.evefarm.esi.SkillsApi;
 import com.evefarm.esi.WalletApi;
@@ -161,7 +160,7 @@ class TrackerSnapshotServiceTest {
         when(filters.find(42L)).thenReturn(new SkillPointFilter(false, 0));
         when(settings.getOrDefault(SettingsDao.LP_STORE_FAVORITE_CORPORATION_ID, "")).thenReturn("");
         return new TrackerSnapshotService(auth, wallet, clones, markets, contracts, industry, skills,
-                mock(LoyaltyApi.class), prices, mock(LpOfferPricingService.class), assets,
+                mock(LoyaltyPointService.class), prices, mock(LpOfferPricingService.class), assets,
                 snapshots, filters, settings, catalog);
     }
 }

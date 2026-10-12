@@ -10,6 +10,10 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -53,6 +57,33 @@ public final class EsiHttpClient {
 
     public String get(String path, String accessTokenOrNull, Map<String, String> query) {
         return send(buildRequest("GET", path, accessTokenOrNull, query, null));
+    }
+
+    public Cached getCached(String path, String accessTokenOrNull, Map<String, String> query) {
+        HttpResponse<String> response = sendRaw(buildRequest("GET", path, accessTokenOrNull, query, null));
+        return cached(response.body(), httpDate(response.headers().firstValue("Date")),
+                httpDate(response.headers().firstValue("Last-Modified")),
+                httpDate(response.headers().firstValue("Expires")));
+    }
+
+    static Cached cached(String body, Instant served, Instant lastModified, Instant expires) {
+        Duration age = served == null || lastModified == null || lastModified.isAfter(served) ? Duration.ZERO
+                : Duration.between(lastModified, served);
+        Duration freshFor = served == null || expires == null ? null
+                : expires.isAfter(served) ? Duration.between(served, expires) : Duration.ZERO;
+        return new Cached(body, age, freshFor);
+    }
+
+    public record Cached(String body, Duration age, Duration freshFor) {
+    }
+
+    static Instant httpDate(Optional<String> header) {
+        try {
+            return header.map(value -> ZonedDateTime.parse(value.trim(), DateTimeFormatter.RFC_1123_DATE_TIME)
+                    .toInstant()).orElse(null);
+        } catch (DateTimeParseException e) {
+            return null;
+        }
     }
 
     public String postJson(String path, String accessTokenOrNull, Object body) {

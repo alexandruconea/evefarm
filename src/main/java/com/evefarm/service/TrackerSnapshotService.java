@@ -8,15 +8,14 @@ import com.evefarm.db.dao.SnapshotDao;
 import com.evefarm.esi.ClonesApi;
 import com.evefarm.esi.ContractsApi;
 import com.evefarm.esi.IndustryApi;
-import com.evefarm.esi.LoyaltyApi;
 import com.evefarm.esi.MarketsApi;
 import com.evefarm.esi.SkillsApi;
 import com.evefarm.esi.WalletApi;
 import com.evefarm.esi.dto.ContractDto;
 import com.evefarm.esi.dto.IndustryJobDto;
-import com.evefarm.esi.dto.LoyaltyPointDto;
 import com.evefarm.esi.dto.MarketOrderDto;
 import com.evefarm.model.IndustryActivity;
+import com.evefarm.model.LoyaltyPointRow;
 import com.evefarm.model.SkillPointFilter;
 import com.evefarm.model.TrackerSnapshot;
 import com.evefarm.model.TypeQuantity;
@@ -47,7 +46,7 @@ public final class TrackerSnapshotService {
     private final ContractsApi contractsApi;
     private final IndustryApi industryApi;
     private final SkillsApi skillsApi;
-    private final LoyaltyApi loyaltyApi;
+    private final LoyaltyPointService loyaltyPointService;
     private final PriceService priceService;
     private final LpOfferPricingService lpOfferPricingService;
     private final AssetDao assetDao;
@@ -58,8 +57,9 @@ public final class TrackerSnapshotService {
 
     public TrackerSnapshotService(AuthService authService, WalletApi walletApi, ClonesApi clonesApi,
                                    MarketsApi marketsApi, ContractsApi contractsApi, IndustryApi industryApi,
-                                   SkillsApi skillsApi, LoyaltyApi loyaltyApi, PriceService priceService,
-                                   LpOfferPricingService lpOfferPricingService, AssetDao assetDao,
+                                   SkillsApi skillsApi, LoyaltyPointService loyaltyPointService,
+                                   PriceService priceService, LpOfferPricingService lpOfferPricingService,
+                                   AssetDao assetDao,
                                    SnapshotDao snapshotDao, SkillPointFilterDao skillPointFilterDao,
                                    SettingsDao settingsDao, IndustryCatalogService industryCatalogService) {
         this.authService = authService;
@@ -69,7 +69,7 @@ public final class TrackerSnapshotService {
         this.contractsApi = contractsApi;
         this.industryApi = industryApi;
         this.skillsApi = skillsApi;
-        this.loyaltyApi = loyaltyApi;
+        this.loyaltyPointService = loyaltyPointService;
         this.priceService = priceService;
         this.lpOfferPricingService = lpOfferPricingService;
         this.assetDao = assetDao;
@@ -115,7 +115,7 @@ public final class TrackerSnapshotService {
         SkillPointFilter filter = skillPointFilterDao.find(characterId);
         double skillPointValue = filter.enabled() ? skillPointValue(skillPoints, filter.minimumSp()) : 0;
 
-        double lpValue = lpValue(characterId, accessToken);
+        double lpValue = lpValue(characterId);
 
         TrackerSnapshot snapshot = TrackerSnapshot.of(characterId, Instant.now(), walletBalance, assetsValue,
                 implantsValue, sellOrdersValue, escrowValue, escrowToCoverValue, manufacturingValue,
@@ -168,7 +168,7 @@ public final class TrackerSnapshotService {
         return value == null ? 0 : value;
     }
 
-    private double lpValue(long characterId, String accessToken) {
+    private double lpValue(long characterId) {
         String favoriteCorpId = settingsDao.getOrDefault(SettingsDao.LP_STORE_FAVORITE_CORPORATION_ID, "");
         if (favoriteCorpId.isBlank()) {
             return 0;
@@ -180,9 +180,10 @@ public final class TrackerSnapshotService {
             return 0;
         }
 
-        long lpBalance = loyaltyApi.listLoyaltyPoints(characterId, accessToken).stream()
+        loyaltyPointService.refreshLoyaltyPointsForCharacter(characterId);
+        long lpBalance = loyaltyPointService.getLoyaltyPoints(characterId).stream()
                 .filter(p -> p.corporationId() == corporationId)
-                .mapToLong(LoyaltyPointDto::loyaltyPoints)
+                .mapToLong(LoyaltyPointRow::loyaltyPoints)
                 .findFirst().orElse(0);
         if (lpBalance <= 0) {
             return 0;
