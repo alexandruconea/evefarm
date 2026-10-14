@@ -15,6 +15,7 @@ import com.evefarm.esi.dto.ContractDto;
 import com.evefarm.esi.dto.IndustryJobDto;
 import com.evefarm.esi.dto.SkillsDto;
 import com.evefarm.model.IndustryActivity;
+import com.evefarm.model.LoyaltyPointRow;
 import com.evefarm.model.SkillPointFilter;
 import com.evefarm.model.TrackerSnapshot;
 import com.evefarm.model.TypeQuantity;
@@ -26,7 +27,6 @@ import java.util.Optional;
 import java.util.OptionalDouble;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -36,25 +36,26 @@ import static org.mockito.Mockito.when;
 
 class TrackerSnapshotServiceTest {
 
-    private final TrackerSnapshotService service = new TrackerSnapshotService(
-            null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-
     @Test
-    void keepsIskPerLpWhenTheOfferSellsWithinAWeek() {
-        assertEquals(9.3, service.liquidIskPerLp(9.3, 2.5));
-        assertEquals(9.3, service.liquidIskPerLp(9.3, 7.0));
-    }
+    void lpIsWorthTheIskPerLpTargetOfTheLpStore() {
+        AuthService auth = mock(AuthService.class);
+        when(auth.getValidAccessToken(42L)).thenReturn("token");
+        LoyaltyPointService loyalty = mock(LoyaltyPointService.class);
+        when(loyalty.getLoyaltyPoints(42L)).thenReturn(List.of(
+                new LoyaltyPointRow(1000043L, 2_678_483L), new LoyaltyPointRow(1000419L, 53_000L)));
+        SettingsDao settings = mock(SettingsDao.class);
+        when(settings.getOrDefault(SettingsDao.LP_STORE_FAVORITE_CORPORATION_ID, "")).thenReturn("1000043");
+        when(settings.getDouble(SettingsDao.LP_STORE_TARGET_ISK_PER_LP, SettingsDao.DEFAULT_LP_STORE_TARGET_ISK_PER_LP))
+                .thenReturn(700.0);
+        TrackerSnapshotService tracker = tracker(auth, mock(WalletApi.class), mock(AssetDao.class),
+                mock(SnapshotDao.class), mock(IndustryApi.class), mock(PriceService.class),
+                mock(IndustryCatalogService.class), loyalty, settings);
 
-    @Test
-    void dropsIskPerLpWhenTheOfferTakesLongerThanAWeekToSell() {
-        assertNull(service.liquidIskPerLp(999999.0, 7.5));
-        assertNull(service.liquidIskPerLp(999999.0, Double.POSITIVE_INFINITY));
-    }
+        TrackerSnapshot snapshot = tracker.captureSnapshot(42L);
 
-    @Test
-    void dropsIskPerLpWhenTheDailyVolumeIsUnknown() {
-        assertNull(service.liquidIskPerLp(9.3, null));
-        assertNull(service.liquidIskPerLp(null, 1.0));
+        assertEquals(2_678_483 * 700.0, snapshot.lpValue(), "only the favorite corporation's LP, at the target");
+        assertEquals(snapshot.lpValue(), snapshot.totalValue());
+        verify(loyalty).refreshLoyaltyPointsForCharacter(42L);
     }
 
     @Test
@@ -147,20 +148,27 @@ class TrackerSnapshotServiceTest {
     private static TrackerSnapshotService tracker(AuthService auth, WalletApi wallet, AssetDao assets,
                                                    SnapshotDao snapshots, IndustryApi industry, PriceService prices,
                                                    IndustryCatalogService catalog) {
+        SettingsDao settings = mock(SettingsDao.class);
+        when(settings.getOrDefault(SettingsDao.LP_STORE_FAVORITE_CORPORATION_ID, "")).thenReturn("");
+        return tracker(auth, wallet, assets, snapshots, industry, prices, catalog, mock(LoyaltyPointService.class),
+                settings);
+    }
+
+    private static TrackerSnapshotService tracker(AuthService auth, WalletApi wallet, AssetDao assets,
+                                                   SnapshotDao snapshots, IndustryApi industry, PriceService prices,
+                                                   IndustryCatalogService catalog, LoyaltyPointService loyalty,
+                                                   SettingsDao settings) {
         ClonesApi clones = mock(ClonesApi.class);
         MarketsApi markets = mock(MarketsApi.class);
         ContractsApi contracts = mock(ContractsApi.class);
         SkillsApi skills = mock(SkillsApi.class);
         SkillPointFilterDao filters = mock(SkillPointFilterDao.class);
-        SettingsDao settings = mock(SettingsDao.class);
         when(clones.listImplants(42L, "token")).thenReturn(List.of());
         when(markets.listCharacterOrders(42L, "token")).thenReturn(List.of());
         when(contracts.listContracts(42L, "token")).thenReturn(List.of());
         when(skills.getSkills(42L, "token")).thenReturn(new SkillsDto(0));
         when(filters.find(42L)).thenReturn(new SkillPointFilter(false, 0));
-        when(settings.getOrDefault(SettingsDao.LP_STORE_FAVORITE_CORPORATION_ID, "")).thenReturn("");
-        return new TrackerSnapshotService(auth, wallet, clones, markets, contracts, industry, skills,
-                mock(LoyaltyPointService.class), prices, mock(LpOfferPricingService.class), assets,
-                snapshots, filters, settings, catalog);
+        return new TrackerSnapshotService(auth, wallet, clones, markets, contracts, industry, skills, loyalty, prices,
+                assets, snapshots, filters, settings, catalog);
     }
 }

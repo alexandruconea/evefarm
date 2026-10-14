@@ -22,8 +22,6 @@ import com.evefarm.model.TypeQuantity;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.Stream;
 
 public final class TrackerSnapshotService {
 
@@ -32,7 +30,6 @@ public final class TrackerSnapshotService {
     private static final String COURIER = "courier";
     private static final String OUTSTANDING = "outstanding";
     private static final String IN_PROGRESS = "in_progress";
-    private static final double LIQUID_DAYS = 7;
 
     private static final int TYPE_ID_SKILL_EXTRACTOR = 40519;
     private static final int TYPE_ID_LARGE_SKILL_INJECTOR = 40520;
@@ -48,7 +45,6 @@ public final class TrackerSnapshotService {
     private final SkillsApi skillsApi;
     private final LoyaltyPointService loyaltyPointService;
     private final PriceService priceService;
-    private final LpOfferPricingService lpOfferPricingService;
     private final AssetDao assetDao;
     private final SnapshotDao snapshotDao;
     private final SkillPointFilterDao skillPointFilterDao;
@@ -58,8 +54,7 @@ public final class TrackerSnapshotService {
     public TrackerSnapshotService(AuthService authService, WalletApi walletApi, ClonesApi clonesApi,
                                    MarketsApi marketsApi, ContractsApi contractsApi, IndustryApi industryApi,
                                    SkillsApi skillsApi, LoyaltyPointService loyaltyPointService,
-                                   PriceService priceService, LpOfferPricingService lpOfferPricingService,
-                                   AssetDao assetDao,
+                                   PriceService priceService, AssetDao assetDao,
                                    SnapshotDao snapshotDao, SkillPointFilterDao skillPointFilterDao,
                                    SettingsDao settingsDao, IndustryCatalogService industryCatalogService) {
         this.authService = authService;
@@ -71,7 +66,6 @@ public final class TrackerSnapshotService {
         this.skillsApi = skillsApi;
         this.loyaltyPointService = loyaltyPointService;
         this.priceService = priceService;
-        this.lpOfferPricingService = lpOfferPricingService;
         this.assetDao = assetDao;
         this.snapshotDao = snapshotDao;
         this.skillPointFilterDao = skillPointFilterDao;
@@ -185,26 +179,8 @@ public final class TrackerSnapshotService {
                 .filter(p -> p.corporationId() == corporationId)
                 .mapToLong(LoyaltyPointRow::loyaltyPoints)
                 .findFirst().orElse(0);
-        if (lpBalance <= 0) {
-            return 0;
-        }
-
-        double bestIskPerLp = lpOfferPricingService.listPricedOffers(corporationId).stream()
-                .flatMap(offer -> Stream.of(
-                        liquidIskPerLp(offer.iskPerLpSell(), offer.daysToSell()),
-                        liquidIskPerLp(offer.iskPerLpBuy(), offer.daysToSell())))
-                .filter(Objects::nonNull)
-                .mapToDouble(Double::doubleValue)
-                .max().orElse(0);
-
-        return bestIskPerLp * lpBalance;
-    }
-
-    Double liquidIskPerLp(Double iskPerLp, Double daysToSell) {
-        if (iskPerLp == null || daysToSell == null || daysToSell > LIQUID_DAYS) {
-            return null;
-        }
-        return iskPerLp;
+        return lpBalance * settingsDao.getDouble(SettingsDao.LP_STORE_TARGET_ISK_PER_LP,
+                SettingsDao.DEFAULT_LP_STORE_TARGET_ISK_PER_LP);
     }
 
     private double skillPointValue(long totalSkillPoints, long extraMinimumSp) {

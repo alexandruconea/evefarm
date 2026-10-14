@@ -21,6 +21,7 @@ public final class SettingsDao {
     public static final String WINDOW_HEIGHT = "window_height";
     public static final String WINDOW_MAXIMIZED = "window_maximized";
     public static final String LP_STORE_TARGET_ISK_PER_LP = "lp_store_target_isk_per_lp";
+    public static final double DEFAULT_LP_STORE_TARGET_ISK_PER_LP = 500;
     public static final String LP_STORE_FAVORITE_CORPORATION_ID = "lp_store_favorite_corporation_id";
     public static final String GAMELOG_DIRECTORY = "gamelog_directory";
     public static final String EVE_SETTINGS_DIRECTORY = "eve_settings_directory";

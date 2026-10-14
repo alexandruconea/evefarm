@@ -83,7 +83,8 @@ public final class LpProductionPanel extends JPanel {
     public void onShown() {
         BackgroundLoader.load(generation, () -> new Loaded(appContext.loyaltyPointService.gains(),
                         appContext.loyaltyPointService.firstRecorded(), appContext.loyaltyPointService.checks(),
-                        appContext.settingsDao.getDouble(SettingsDao.LP_STORE_TARGET_ISK_PER_LP, 500)),
+                        appContext.settingsDao.getDouble(SettingsDao.LP_STORE_TARGET_ISK_PER_LP,
+                                SettingsDao.DEFAULT_LP_STORE_TARGET_ISK_PER_LP)),
                 this::apply, "the LP earned per day",
                 () -> summaryLabel.setText("Couldn't load the LP history - see the log."));
     }
