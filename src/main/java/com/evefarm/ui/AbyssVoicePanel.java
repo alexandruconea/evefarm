@@ -81,8 +81,10 @@ final class AbyssVoicePanel extends JPanel {
             appContext.aggroWatchService.stop();
         }
         aggroLabel.setText(!aggroCheck.isSelected() ? "Off"
-                : folderFound ? "Listening for NPCs shooting at your characters"
-                : "EVE's Gamelogs folder wasn't found - set it in Options > Settings");
+                : !folderFound ? "EVE's Gamelogs folder wasn't found - set it in Options > Settings"
+                : !appContext.voiceService.isAvailable() ? "No speech program found - install speech-dispatcher "
+                + "or espeak-ng"
+                : "Listening for NPCs shooting at your characters");
     }
 
     private void showAggro(AggroWatchService.Alert alert) {

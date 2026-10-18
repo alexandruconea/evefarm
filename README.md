@@ -1,12 +1,24 @@
 # EVE Farm
 
-EVE Farm is a Windows desktop app that keeps all your EVE Online characters in one place: assets and net worth over time, wallet journal and transactions, market orders, contracts, industry jobs, mining ledger, loyalty points and LP store value, standings with factions, corporations and agents, a skill planner, an industry calculator with invention, build or buy and reactions, NPC kills from your game logs, officer spawns and drops, agents, and Abyssal Deadspace runs with a timer that starts and stops by itself.
+EVE Farm is a desktop app for Windows and Linux that keeps all your EVE Online characters in one place: assets and net worth over time, wallet journal and transactions, market orders, contracts, industry jobs, mining ledger, loyalty points and LP store value, standings with factions, corporations and agents, a skill planner, an industry calculator with invention, build or buy and reactions, NPC kills from your game logs, officer spawns and drops, agents, and Abyssal Deadspace runs with a timer that starts and stops by itself.
 
 ## Download
 
+**Windows**
+
 1. Download `EVEFarm-<version>-win64.zip` from the [latest release](https://github.com/alexandruconea/evefarm/releases/latest).
 2. Unzip it anywhere, for example `C:\Games\EVEFarm`, and run `EVEFarm.exe`. Java is included, so there is nothing else to install.
-3. Open **File → Characters... → Add Character...** and log in with your EVE account in the browser window that opens.
+
+**Linux** (64-bit)
+
+1. Download `EVEFarm-<version>-linux-x64.tar.gz` from the [latest release](https://github.com/alexandruconea/evefarm/releases/latest).
+2. Extract it anywhere, for example with `tar -xzf EVEFarm-<version>-linux-x64.tar.gz -C ~/Applications`, and run `EVEFarm/bin/EVEFarm`. Java is included. `EVEFarm/add-to-menu.sh` adds EVE Farm to your applications menu.
+3. EVE Farm keeps the key to your EVE logins in your desktop keyring (GNOME Keyring, KWallet or another Secret Service keyring), so it needs `libsecret`. Most desktops already have it; on Ubuntu, Debian or Mint, `sudo apt install libsecret-1-0 gnome-keyring` adds it.
+4. Optional: `speech-dispatcher` or `espeak-ng` for the aggro voice in the **Abyss** tab, and `notify-send` (package `libnotify-bin` on Ubuntu) for notifications.
+
+EVE run through Steam (Proton), Lutris or Wine is found by itself. If the Gamelogs folder isn't found, set it in **Options → Settings...**.
+
+Then open **File → Characters... → Add Character...** and log in with your EVE account in the browser window that opens.
 
 ## Updates
 
@@ -14,7 +26,7 @@ EVE Farm checks for a new version when it starts and once a day. **Help → Chec
 
 ## Your data
 
-Everything stays on your computer, in `%USERPROFILE%\.evefarm`:
+Everything stays on your computer, in `%USERPROFILE%\.evefarm` on Windows and `~/.evefarm` on Linux (readable only by your user):
 
 - `evefarm.db` holds your characters, history and settings;
 - `backups` holds automatic daily backups (the last 7 days and one per month for a year);
@@ -24,7 +36,7 @@ EVE only shows the last 30 to 90 days of most history, so EVE Farm saves it as i
 
 **Options → Settings...** can copy every automatic backup to a second folder, such as a cloud-synced one. **Options → Backup Data...** and **Restore Data...** create or restore a backup by hand.
 
-EVE Farm logs in through the official EVE SSO (OAuth 2.0 with PKCE), so it never sees your password. Login tokens are encrypted with Windows DPAPI and can only be read by your Windows account.
+EVE Farm logs in through the official EVE SSO (OAuth 2.0 with PKCE), so it never sees your password. Login tokens are encrypted: on Windows with DPAPI, so only your Windows account can read them; on Linux with a key kept in your desktop keyring.
 
 ## Privacy
 
@@ -38,21 +50,22 @@ EVE Farm has no telemetry and sends nothing to its developer. It only connects t
 
 A character's location and ship are only read while you track Abyss runs for it in the **Abyss** tab, every 10 seconds. EVE Farm saves the runs it detects (start, length and ship), not where the character has been. While tracking, it also checks the clipboard every second, so that a cargo list you copy in EVE counts as the cargo before or after a run. Anything that isn't a list of EVE items is ignored and never saved.
 
-The aggro voice in the **Abyss** tab reads your characters' Gamelogs on this computer and speaks with Windows' own voice when NPCs start shooting at one of your characters. It only plays a sound; it never sends anything or acts in the game for you.
+The aggro voice in the **Abyss** tab reads your characters' Gamelogs on this computer and speaks with your system's voice (Windows' own voice, or speech-dispatcher or espeak-ng on Linux) when NPCs start shooting at one of your characters. It only plays a sound; it never sends anything or acts in the game for you.
 
 ## Uninstalling
 
 1. Close EVE Farm.
-2. Delete the folder you unzipped it into. EVE Farm doesn't install anything else and doesn't change Windows settings.
-3. To remove your data too, delete `%USERPROFILE%\.evefarm`. This also deletes the automatic backups, so copy any you want to keep first.
-4. If you used **Copy EVE Settings...**, the EVE files it replaced are kept in a `.evefarm-backups` folder inside EVE's settings folder (`%LOCALAPPDATA%\CCP\EVE\..._tranquility`). Delete it when you no longer need them.
+2. Delete the folder you unzipped it into. EVE Farm doesn't install anything else and doesn't change system settings.
+3. To remove your data too, delete `%USERPROFILE%\.evefarm` (`~/.evefarm` on Linux). This also deletes the automatic backups, so copy any you want to keep first. On Linux, also delete **EVE Farm login key** from your keyring (for example in Passwords and Keys or KWallet Manager).
+4. If you used **Copy EVE Settings...**, the EVE files it replaced are kept in a `.evefarm-backups` folder inside EVE's settings folder (`%LOCALAPPDATA%\CCP\EVE\..._tranquility` on Windows). Delete it when you no longer need them.
 
 ## Building from source
 
 You need JDK 25.
 
-- `mvnw.cmd verify` builds the app and runs the tests.
+- `mvnw.cmd verify` (Windows) or `./mvnw verify` (Linux) builds the app and runs the tests.
 - `packaging\build-exe.cmd` creates `EVEFarm.exe` and the release zip in `packaging\dist`.
+- `sh packaging/linux/package.sh <version>`, on Linux after `./mvnw verify`, creates the Linux app and its `.tar.gz` in `dist`.
 
 ## Examples:
 <img width="1491" height="986" alt="Values" src="https://github.com/user-attachments/assets/c77adace-76bc-46c6-96aa-fb21ad5d79fb" />

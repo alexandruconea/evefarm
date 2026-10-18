@@ -7,6 +7,8 @@ import com.evefarm.update.ReleaseInfo;
 import com.evefarm.update.UpdateInstaller;
 import com.evefarm.util.AppInfo;
 import com.evefarm.util.AppPaths;
+import com.evefarm.util.Browser;
+import com.evefarm.util.Platform;
 import com.formdev.flatlaf.FlatLaf;
 
 import javax.imageio.ImageIO;
@@ -36,7 +38,6 @@ import java.awt.AWTException;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Image;
 import java.awt.MenuItem;
@@ -52,7 +53,6 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.InputStream;
-import java.net.URI;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -267,6 +267,9 @@ public final class MainFrame extends JFrame {
     }
 
     private void showTrayNotification(String caption, String text) {
+        if (Platform.isLinux() && LinuxNotifications.send(caption, text)) {
+            return;
+        }
         if (trayIcon == null) {
             LOG.info(caption + ": " + text);
             return;
@@ -397,8 +400,8 @@ public final class MainFrame extends JFrame {
                 if (userAsked || (check == UpdateCheck.STARTUP && isVisible())) {
                     showUpdateDialog(availableRelease);
                 } else if (trayIcon != null && !isVisible()) {
-                    trayIcon.displayMessage(AppInfo.NAME + " " + availableRelease.version() + " is available",
-                            "Open EVE Farm to update.", TrayIcon.MessageType.INFO);
+                    showTrayNotification(AppInfo.NAME + " " + availableRelease.version() + " is available",
+                            "Open EVE Farm to update.");
                 }
             }
         }.execute();
@@ -423,7 +426,7 @@ public final class MainFrame extends JFrame {
                 options, options[1]);
         if (choice == 0) {
             try {
-                Desktop.getDesktop().browse(URI.create(AppInfo.HOME_PAGE));
+                Browser.open(AppInfo.HOME_PAGE);
             } catch (Exception e) {
                 LOG.log(Level.INFO, "Couldn't open the GitHub page", e);
             }
@@ -845,7 +848,8 @@ public final class MainFrame extends JFrame {
         scroll.setPreferredSize(new Dimension(520, 180));
         JPanel panel = new JPanel(new BorderLayout(0, 8));
         panel.add(new JLabel("<html>These updates failed and weren't counted as done, so you can retry them right "
-                + "away.<br>Details are also in the log (%USERPROFILE%\\.evefarm\\logs).</html>"), BorderLayout.NORTH);
+                + "away.<br>Details are also in the log (" + AppPaths.appDataDir().resolve("logs") + ").</html>"),
+                BorderLayout.NORTH);
         panel.add(scroll, BorderLayout.CENTER);
         JOptionPane.showMessageDialog(this, panel, "Some updates failed", JOptionPane.WARNING_MESSAGE);
     }

@@ -1,17 +1,17 @@
 package com.evefarm.ui;
 
+import com.evefarm.util.Browser;
+
 import javax.swing.JOptionPane;
 import javax.swing.JTable;
 import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.Component;
 import java.awt.Cursor;
-import java.awt.Desktop;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.net.URI;
 
 final class ZkillboardLinks {
 
@@ -70,7 +70,7 @@ final class ZkillboardLinks {
 
     private static void open(JTable table, ZkillboardLink link) {
         try {
-            Desktop.getDesktop().browse(URI.create(link.url()));
+            Browser.open(link.url());
         } catch (Exception e) {
             JOptionPane.showMessageDialog(table, "Couldn't open the browser:\n" + link.url(),
                     "zKillboard", JOptionPane.WARNING_MESSAGE);

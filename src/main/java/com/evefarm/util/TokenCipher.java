@@ -1,69 +1,126 @@
 package com.evefarm.util;
 
-import com.sun.jna.platform.win32.Crypt32Util;
-import com.sun.jna.platform.win32.WinCrypt;
-
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.Locale;
+import java.util.List;
 
 public final class TokenCipher {
 
-    private static final String PREFIX = "dpapi:";
-    private static final boolean WINDOWS =
-            System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("windows");
-    private static final byte[] ENTROPY = "EVEFarm.TokenCipher.v1".getBytes(StandardCharsets.UTF_8);
+    static final byte[] ENTROPY = "EVEFarm.TokenCipher.v1".getBytes(StandardCharsets.UTF_8);
+    private static final List<String> PREFIXES = List.of(DpapiProtection.PREFIX, KeyringProtection.PREFIX);
+    private static final Protection PROTECTION = forPlatform(Platform.current());
+
+    interface Protection {
+        String prefix();
+
+        boolean isAvailable();
+
+        String unavailableMessage();
+
+        String protect(String plaintext);
+
+        String unprotect(String body);
+
+        default void check() {
+            if (!isAvailable()) {
+                throw new IllegalStateException(unavailableMessage());
+            }
+        }
+
+        default void preload() {
+        }
+    }
+
+    static Protection forPlatform(Platform platform) {
+        return switch (platform) {
+            case WINDOWS -> new DpapiProtection();
+            case LINUX -> new KeyringProtection(new LinuxKeyring());
+            default -> new Unavailable();
+        };
+    }
 
     public static String encrypt(String plaintext) {
+        return encrypt(PROTECTION, plaintext);
+    }
+
+    static String encrypt(Protection protection, String plaintext) {
         if (plaintext == null) {
             return null;
         }
-        if (!WINDOWS) {
-            throw new IllegalStateException("Windows DPAPI is unavailable - refusing to store a secret unencrypted");
-        }
-        try {
-            byte[] protectedBytes = Crypt32Util.cryptProtectData(
-                    plaintext.getBytes(StandardCharsets.UTF_8), ENTROPY,
-                    WinCrypt.CRYPTPROTECT_UI_FORBIDDEN, null, null);
-            return PREFIX + Base64.getEncoder().encodeToString(protectedBytes);
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to encrypt token with DPAPI - refusing to store "
-                    + "it unprotected", e);
-        }
+        protection.check();
+        return protection.prefix() + protection.protect(plaintext);
     }
 
     public static String decrypt(String stored) {
+        return decrypt(PROTECTION, stored);
+    }
+
+    static String decrypt(Protection protection, String stored) {
         if (stored == null || stored.isEmpty()) {
             return stored;
         }
-        if (!stored.startsWith(PREFIX)) {
-            if (WINDOWS) {
-                return stored;
+        if (!protection.prefix().isEmpty() && stored.startsWith(protection.prefix())) {
+            if (!protection.isAvailable()) {
+                throw new IllegalStateException(protection.unavailableMessage());
             }
-            throw new IllegalStateException("Windows DPAPI is unavailable - refusing to read an unencrypted secret");
+            return protection.unprotect(stored.substring(protection.prefix().length()));
         }
-        byte[] protectedBytes = Base64.getDecoder().decode(stored.substring(PREFIX.length()));
-        try {
-            byte[] plainBytes = Crypt32Util.cryptUnprotectData(
-                    protectedBytes, ENTROPY, WinCrypt.CRYPTPROTECT_UI_FORBIDDEN, null);
-            return new String(plainBytes, StandardCharsets.UTF_8);
-        } catch (Exception withEntropy) {
-            try {
-                byte[] plainBytes = Crypt32Util.cryptUnprotectData(protectedBytes);
-                return new String(plainBytes, StandardCharsets.UTF_8);
-            } catch (Exception withoutEntropy) {
-                throw new IllegalStateException("Failed to decrypt a stored token; it may have been "
-                        + "created on a different Windows user account or machine", withoutEntropy);
-            }
+        if (isEncrypted(stored)) {
+            throw new IllegalStateException("A saved login was protected on another computer or system and "
+                    + "can't be read here - add the character again (File > Characters... > Add Character...).");
         }
+        if (!protection.isAvailable()) {
+            throw new IllegalStateException(protection.unavailableMessage());
+        }
+        return stored;
     }
 
     public static boolean isEncrypted(String stored) {
-        return stored != null && stored.startsWith(PREFIX);
+        return stored != null && PREFIXES.stream().anyMatch(stored::startsWith);
     }
 
     public static boolean isProtectionAvailable() {
-        return WINDOWS;
+        return PROTECTION.isAvailable();
+    }
+
+    public static String unavailableMessage() {
+        return PROTECTION.unavailableMessage();
+    }
+
+    public static void checkAvailable() {
+        PROTECTION.check();
+    }
+
+    public static void preload() {
+        PROTECTION.preload();
+    }
+
+    private static final class Unavailable implements Protection {
+
+        @Override
+        public String prefix() {
+            return "";
+        }
+
+        @Override
+        public boolean isAvailable() {
+            return false;
+        }
+
+        @Override
+        public String unavailableMessage() {
+            return "EVE Farm can keep your EVE logins safe only on Windows and Linux, so it won't store or read "
+                    + "them on this system.";
+        }
+
+        @Override
+        public String protect(String plaintext) {
+            throw new IllegalStateException(unavailableMessage());
+        }
+
+        @Override
+        public String unprotect(String body) {
+            throw new IllegalStateException(unavailableMessage());
+        }
     }
 
     private TokenCipher() {

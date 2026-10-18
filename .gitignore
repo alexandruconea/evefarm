@@ -9,3 +9,5 @@ packaging/dist/
 .classpath
 .project
 .settings/
+/dist/
+packaging/linux/stage/

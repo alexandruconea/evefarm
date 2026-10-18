@@ -4,8 +4,9 @@ import com.evefarm.db.dao.CharacterDao;
 import com.evefarm.db.dao.TokenDao;
 import com.evefarm.model.EveCharacter;
 import com.evefarm.model.TokenRecord;
+import com.evefarm.util.Browser;
+import com.evefarm.util.TokenCipher;
 
-import java.awt.Desktop;
 import java.net.URI;
 import java.time.Instant;
 import java.util.Map;
@@ -37,6 +38,7 @@ public final class AuthService {
     }
 
     public CharacterIdentity startLoginFlow() throws Exception {
+        TokenCipher.checkAvailable();
         OAuthConfig config = OAuthConfig.DEFAULT;
         String codeVerifier = PkceUtil.generateCodeVerifier();
         String codeChallenge = PkceUtil.deriveCodeChallenge(codeVerifier);
@@ -44,7 +46,7 @@ public final class AuthService {
 
         try (LoopbackCallbackServer callbackServer = new LoopbackCallbackServer(config.redirectPort(), state)) {
             URI authorizeUrl = ssoClient.buildAuthorizeUrl(config, state, codeChallenge);
-            openBrowser(authorizeUrl);
+            Browser.open(authorizeUrl);
 
             String code = callbackServer.awaitAuthorizationCode(CALLBACK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             TokenResponse tokenResponse = ssoClient.exchangeAuthorizationCode(config, code, codeVerifier);
@@ -111,13 +113,5 @@ public final class AuthService {
                 .map(EveCharacter::characterName)
                 .findFirst()
                 .orElse("character " + characterId);
-    }
-
-    private void openBrowser(URI uri) throws Exception {
-        if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-            Desktop.getDesktop().browse(uri);
-        } else {
-            throw new IllegalStateException("Cannot open a browser automatically; please open manually: " + uri);
-        }
     }
 }

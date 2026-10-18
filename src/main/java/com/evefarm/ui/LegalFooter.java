@@ -1,5 +1,7 @@
 package com.evefarm.ui;
 
+import com.evefarm.util.Browser;
+
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -11,13 +13,11 @@ import javax.swing.UIManager;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
-import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.net.URI;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -101,7 +101,7 @@ final class LegalFooter {
 
     private static void openSignupPage(JLabel owner) {
         try {
-            Desktop.getDesktop().browse(URI.create(SIGNUP_URL));
+            Browser.open(SIGNUP_URL);
         } catch (Exception e) {
             LOG.log(Level.WARNING, "Couldn't open the EVE sign-up page", e);
             JOptionPane.showMessageDialog(SwingUtilities.getWindowAncestor(owner),

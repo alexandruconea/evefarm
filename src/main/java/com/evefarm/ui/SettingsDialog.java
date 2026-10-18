@@ -4,6 +4,8 @@ import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.model.PriceMode;
 import com.evefarm.service.PriceService;
 import com.evefarm.util.AppPaths;
+import com.evefarm.util.Browser;
+import com.evefarm.util.Platform;
 import com.evefarm.util.TokenCipher;
 
 import javax.swing.JButton;
@@ -19,26 +21,29 @@ import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
 import java.awt.BorderLayout;
 import java.awt.Component;
-import java.awt.Desktop;
 import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
 import java.io.File;
-import java.net.URI;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public final class SettingsDialog extends JDialog {
 
+    private static final Logger LOG = Logger.getLogger(SettingsDialog.class.getName());
     private static final int FIELD_WIDTH = 320;
 
     private final SettingsDao settingsDao;
     private static final List<String> THEME_KEYS = List.of("system", "flatlaf-dark", "eve");
-    private final JComboBox<String> themeCombo = new JComboBox<>(new String[]{"Windows", "Dark", "EVE"});
+    private final JComboBox<String> themeCombo = new JComboBox<>(new String[]{
+            Platform.isWindows() ? "Windows" : "Light", "Dark", "EVE"});
     private final JComboBox<String> priceProviderCombo = new JComboBox<>(new String[]{
             "CCP (ESI, global average)", "Fuzzwork (Jita 4-4 sell price)", "Janice (Jita 4-4, requires API key)"});
     private final JPasswordField janiceApiKeyField = new JPasswordField();
+    private String unreadableJaniceKey;
     private final JButton janiceGetApiKeyButton = new JButton("How do I get one?");
     private final JComboBox<PriceMode> defaultPriceCombo = new JComboBox<>(PriceMode.values());
     private final JTextField gameLogDirectoryField = new JTextField();
@@ -120,7 +125,7 @@ public final class SettingsDialog extends JDialog {
         notificationsPanel.add(notifyLpTargetBox);
         for (JCheckBox box : List.of(notifyJobsBox, notifyOrdersBox, notifySkillsBox, notifyContractsBox,
                 notifyLpTargetBox)) {
-            box.setToolTipText("A Windows notification, checked every 15 minutes while EVE Farm runs");
+            box.setToolTipText("A desktop notification, checked every 15 minutes while EVE Farm runs");
         }
         c.anchor = GridBagConstraints.NORTHWEST;
         addRow(panel, c, row++, "Notifications:", notificationsPanel);
@@ -175,7 +180,7 @@ public final class SettingsDialog extends JDialog {
                 "Janice API Key", JOptionPane.YES_NO_OPTION, JOptionPane.INFORMATION_MESSAGE);
         if (result == JOptionPane.YES_OPTION) {
             try {
-                Desktop.getDesktop().browse(URI.create(discordUrl));
+                Browser.open(discordUrl);
             } catch (Exception e) {
                 JOptionPane.showMessageDialog(this, "Couldn't open the browser:\n" + discordUrl,
                         "Janice API Key", JOptionPane.WARNING_MESSAGE);
@@ -206,7 +211,14 @@ public final class SettingsDialog extends JDialog {
                 THEME_KEYS.indexOf(settingsDao.getOrDefault(SettingsDao.LAF_THEME, SettingsDao.DEFAULT_LAF_THEME))));
         String provider = settingsDao.getOrDefault(SettingsDao.PRICE_PROVIDER, PriceService.PROVIDER_CCP);
         priceProviderCombo.setSelectedIndex(providerIndex(provider));
-        janiceApiKeyField.setText(TokenCipher.decrypt(settingsDao.getOrDefault(SettingsDao.JANICE_API_KEY, "")));
+        String storedJaniceKey = settingsDao.getOrDefault(SettingsDao.JANICE_API_KEY, "");
+        try {
+            janiceApiKeyField.setText(TokenCipher.decrypt(storedJaniceKey));
+        } catch (IllegalStateException e) {
+            LOG.log(Level.WARNING, "The saved Janice API key couldn't be read", e);
+            unreadableJaniceKey = storedJaniceKey;
+            janiceApiKeyField.setText("");
+        }
         updateJaniceFieldEnabled();
         String priceMode = settingsDao.getOrDefault(SettingsDao.DEFAULT_PRICE_MODE, PriceMode.SELL_AVG.name());
         try {
@@ -240,6 +252,16 @@ public final class SettingsDialog extends JDialog {
     }
 
     private void save() {
+        String janiceKey = new String(janiceApiKeyField.getPassword()).trim();
+        String storedJaniceKey;
+        try {
+            storedJaniceKey = janiceKey.isEmpty() && unreadableJaniceKey != null ? unreadableJaniceKey
+                    : janiceKey.isEmpty() ? "" : TokenCipher.encrypt(janiceKey);
+        } catch (IllegalStateException e) {
+            JOptionPane.showMessageDialog(this, "The Janice API key couldn't be saved:\n" + e.getMessage(),
+                    "Settings", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
         settingsDao.set(SettingsDao.LAF_THEME, THEME_KEYS.get(themeCombo.getSelectedIndex()));
         String provider = switch (priceProviderCombo.getSelectedIndex()) {
             case 1 -> PriceService.PROVIDER_FUZZWORK;
@@ -247,8 +269,7 @@ public final class SettingsDialog extends JDialog {
             default -> PriceService.PROVIDER_CCP;
         };
         settingsDao.set(SettingsDao.PRICE_PROVIDER, provider);
-        String janiceKey = new String(janiceApiKeyField.getPassword()).trim();
-        settingsDao.set(SettingsDao.JANICE_API_KEY, janiceKey.isEmpty() ? "" : TokenCipher.encrypt(janiceKey));
+        settingsDao.set(SettingsDao.JANICE_API_KEY, storedJaniceKey);
         PriceMode priceMode = (PriceMode) defaultPriceCombo.getSelectedItem();
         settingsDao.set(SettingsDao.DEFAULT_PRICE_MODE, priceMode.name());
         settingsDao.set(SettingsDao.GAMELOG_DIRECTORY, gameLogDirectoryField.getText().trim());

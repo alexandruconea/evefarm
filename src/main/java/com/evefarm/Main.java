@@ -13,10 +13,12 @@ import com.evefarm.ui.TableStyler;
 import com.evefarm.ui.UnderlineTabbedPaneUI;
 import com.evefarm.util.AppLogging;
 import com.evefarm.util.AppPaths;
+import com.evefarm.util.Platform;
 import com.evefarm.util.SingleInstance;
 import com.evefarm.util.TokenCipher;
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLaf;
+import com.formdev.flatlaf.FlatLightLaf;
 
 import javax.swing.JDialog;
 import javax.swing.JFrame;
@@ -37,10 +39,11 @@ public final class Main {
     public static void main(String[] args) {
         SingleInstance instance = null;
         try {
-            Optional<SingleInstance> acquired = SingleInstance.acquire(AppPaths.appDataDir());
+            Optional<SingleInstance> acquired = SingleInstance.acquire(AppPaths.createAppDataDir());
             if (acquired.isEmpty()) {
                 if (!SingleInstance.signalRunningInstance(AppPaths.appDataDir())) {
-                    showMessage("EVE Farm is already running - look for its icon in the system tray.",
+                    showMessage("EVE Farm is already running - look for its window or its icon in the "
+                            + "system tray.",
                             JOptionPane.INFORMATION_MESSAGE);
                 }
                 return;
@@ -117,6 +120,11 @@ public final class Main {
         boolean showRestoreUndone = restoreUndone;
 
         installLookAndFeel(appContext.settingsDao.getOrDefault(SettingsDao.LAF_THEME, SettingsDao.DEFAULT_LAF_THEME));
+        if (appContext.tokenDao.hasTokens()) {
+            Thread keyring = new Thread(TokenCipher::preload, "keyring-preload");
+            keyring.setDaemon(true);
+            keyring.start();
+        }
         appContext.schedulerService.start();
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -145,8 +153,8 @@ public final class Main {
             return;
         }
         JOptionPane.showMessageDialog(null,
-                "Windows DPAPI isn't available on this system. EVE Farm will not store or read login tokens "
-                        + "or API keys in plaintext.\n\nAuthenticated features require the packaged Windows application.",
+                TokenCipher.unavailableMessage() + "\n\nEVE Farm never stores logins or API keys in plaintext, so "
+                        + "adding characters won't work until then.",
                 "Secret Storage Unavailable", JOptionPane.WARNING_MESSAGE);
     }
 
@@ -157,6 +165,8 @@ public final class Main {
                 UIManager.setLookAndFeel(new FlatDarkLaf());
             } else if ("eve".equals(theme)) {
                 UIManager.setLookAndFeel(new EveLaf());
+            } else if (!Platform.isWindows()) {
+                UIManager.setLookAndFeel(new FlatLightLaf());
             } else {
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
                 CompactMenuItemUI.install();
@@ -165,9 +175,9 @@ public final class Main {
                 ComboBoxFocus.hideDashedOutline();
             }
             CompactToolTips.install();
-            boolean flat = UIManager.getLookAndFeel() instanceof FlatLaf;
-            JFrame.setDefaultLookAndFeelDecorated(flat);
-            JDialog.setDefaultLookAndFeelDecorated(flat);
+            boolean decorated = UIManager.getLookAndFeel() instanceof FlatLaf && Platform.isWindows();
+            JFrame.setDefaultLookAndFeelDecorated(decorated);
+            JDialog.setDefaultLookAndFeelDecorated(decorated);
         } catch (Exception e) {
             LOG.log(Level.WARNING, "Failed to install look and feel '" + theme + "', falling back to default", e);
         }

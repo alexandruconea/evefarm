@@ -1,6 +1,8 @@
 package com.evefarm.service;
 
 import com.evefarm.db.dao.SettingsDao;
+import com.evefarm.util.AppPaths;
+import com.evefarm.util.Platform;
 
 import java.io.IOException;
 import java.nio.channels.FileChannel;
@@ -81,15 +83,13 @@ public final class EveSettingsService {
             return Optional.empty();
         }
         Path userHome = Path.of(home);
-        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
         List<Path> candidates = new ArrayList<>();
-        if (os.contains("win")) {
-            candidates.add(userHome.resolve("AppData/Local/CCP/EVE"));
-        } else if (os.contains("mac")) {
+        if (Platform.current() == Platform.MAC) {
             candidates.add(userHome.resolve("Library/Application Support/CCP/EVE"));
         } else {
-            candidates.add(userHome.resolve(".local/share/Steam/steamapps/compatdata/8500/pfx/drive_c/users/steamuser/AppData/Local/CCP/EVE"));
-            candidates.add(userHome.resolve(".steam/steam/steamapps/compatdata/8500/pfx/drive_c/users/steamuser/AppData/Local/CCP/EVE"));
+            for (Path userDirectory : AppPaths.eveUserDirectories()) {
+                candidates.add(userDirectory.resolve("AppData/Local/CCP/EVE"));
+            }
         }
         return candidates.stream()
                 .map(this::resolveTranquilityDirectory)
@@ -424,16 +424,13 @@ public final class EveSettingsService {
         if (home.isBlank()) {
             return null;
         }
-        Path userHome = Path.of(home);
-        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
-        if (os.contains("win")) {
-            return userHome.resolve("AppData/Roaming/EVE Online/logs");
+        if (Platform.current() == Platform.MAC) {
+            return Path.of(home).resolve("Library/Logs/EVE Online");
         }
-        if (os.contains("mac")) {
-            return userHome.resolve("Library/Logs/EVE Online");
-        }
-        return userHome.resolve(".local/share/Steam/steamapps/compatdata/8500/pfx/drive_c/users/steamuser/"
-                + "AppData/Roaming/EVE Online/logs");
+        List<Path> candidates = AppPaths.eveUserDirectories().stream()
+                .map(userDirectory -> userDirectory.resolve("AppData/Roaming/EVE Online/logs"))
+                .toList();
+        return candidates.stream().filter(Files::isDirectory).findFirst().orElse(candidates.getFirst());
     }
 
     private static Path createBackupDirectory(Path root) throws IOException {

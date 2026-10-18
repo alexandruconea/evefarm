@@ -31,7 +31,9 @@ class UpdateServiceTest {
               "assets": [
                 {"name": "EVEFarm-1.4.0-win64.zip.sha256", "browser_download_url": "https://example/sha", "size": 90},
                 {"name": "EVEFarm-1.4.0-win64.zip", "browser_download_url": "https://example/zip", "size": 76600000},
-                {"name": "EVEFarm-1.4.0-win64.zip.sig", "browser_download_url": "https://example/sig", "size": 89}
+                {"name": "EVEFarm-1.4.0-win64.zip.sig", "browser_download_url": "https://example/sig", "size": 89},
+                {"name": "EVEFarm-1.4.0-linux-x64.tar.gz", "browser_download_url": "https://example/tgz", "size": 71200000},
+                {"name": "EVEFarm-1.4.0-linux-x64.tar.gz.sig", "browser_download_url": "https://example/tgz-sig", "size": 89}
               ]
             }
             """;
@@ -62,7 +64,8 @@ class UpdateServiceTest {
     }
 
     private UpdateService service() {
-        return new UpdateService(settings, "http://127.0.0.1:" + server.getAddress().getPort() + "/latest");
+        return new UpdateService(settings, "http://127.0.0.1:" + server.getAddress().getPort() + "/latest",
+                AppLayout.WINDOWS);
     }
 
     @Test
@@ -70,11 +73,31 @@ class UpdateServiceTest {
         ReleaseInfo release = service().findNewerRelease("1.3.0").orElseThrow();
 
         assertEquals("1.4.0", release.version());
-        assertEquals("EVEFarm-1.4.0-win64.zip", release.zipName());
-        assertEquals("https://example/zip", release.zipUrl());
+        assertEquals("EVEFarm-1.4.0-win64.zip", release.assetName());
+        assertEquals("https://example/zip", release.assetUrl());
         assertEquals("https://example/sig", release.signatureUrl());
-        assertEquals(76_600_000, release.zipSize());
+        assertEquals(76_600_000, release.assetSize());
         assertTrue(release.notes().contains("Officer drops"));
+    }
+
+    @Test
+    void linuxGetsTheSignedTarGzOfTheSameRelease() throws Exception {
+        ReleaseInfo release = UpdateService.parseRelease(new ObjectMapper().readTree(RELEASE), AppLayout.LINUX)
+                .orElseThrow();
+
+        assertEquals("EVEFarm-1.4.0-linux-x64.tar.gz", release.assetName());
+        assertEquals("https://example/tgz", release.assetUrl());
+        assertEquals("https://example/tgz-sig", release.signatureUrl());
+        assertEquals(71_200_000, release.assetSize());
+    }
+
+    @Test
+    void aSystemWithoutABuildIsOnlyShownTheReleasePage() throws Exception {
+        ReleaseInfo release = UpdateService.parseRelease(new ObjectMapper().readTree(RELEASE), null).orElseThrow();
+
+        assertEquals("1.4.0", release.version());
+        assertNull(release.assetUrl());
+        assertNull(release.signatureUrl());
     }
 
     @Test
@@ -93,16 +116,17 @@ class UpdateServiceTest {
     @Test
     void draftsAndPrereleasesAreIgnoredAndMissingAssetsAreReported() throws Exception {
         ObjectMapper mapper = new ObjectMapper();
-        assertFalse(UpdateService.parseRelease(mapper.readTree(RELEASE.replace("\"draft\": false", "\"draft\": true")))
-                .isPresent());
+        assertFalse(UpdateService.parseRelease(mapper.readTree(RELEASE.replace("\"draft\": false", "\"draft\": true")),
+                AppLayout.WINDOWS).isPresent());
         assertFalse(UpdateService.parseRelease(
-                mapper.readTree(RELEASE.replace("\"prerelease\": false", "\"prerelease\": true"))).isPresent());
+                mapper.readTree(RELEASE.replace("\"prerelease\": false", "\"prerelease\": true")), AppLayout.WINDOWS)
+                .isPresent());
 
         ReleaseInfo manual = UpdateService.parseRelease(mapper.readTree(
-                "{\"tag_name\":\"1.3\",\"html_url\":\"https://x\",\"assets\":[{\"name\":\"EVEFarm-1.3.0-win64.zip\"}]}"))
-                .orElseThrow();
+                "{\"tag_name\":\"1.3\",\"html_url\":\"https://x\",\"assets\":[{\"name\":\"EVEFarm-1.3.0-win64.zip\"}]}"),
+                AppLayout.WINDOWS).orElseThrow();
         assertEquals("1.3", manual.version());
-        assertNull(manual.zipUrl(), "a hand-made release without the expected zip name can't be installed automatically");
+        assertNull(manual.assetUrl(), "a hand-made release without the expected zip name can't be installed automatically");
     }
 
     @Test
@@ -111,8 +135,8 @@ class UpdateServiceTest {
         for (String tag : new String[]{"v9.9.9<img src='https://example/x.png'>", "v../../9.9.9", "v9.9.9 ", "",
                 "v9.9.9.9.9", "latest"}) {
             assertFalse(UpdateService.parseRelease(mapper.readTree(
-                    RELEASE.replace("\"tag_name\": \"v1.4.0\"", "\"tag_name\": " + mapper.writeValueAsString(tag))))
-                    .isPresent(), tag);
+                    RELEASE.replace("\"tag_name\": \"v1.4.0\"", "\"tag_name\": " + mapper.writeValueAsString(tag))),
+                    AppLayout.WINDOWS).isPresent(), tag);
         }
     }
 

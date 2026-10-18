@@ -23,6 +23,7 @@ public final class UpdateService {
 
     private final SettingsDao settingsDao;
     private final String latestReleaseApi;
+    private final AppLayout layout;
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .followRedirects(HttpClient.Redirect.NORMAL)
@@ -30,12 +31,13 @@ public final class UpdateService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public UpdateService(SettingsDao settingsDao) {
-        this(settingsDao, LATEST_RELEASE_API);
+        this(settingsDao, LATEST_RELEASE_API, AppLayout.current().orElse(null));
     }
 
-    UpdateService(SettingsDao settingsDao, String latestReleaseApi) {
+    UpdateService(SettingsDao settingsDao, String latestReleaseApi, AppLayout layout) {
         this.settingsDao = settingsDao;
         this.latestReleaseApi = latestReleaseApi;
+        this.layout = layout;
     }
 
     public Optional<ReleaseInfo> findNewerRelease(String currentVersion) throws IOException {
@@ -59,11 +61,11 @@ public final class UpdateService {
         if (response.statusCode() / 100 != 2) {
             throw new IOException("GitHub answered HTTP " + response.statusCode() + " when checking for updates");
         }
-        return parseRelease(objectMapper.readTree(response.body()))
+        return parseRelease(objectMapper.readTree(response.body()), layout)
                 .filter(release -> AppInfo.compareVersions(release.version(), currentVersion) > 0);
     }
 
-    static Optional<ReleaseInfo> parseRelease(JsonNode release) {
+    static Optional<ReleaseInfo> parseRelease(JsonNode release, AppLayout layout) {
         if (release.path("draft").asBoolean(false) || release.path("prerelease").asBoolean(false)) {
             return Optional.empty();
         }
@@ -72,14 +74,14 @@ public final class UpdateService {
         if (!VERSION_FORMAT.matcher(version).matches()) {
             return Optional.empty();
         }
-        String zipName = "EVEFarm-" + version + "-win64.zip";
-        JsonNode zip = null;
+        String assetName = layout == null ? null : layout.assetName(version);
+        JsonNode download = null;
         JsonNode signature = null;
         for (JsonNode asset : release.path("assets")) {
             String name = asset.path("name").asText("");
-            if (name.equals(zipName)) {
-                zip = asset;
-            } else if (name.equals(zipName + ".sig")) {
+            if (name.equals(assetName)) {
+                download = asset;
+            } else if (name.equals(assetName + ".sig")) {
                 signature = asset;
             }
         }
@@ -87,9 +89,9 @@ public final class UpdateService {
                 version,
                 release.path("body").asText(""),
                 release.path("html_url").asText(AppInfo.HOME_PAGE + "/releases"),
-                zipName,
-                zip == null ? null : zip.path("browser_download_url").asText(null),
-                zip == null ? 0 : zip.path("size").asLong(0),
+                assetName,
+                download == null ? null : download.path("browser_download_url").asText(null),
+                download == null ? 0 : download.path("size").asLong(0),
                 signature == null ? null : signature.path("browser_download_url").asText(null)));
     }
 

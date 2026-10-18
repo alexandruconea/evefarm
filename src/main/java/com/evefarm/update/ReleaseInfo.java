@@ -4,9 +4,9 @@ public record ReleaseInfo(
         String version,
         String notes,
         String pageUrl,
-        String zipName,
-        String zipUrl,
-        long zipSize,
+        String assetName,
+        String assetUrl,
+        long assetSize,
         String signatureUrl
 ) {
 }

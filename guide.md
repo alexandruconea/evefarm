@@ -1,6 +1,6 @@
 # EVE Farm Guide
 
-EVE Farm is a Windows app that keeps all your EVE Online characters in one place. It reads your data through EVE's official API, saves it on your computer and keeps it for as long as you keep the app, even after EVE stops showing it.
+EVE Farm is an app for Windows and Linux that keeps all your EVE Online characters in one place. It reads your data through EVE's official API, saves it on your computer and keeps it for as long as you keep the app, even after EVE stops showing it.
 
 This guide walks through every part of the app. Menu and button names are written exactly as they appear in the app, for example **File > Characters...**.
 
@@ -38,10 +38,13 @@ This guide walks through every part of the app. Menu and button names are writte
 
 ## Getting started
 
-1. Download `EVEFarm-<version>-win64.zip` from the [latest release](https://github.com/alexandruconea/evefarm/releases/latest).
-2. Unzip it anywhere, for example `C:\Games\EVEFarm`, and run `EVEFarm.exe`. Java is included, so there is nothing else to install.
-3. The first time, the **Characters** window opens by itself. Click **Add Character...** and log in with your EVE account in the browser.
-4. Open **Update > Update...** and click **Update** to load everything for the first time.
+1. Download EVE Farm from the [latest release](https://github.com/alexandruconea/evefarm/releases/latest):
+   - **Windows:** `EVEFarm-<version>-win64.zip`. Unzip it anywhere, for example `C:\Games\EVEFarm`, and run `EVEFarm.exe`.
+   - **Linux:** `EVEFarm-<version>-linux-x64.tar.gz`. Extract it anywhere and run `EVEFarm/bin/EVEFarm`; `EVEFarm/add-to-menu.sh` adds it to your applications menu. Your EVE logins are protected with a key kept in your desktop keyring, so EVE Farm needs `libsecret` and a keyring such as GNOME Keyring or KWallet (on Ubuntu, Debian or Mint: `sudo apt install libsecret-1-0 gnome-keyring`).
+
+   Java is included, so there is nothing else to install.
+2. The first time, the **Characters** window opens by itself. Click **Add Character...** and log in with your EVE account in the browser.
+3. Open **Update > Update...** and click **Update** to load everything for the first time.
 
 Only one copy of EVE Farm runs at a time. Starting it again brings the open window to the front.
 
@@ -281,7 +284,7 @@ While tracking, EVE Farm reads the clipboard every second, but only a list of EV
 
 **Voice**
 
-It reads your characters' Gamelogs and speaks with Windows' own voice. It only plays a sound; it never sends anything or acts in the game.
+It reads your characters' Gamelogs and speaks with Windows' own voice. On Linux it uses speech-dispatcher (`spd-say`) or espeak-ng; if neither is installed, the Abyss tab says so. It only plays a sound; it never sends anything or acts in the game.
 
 - **Say who gets aggro** says a character's name as soon as NPCs start shooting at it.
 - **Volume** sets how loud it is.
@@ -427,16 +430,16 @@ Most tabs show a table, and all of them work the same way.
 
 Open **Options > Settings...**.
 
-- **Theme:** Windows, Dark or EVE. Restart EVE Farm to see the new theme.
+- **Theme:** Windows (Light on Linux), Dark or EVE. Restart EVE Farm to see the new theme.
 - **Price provider:** where prices come from:
   - **CCP (ESI, global average)**: EVE's own average price across all markets;
   - **Fuzzwork (Jita 4-4 sell price)**: prices from the Jita 4-4 market;
   - **Janice (Jita 4-4, requires API key)**: Janice's Jita prices. Janice has no public API, so you need your own key. **How do I get one?** explains how to ask for it on their Discord. The key is stored encrypted.
 - **Default price:** which price is used to value items: Sell Maximum, Sell Average, Sell Median, Sell Percentile, Sell Minimum, Midpoint, Buy Maximum, Buy Average, Buy Median, Buy Percentile or Buy Minimum. It only applies to Fuzzwork and Janice; CCP has a single average price.
-- **Gamelogs folder:** where EVE writes its Gamelogs, used by NPC Kills and the Abyss voice. Usually found by itself; **Browse...** sets it by hand.
+- **Gamelogs folder:** where EVE writes its Gamelogs, used by NPC Kills and the Abyss voice. Usually found by itself, also for EVE run through Steam (Proton), Lutris or Wine on Linux; **Browse...** sets it by hand.
 - **Extra backup copy folder:** a second folder for the automatic backups, such as a cloud-synced one.
 - **Updates:** **Check for new versions automatically**.
-- **Notifications:** which Windows notifications you get. See [Tray icon and notifications](#tray-icon-and-notifications).
+- **Notifications:** which desktop notifications you get. See [Tray icon and notifications](#tray-icon-and-notifications).
 
 After changing the price provider or the default price, click **Now** next to **Market Prices** in **Update > Update...** to load the new prices.
 
@@ -444,7 +447,7 @@ After changing the price provider or the default price, click **Now** next to **
 
 Copies EVE's in-game settings (window positions, overview, chat channels and so on) from one character to another, so a new character looks like your main straight away. Open it from **File > Characters... > Copy EVE Settings...**. Close EVE before you copy.
 
-1. Check the **EVE settings folder:**. It is the folder ending in `_tranquility` inside `%LOCALAPPDATA%\CCP\EVE`. **Browse...** picks another one and **Rescan** reads it again.
+1. Check the **EVE settings folder:**. It is the folder ending in `_tranquility` inside `%LOCALAPPDATA%\CCP\EVE` on Windows, or inside `AppData/Local/CCP/EVE` in EVE's Proton or Wine folder on Linux. **Browse...** picks another one and **Rescan** reads it again.
 2. Pick the **Source character:** to copy from and the **Target character:** to copy to. If you use several launcher profiles, pick the source and target launcher profile too.
 3. Keyboard shortcuts are saved per account, not per character. Tick **Also copy keyboard shortcuts and other account-wide settings** to copy them too. EVE Farm picks the account files of the chosen characters for you.
 4. Click **Copy Settings** and confirm.
@@ -453,13 +456,13 @@ Before replacing anything, EVE Farm makes a backup of the target files and check
 
 ## Backups and restoring
 
-- EVE Farm backs up your data automatically once a day. It keeps the last 7 days and one backup per month for a year, in `%USERPROFILE%\.evefarm\backups`.
+- EVE Farm backs up your data automatically once a day. It keeps the last 7 days and one backup per month for a year, in `%USERPROFILE%\.evefarm\backups` (`~/.evefarm/backups` on Linux).
 - **Options > Settings... > Extra backup copy folder** copies every automatic backup to a second folder too.
 - **Options > Backup Data...** saves a backup wherever you like.
 - **Options > Restore Data...** restores a backup. EVE Farm checks the file first, then puts it in place the next time it starts. Your current data is saved beside it before it's replaced, so you can go back.
 - Before installing an app update, EVE Farm also backs up your data. It keeps the backups of the last 3 updates.
 
-A backup restored on another computer or Windows account keeps all the history, but the characters must be added again, because their logins can only be read by the Windows account that saved them.
+A backup restored on another computer, user account or system keeps all the history, but the characters must be added again, because their logins can only be read where they were saved.
 
 ## App updates
 
@@ -473,8 +476,8 @@ A backup restored on another computer or Windows account keeps all the history, 
 
 ## Tray icon and notifications
 
-- Minimizing EVE Farm hides it in the Windows tray, next to the clock. Click the tray icon, or right-click it and choose **Open**, to bring it back. **Exit** closes the app.
-- EVE Farm shows Windows notifications for Abyss runs (entering the Abyss, a run saved, the loot counted, a ship lost), for every 1,000 NPCs killed in belts, and for a new version while the window is hidden.
+- Minimizing EVE Farm hides it in the tray, next to the clock. Click the tray icon, or right-click it and choose **Open**, to bring it back. **Exit** closes the app. On a Linux desktop without a tray, such as GNOME without extensions, EVE Farm minimizes like any other window.
+- EVE Farm shows desktop notifications (on Linux through `notify-send`) for Abyss runs (entering the Abyss, a run saved, the loot counted, a ship lost), for every 1,000 NPCs killed in belts, and for a new version while the window is hidden.
 - Every 15 minutes while it runs, EVE Farm also checks your characters and tells you about:
   - **industry jobs** that are ready to deliver;
   - **market orders** that someone else has outbid at the same station: a cheaper sell order or a higher buy order. Orders of your own characters don't count;
@@ -486,13 +489,13 @@ A backup restored on another computer or Windows account keeps all the history, 
 
 ## Your data and privacy
 
-Everything stays on your computer, in `%USERPROFILE%\.evefarm`:
+Everything stays on your computer, in `%USERPROFILE%\.evefarm` on Windows and `~/.evefarm` on Linux:
 
 - `evefarm.db` holds your characters, history and settings;
 - `backups` holds the automatic backups;
 - `logs` holds the log files.
 
-EVE Farm logs in through EVE's official login (EVE SSO), so it never sees your password. Logins and the Janice key are encrypted with Windows' own protection and can only be read by your Windows account.
+EVE Farm logs in through EVE's official login (EVE SSO), so it never sees your password. Logins and the Janice key are encrypted: on Windows with Windows' own protection, so only your Windows account can read them; on Linux with a key kept in your desktop keyring.
 
 EVE Farm has no telemetry and sends nothing to its developer. It only connects to:
 
@@ -505,7 +508,7 @@ EVE Farm has no telemetry and sends nothing to its developer. It only connects t
 
 A character's location and ship are only read while you track Abyss runs for it. EVE Farm saves the runs it detects, not where the character has been.
 
-**Uninstalling:** close EVE Farm and delete the folder you unzipped it into. To remove your data too, delete `%USERPROFILE%\.evefarm`; copy any backups you want to keep first. EVE Farm installs nothing else and doesn't change Windows settings.
+**Uninstalling:** close EVE Farm and delete the folder you unzipped it into. To remove your data too, delete `%USERPROFILE%\.evefarm` (`~/.evefarm` on Linux); copy any backups you want to keep first. On Linux, also delete **EVE Farm login key** from your keyring. EVE Farm installs nothing else and doesn't change system settings.
 
 ## Trademarks
 

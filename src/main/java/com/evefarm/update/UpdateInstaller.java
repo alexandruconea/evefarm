@@ -4,6 +4,7 @@ import com.evefarm.service.BackupRestoreService;
 import com.evefarm.util.AppInfo;
 import com.evefarm.util.AppPaths;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -26,18 +27,12 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 public final class UpdateInstaller {
 
     public static final String TRUSTED_DOWNLOAD_PREFIX =
             "https://github.com/" + AppInfo.REPOSITORY + "/releases/download/";
     private static final long MAX_DOWNLOAD_BYTES = 1024L * 1024 * 1024;
-    private static final long MAX_EXTRACTED_BYTES = 2L * 1024 * 1024 * 1024;
-    private static final int MAX_ZIP_ENTRIES = 10_000;
-    private static final String APP_FOLDER = "EVEFarm";
-    private static final String LAUNCHER = "EVEFarm.exe";
     private static final String BEFORE_UPDATE_PREFIX = "evefarm-before-update-";
     private static final Pattern BEFORE_UPDATE_BACKUP = Pattern.compile(
             Pattern.quote(BEFORE_UPDATE_PREFIX) + "(\\d+(?:\\.\\d+)*)\\.db");
@@ -51,6 +46,7 @@ public final class UpdateInstaller {
     }
 
     private final BackupRestoreService backupRestoreService;
+    private final AppLayout layout;
     private final String publicKey;
     private final String trustedDownloadPrefix;
     private final Path workDir;
@@ -61,13 +57,14 @@ public final class UpdateInstaller {
             .build();
 
     public UpdateInstaller(BackupRestoreService backupRestoreService) {
-        this(backupRestoreService, ReleaseSignature.RELEASE_PUBLIC_KEY, TRUSTED_DOWNLOAD_PREFIX,
-                AppPaths.appDataDir().resolve("updates"), AppPaths.backupDir());
+        this(backupRestoreService, AppLayout.current().orElse(AppLayout.WINDOWS), ReleaseSignature.RELEASE_PUBLIC_KEY,
+                TRUSTED_DOWNLOAD_PREFIX, AppPaths.appDataDir().resolve("updates"), AppPaths.backupDir());
     }
 
-    UpdateInstaller(BackupRestoreService backupRestoreService, String publicKey, String trustedDownloadPrefix,
-                    Path workDir, Path backupDir) {
+    UpdateInstaller(BackupRestoreService backupRestoreService, AppLayout layout, String publicKey,
+                    String trustedDownloadPrefix, Path workDir, Path backupDir) {
         this.backupRestoreService = backupRestoreService;
+        this.layout = layout;
         this.publicKey = publicKey;
         this.trustedDownloadPrefix = trustedDownloadPrefix;
         this.workDir = workDir;
@@ -79,31 +76,25 @@ public final class UpdateInstaller {
         if (launcher == null || launcher.isBlank()) {
             return Optional.empty();
         }
-        Path installDir = Path.of(launcher).toAbsolutePath().getParent();
-        return isAppFolder(installDir) ? Optional.of(installDir) : Optional.empty();
-    }
-
-    static boolean isAppFolder(Path dir) {
-        return dir != null && Files.isRegularFile(dir.resolve(LAUNCHER))
-                && Files.isRegularFile(dir.resolve("app").resolve("evefarm.jar"));
+        return AppLayout.current().flatMap(layout -> layout.installDirectory(Path.of(launcher)));
     }
 
     public PreparedUpdate prepare(ReleaseInfo release, Path installDir, Progress progress) throws IOException {
-        if (release.zipUrl() == null || release.signatureUrl() == null) {
-            throw new IOException("Release " + release.version() + " has no signed Windows zip attached.");
+        if (release.assetUrl() == null || release.signatureUrl() == null) {
+            throw new IOException("Release " + release.version() + " has no signed download for this system.");
         }
         Path downloadDir = workDir.resolve(release.version());
         Files.createDirectories(downloadDir);
-        Path zip = downloadDir.resolve(release.zipName());
+        Path archive = downloadDir.resolve(release.assetName());
 
-        progress.report("Downloading " + release.zipName(), 0, release.zipSize());
-        download(release.zipUrl(), zip, release.zipSize(), progress);
+        progress.report("Downloading " + release.assetName(), 0, release.assetSize());
+        download(release.assetUrl(), archive, release.assetSize(), progress);
         String signature = downloadText(release.signatureUrl());
 
         progress.report("Checking the signature", 0, 0);
-        String sha256 = ReleaseSignature.sha256Hex(zip);
-        if (!ReleaseSignature.verify(publicKey, release.version(), release.zipName(), sha256, signature)) {
-            Files.deleteIfExists(zip);
+        String sha256 = ReleaseSignature.sha256Hex(archive);
+        if (!ReleaseSignature.verify(publicKey, release.version(), release.assetName(), sha256, signature)) {
+            Files.deleteIfExists(archive);
             throw new SecurityException("The downloaded update isn't signed by the EVE Farm release key - "
                     + "it was not installed.");
         }
@@ -112,49 +103,63 @@ public final class UpdateInstaller {
         Path staged = installDir.resolveSibling(installDir.getFileName() + ".update");
         deleteRecursively(staged);
         try {
-            extractAppFolder(zip, staged);
+            AppArchive.extract(archive, staged);
         } catch (IOException | RuntimeException e) {
             deleteRecursively(staged);
             throw e;
         }
-        if (!isAppFolder(staged)) {
+        if (!layout.isAppFolder(staged)) {
             deleteRecursively(staged);
-            throw new IOException("The update doesn't contain " + LAUNCHER + " - it was not installed.");
+            throw new IOException("The update doesn't contain " + layout.launcher() + " - it was not installed.");
         }
 
         progress.report("Backing up your data", 0, 0);
         backupRestoreService.backupTo(backupDir.resolve(BEFORE_UPDATE_PREFIX + release.version() + ".db"));
         pruneBeforeUpdateBackups(backupDir, KEEP_BEFORE_UPDATE_BACKUPS);
 
-        Files.deleteIfExists(zip);
+        Files.deleteIfExists(archive);
         return new PreparedUpdate(installDir, staged);
     }
 
     public void launchSwap(PreparedUpdate update) throws IOException {
-        Path script = workDir.resolve("apply-update.ps1");
+        String scriptName = layout == AppLayout.LINUX ? "apply-update.sh" : "apply-update.ps1";
+        Path script = workDir.resolve(scriptName);
         Files.createDirectories(workDir);
-        try (InputStream in = UpdateInstaller.class.getResourceAsStream("/update/apply-update.ps1")) {
+        try (InputStream in = UpdateInstaller.class.getResourceAsStream("/update/" + scriptName)) {
             if (in == null) {
                 throw new IOException("The update script is missing from this build.");
             }
-            Files.copy(in, script, StandardCopyOption.REPLACE_EXISTING);
+            if (layout == AppLayout.LINUX) {
+                String text = new String(in.readAllBytes(), StandardCharsets.UTF_8).replace("\r\n", "\n");
+                Files.writeString(script, text, StandardCharsets.UTF_8);
+            } else {
+                Files.copy(in, script, StandardCopyOption.REPLACE_EXISTING);
+            }
         }
         Path log = AppPaths.appDataDir().resolve("logs").resolve("updater.log");
         Files.createDirectories(log.getParent());
-        swapProcess(script, workDir, update, log, ProcessHandle.current().pid()).start();
+        swapProcess(layout, script, workDir, update, log, ProcessHandle.current().pid()).start();
     }
 
-    static ProcessBuilder swapProcess(Path script, Path workingDirectory, PreparedUpdate update, Path log,
-                                      long processId) {
-        return new ProcessBuilder(List.of(AppPaths.powerShell(), "-NoProfile", "-ExecutionPolicy", "Bypass",
+    static ProcessBuilder swapProcess(AppLayout layout, Path script, Path workingDirectory, PreparedUpdate update,
+                                      Path log, long processId) {
+        List<String> command = layout == AppLayout.LINUX
+                ? List.of("/bin/sh", script.toString(), String.valueOf(processId), update.installDir().toString(),
+                update.stagedDir().toString(), log.toString())
+                : List.of(AppPaths.powerShell(), "-NoProfile", "-ExecutionPolicy", "Bypass",
                 "-WindowStyle", "Hidden", "-File", script.toString(),
                 "-ProcessId", String.valueOf(processId),
                 "-InstallDir", update.installDir().toString(),
                 "-StagedDir", update.stagedDir().toString(),
-                "-LogFile", log.toString()))
+                "-LogFile", log.toString());
+        ProcessBuilder swap = new ProcessBuilder(command)
                 .directory(workingDirectory.toFile())
                 .redirectErrorStream(true)
                 .redirectOutput(ProcessBuilder.Redirect.DISCARD);
+        if (layout == AppLayout.LINUX) {
+            swap.redirectInput(ProcessBuilder.Redirect.from(new File("/dev/null")));
+        }
+        return swap;
     }
 
     public static Optional<String> takeUpdateFailure() {
@@ -228,57 +233,6 @@ public final class UpdateInstaller {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IOException("Interrupted while downloading the update", e);
-        }
-    }
-
-    static void extractAppFolder(Path zip, Path target) throws IOException {
-        extractAppFolder(zip, target, MAX_EXTRACTED_BYTES, MAX_ZIP_ENTRIES);
-    }
-
-    static void extractAppFolder(Path zip, Path target, long maxExtractedBytes, int maxEntries) throws IOException {
-        if (maxExtractedBytes < 1 || maxEntries < 1) {
-            throw new IllegalArgumentException("Extraction limits must be positive");
-        }
-        Path root = target.toAbsolutePath().normalize();
-        Files.createDirectories(root);
-        long extractedBytes = 0;
-        int entryCount = 0;
-        byte[] buffer = new byte[64 * 1024];
-        try (ZipInputStream in = new ZipInputStream(Files.newInputStream(zip))) {
-            ZipEntry entry;
-            while ((entry = in.getNextEntry()) != null) {
-                if (++entryCount > maxEntries) {
-                    throw new IOException("The update contains too many files - stopped.");
-                }
-                String name = entry.getName().replace('\\', '/');
-                if (!name.startsWith(APP_FOLDER + "/")) {
-                    throw new IOException("Unexpected file in the update: " + name);
-                }
-                String relative = name.substring(APP_FOLDER.length() + 1);
-                if (relative.isEmpty()) {
-                    continue;
-                }
-                Path destination = root.resolve(relative).normalize();
-                if (!destination.startsWith(root)) {
-                    throw new IOException("Unsafe path in the update: " + name);
-                }
-                if (entry.isDirectory()) {
-                    Files.createDirectories(destination);
-                } else {
-                    Files.createDirectories(destination.getParent());
-                    try (OutputStream out = Files.newOutputStream(destination)) {
-                        int read;
-                        while ((read = in.read(buffer)) != -1) {
-                            extractedBytes += read;
-                            if (extractedBytes > maxExtractedBytes) {
-                                throw new IOException("The unpacked update is too large - stopped.");
-                            }
-                            out.write(buffer, 0, read);
-                        }
-                    }
-                }
-                in.closeEntry();
-            }
         }
     }
 

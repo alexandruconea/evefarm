@@ -22,6 +22,7 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -78,7 +79,11 @@ class UpdateInstallerTest {
     }
 
     private UpdateInstaller installer() {
-        return new UpdateInstaller(backups, publicKey, base(), temp.resolve("work"), temp.resolve("backups"));
+        return installer(AppLayout.WINDOWS);
+    }
+
+    private UpdateInstaller installer(AppLayout layout) {
+        return new UpdateInstaller(backups, layout, publicKey, base(), temp.resolve("work"), temp.resolve("backups"));
     }
 
     private Path appZip(Map<String, String> entries) throws IOException {
@@ -149,7 +154,7 @@ class UpdateInstallerTest {
         Path zip = appZip(NEW_APP);
         ReleaseInfo release = publish(zip, ReleaseSignature.sign(privateKey, VERSION, zip));
         ReleaseInfo elsewhere = new ReleaseInfo(VERSION, "", "", ZIP_NAME, "https://evil.example/" + ZIP_NAME,
-                release.zipSize(), release.signatureUrl());
+                release.assetSize(), release.signatureUrl());
 
         IOException error = assertThrows(IOException.class,
                 () -> installer().prepare(elsewhere, installedOldVersion(), (s, d, t) -> {
@@ -161,7 +166,7 @@ class UpdateInstallerTest {
     void entriesThatEscapeTheFolderAreRejected() throws Exception {
         Path zip = appZip(Map.of("EVEFarm/EVEFarm.exe", "x", "EVEFarm/../../evil.txt", "boom"));
 
-        assertThrows(IOException.class, () -> UpdateInstaller.extractAppFolder(zip, temp.resolve("out")));
+        assertThrows(IOException.class, () -> AppArchive.extract(zip, temp.resolve("out")));
         assertFalse(Files.exists(temp.resolve("evil.txt")));
     }
 
@@ -170,7 +175,7 @@ class UpdateInstallerTest {
         Path zip = appZip(Map.of("EVEFarm/app/evefarm.jar", "content larger than the test limit"));
 
         IOException error = assertThrows(IOException.class,
-                () -> UpdateInstaller.extractAppFolder(zip, temp.resolve("limited"), 8, 10));
+                () -> AppArchive.extractZip(zip, temp.resolve("limited"), 8, 10));
 
         assertTrue(error.getMessage().contains("too large"));
     }
@@ -182,7 +187,7 @@ class UpdateInstallerTest {
                 "EVEFarm/two.txt", "2"));
 
         IOException error = assertThrows(IOException.class,
-                () -> UpdateInstaller.extractAppFolder(zip, temp.resolve("many"), 1024, 1));
+                () -> AppArchive.extractZip(zip, temp.resolve("many"), 1024, 1));
 
         assertTrue(error.getMessage().contains("too many files"));
     }
@@ -222,7 +227,7 @@ class UpdateInstallerTest {
         UpdateInstaller.PreparedUpdate update = new UpdateInstaller.PreparedUpdate(install,
                 install.resolveSibling("EVEFarm.update"));
 
-        ProcessBuilder swap = UpdateInstaller.swapProcess(script, script.getParent(), update,
+        ProcessBuilder swap = UpdateInstaller.swapProcess(AppLayout.WINDOWS, script, script.getParent(), update,
                 temp.resolve("updater.log"), 42);
 
         assertEquals(AppPaths.powerShell(), swap.command().getFirst());
@@ -231,10 +236,78 @@ class UpdateInstallerTest {
     }
 
     @Test
+    void onLinuxTheSwapIsAShellScriptWithThePathsAsArguments() {
+        Path install = temp.resolve("apps").resolve("EVEFarm");
+        Path script = temp.resolve("work").resolve("apply-update.sh");
+        UpdateInstaller.PreparedUpdate update = new UpdateInstaller.PreparedUpdate(install,
+                install.resolveSibling("EVEFarm.update"));
+        Path log = temp.resolve("updater.log");
+
+        ProcessBuilder swap = UpdateInstaller.swapProcess(AppLayout.LINUX, script, script.getParent(), update, log, 42);
+
+        assertEquals(List.of("/bin/sh", script.toString(), "42", install.toString(),
+                install.resolveSibling("EVEFarm.update").toString(), log.toString()), swap.command());
+        assertEquals(script.getParent().toFile(), swap.directory());
+    }
+
+    @Test
     void anAppFolderNeedsTheLauncherAndTheJar() throws Exception {
         Path install = installedOldVersion();
-        assertTrue(UpdateInstaller.isAppFolder(install));
+        assertTrue(AppLayout.WINDOWS.isAppFolder(install));
+        assertFalse(AppLayout.LINUX.isAppFolder(install));
         Files.delete(install.resolve("app").resolve("evefarm.jar"));
-        assertFalse(UpdateInstaller.isAppFolder(install));
+        assertFalse(AppLayout.WINDOWS.isAppFolder(install));
+    }
+
+    @Test
+    void theLinuxLauncherSitsInBinSoTheAppFolderIsTwoLevelsUp() throws Exception {
+        Path install = Files.createDirectories(temp.resolve("apps").resolve("EVEFarm"));
+        Files.createDirectories(install.resolve("bin"));
+        Files.createDirectories(install.resolve("lib").resolve("app"));
+        Files.writeString(install.resolve("bin").resolve("EVEFarm"), "launcher");
+        Files.writeString(install.resolve("lib").resolve("app").resolve("evefarm.jar"), "jar");
+
+        assertEquals(Optional.of(install),
+                AppLayout.LINUX.installDirectory(install.resolve("bin").resolve("EVEFarm")));
+        assertEquals(Optional.empty(),
+                AppLayout.WINDOWS.installDirectory(install.resolve("bin").resolve("EVEFarm")));
+    }
+
+    @Test
+    void aSignedLinuxReleaseIsStagedFromItsTarGz() throws Exception {
+        Path archive = temp.resolve("build").resolve("EVEFarm-1.4.0-linux-x64.tar.gz");
+        Files.createDirectories(archive.getParent());
+        Files.write(archive, TarFixture.tarGz(
+                TarFixture.directory("EVEFarm/"),
+                TarFixture.file("EVEFarm/bin/EVEFarm", "new launcher", 0755),
+                TarFixture.file("EVEFarm/lib/app/evefarm.jar", "new jar", 0644)));
+        String name = archive.getFileName().toString();
+        byte[] bytes = Files.readAllBytes(archive);
+        served.put("/repo/releases/download/v1.4.0/" + name, bytes);
+        served.put("/repo/releases/download/v1.4.0/" + name + ".sig",
+                ReleaseSignature.sign(privateKey, VERSION, archive).getBytes(StandardCharsets.US_ASCII));
+        ReleaseInfo release = new ReleaseInfo(VERSION, "", "https://x", name, base() + "v1.4.0/" + name,
+                bytes.length, base() + "v1.4.0/" + name + ".sig");
+        Path install = Files.createDirectories(temp.resolve("apps").resolve("EVEFarm"));
+
+        UpdateInstaller.PreparedUpdate update = installer(AppLayout.LINUX).prepare(release, install, (s, d, t) -> {
+        });
+
+        assertEquals("new launcher", Files.readString(update.stagedDir().resolve("bin").resolve("EVEFarm")));
+        assertEquals("new jar", Files.readString(update.stagedDir().resolve("lib/app/evefarm.jar")));
+    }
+
+    @Test
+    void aWindowsZipIsNotAcceptedAsALinuxUpdate() throws Exception {
+        Path zip = appZip(NEW_APP);
+        ReleaseInfo release = publish(zip, ReleaseSignature.sign(privateKey, VERSION, zip));
+        Path install = installedOldVersion();
+
+        IOException error = assertThrows(IOException.class,
+                () -> installer(AppLayout.LINUX).prepare(release, install, (s, d, t) -> {
+                }));
+
+        assertTrue(error.getMessage().contains("bin/EVEFarm"));
+        assertFalse(Files.exists(install.resolveSibling("EVEFarm.update")));
     }
 }

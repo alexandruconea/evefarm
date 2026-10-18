@@ -4,6 +4,7 @@ import com.evefarm.AppContext;
 import com.evefarm.update.ReleaseInfo;
 import com.evefarm.update.UpdateInstaller;
 import com.evefarm.util.AppInfo;
+import com.evefarm.util.Browser;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -19,13 +20,12 @@ import javax.swing.UIManager;
 import javax.swing.event.HyperlinkEvent;
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Frame;
 import java.awt.Insets;
-import java.net.URI;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
@@ -61,7 +61,8 @@ final class AppUpdateDialog extends JDialog {
     }
 
     private boolean canInstallHere() {
-        return installDir.isPresent() && release.zipUrl() != null && release.signatureUrl() != null;
+        return installDir.isPresent() && release.assetUrl() != null && release.signatureUrl() != null
+                && installDir.get().getParent() != null && Files.isWritable(installDir.get().getParent());
     }
 
     private void buildUi() {
@@ -137,7 +138,7 @@ final class AppUpdateDialog extends JDialog {
             return;
         }
         try {
-            Desktop.getDesktop().browse(URI.create(url));
+            Browser.open(url);
         } catch (Exception e) {
             LOG.log(Level.INFO, "Couldn't open a link from the release notes", e);
         }
@@ -147,7 +148,7 @@ final class AppUpdateDialog extends JDialog {
         String page = release.pageUrl() != null && release.pageUrl().startsWith(AppInfo.HOME_PAGE + "/")
                 ? release.pageUrl() : AppInfo.HOME_PAGE + "/releases";
         try {
-            Desktop.getDesktop().browse(URI.create(page));
+            Browser.open(page);
         } catch (Exception e) {
             LOG.log(Level.INFO, "Couldn't open the release page", e);
         }

@@ -4,8 +4,11 @@ import com.evefarm.util.AppPaths;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -43,6 +46,24 @@ class VoiceServiceTest {
         voice.setVolume(35);
         assertEquals(35, voice.volume());
         assertEquals("\u000135\n", VoiceService.volumeCommand(35));
+    }
+
+    @Test
+    void onLinuxTheFirstSpeechProgramFoundIsUsed() {
+        Map<String, Path> installed = Map.of("espeak-ng", Path.of("/usr/bin/espeak-ng"),
+                "espeak", Path.of("/usr/bin/espeak"));
+
+        assertEquals(Optional.of(Path.of("/usr/bin/espeak-ng")),
+                VoiceService.findSpeaker(name -> Optional.ofNullable(installed.get(name))));
+        assertEquals(Optional.empty(), VoiceService.findSpeaker(name -> Optional.empty()));
+    }
+
+    @Test
+    void theSpokenTextComesAfterTheOptionsSoItIsNeverReadAsOne() {
+        assertEquals(List.of(Path.of("/usr/bin/spd-say").toString(), "-w", "-i", "40", "--", "-i 100 Aggro"),
+                VoiceService.speakerCommand(Path.of("/usr/bin/spd-say"), 70, "-i 100 Aggro"));
+        assertEquals(List.of(Path.of("/usr/bin/espeak-ng").toString(), "-a", "70", "--", "Aggro on Nozeu"),
+                VoiceService.speakerCommand(Path.of("/usr/bin/espeak-ng"), 70, "Aggro on Nozeu"));
     }
 
     @Test

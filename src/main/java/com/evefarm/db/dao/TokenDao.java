@@ -72,9 +72,21 @@ public final class TokenDao {
         }
     }
 
+    public boolean hasTokens() {
+        synchronized (database) {
+            Connection connection = database.connection();
+            try (PreparedStatement ps = connection.prepareStatement("SELECT 1 FROM tokens LIMIT 1");
+                 ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            } catch (SQLException e) {
+                throw new IllegalStateException("Failed to check for stored tokens", e);
+            }
+        }
+    }
+
     public void migrateLegacyPlaintextTokens() {
         if (!TokenCipher.isProtectionAvailable()) {
-            LOG.warning("Windows DPAPI is unavailable; legacy plaintext tokens will not be loaded or migrated");
+            LOG.warning("Secret storage is unavailable; legacy plaintext tokens will not be loaded or migrated");
             return;
         }
         String selectSql = "SELECT character_id, refresh_token, access_token, access_token_expires_at FROM tokens";
@@ -104,7 +116,7 @@ public final class TokenDao {
             upsert(row.characterId(), row.refreshToken(), row.accessToken(), expiresAt);
         }
         if (!legacyRows.isEmpty()) {
-            LOG.info("Encrypted " + legacyRows.size() + " legacy plaintext token row(s) with DPAPI");
+            LOG.info("Encrypted " + legacyRows.size() + " legacy plaintext token row(s)");
         }
     }
 }

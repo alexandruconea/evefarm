@@ -5,12 +5,14 @@ on:
     tags: ['v*']
 
 permissions:
-  contents: write
-  actions: read
+  contents: read
 
 jobs:
-  release:
+  windows:
     runs-on: windows-latest
+    permissions:
+      contents: read
+      actions: read
     env:
       TAG: ${{ github.ref_name }}
     steps:
@@ -93,11 +95,95 @@ jobs:
           RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
         run: java -cp target/classes packaging/SignRelease.java "dist/EVEFarm-$env:VERSION-win64.zip" $env:VERSION
 
-      - name: Create a draft release
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Keep the Windows files for the release
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: windows-release
+          path: |
+            dist/EVEFarm-${{ env.VERSION }}-win64.zip
+            dist/EVEFarm-${{ env.VERSION }}-win64.zip.sig
+            dist/EVEFarm-${{ env.VERSION }}-win64.zip.sha256
+            dist/EVEFarm-${{ env.VERSION }}-sbom.cdx.json
+          if-no-files-found: error
+
+  linux:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Check the tag matches the version in pom.xml
         run: |
-          $zip = "dist/EVEFarm-$env:VERSION-win64.zip"
-          gh release create $env:TAG $zip "$zip.sig" "$zip.sha256" "dist/EVEFarm-$env:VERSION-sbom.cdx.json" `
-            --draft --title "EVE Farm $env:VERSION" --generate-notes
+          version=$(python3 -c "import xml.etree.ElementTree as e; print(e.parse('pom.xml').getroot().find('{http://maven.apache.org/POM/4.0.0}version').text)")
+          if [ "v$version" != "$TAG" ]; then
+            echo "Tag $TAG doesn't match the version in pom.xml ($version). Tag it v$version."
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Build and test
+        run: ./mvnw -B verify
+
+      - name: Package the Linux app
+        run: sh packaging/linux/package.sh "$VERSION"
+
+      - name: Install the desktop tools for the check
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xvfb xauth dbus dbus-x11 gnome-keyring libsecret-1-0
+
+      - name: Check the packaged app
+        run: sh packaging/linux/check-package.sh "dist/EVEFarm-$VERSION-linux-x64.tar.gz"
+
+      - name: Sign the archive
+        env:
+          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+        run: java -cp target/classes packaging/SignRelease.java "dist/EVEFarm-$VERSION-linux-x64.tar.gz" "$VERSION"
+
+      - name: Keep the Linux files for the release
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: linux-release
+          path: |
+            dist/EVEFarm-${{ env.VERSION }}-linux-x64.tar.gz
+            dist/EVEFarm-${{ env.VERSION }}-linux-x64.tar.gz.sig
+            dist/EVEFarm-${{ env.VERSION }}-linux-x64.tar.gz.sha256
+          if-no-files-found: error
+
+  publish:
+    needs: [windows, linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    env:
+      TAG: ${{ github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Collect the signed files
+        run: |
+          gh run download "${{ github.run_id }}" --name windows-release --dir dist
+          gh run download "${{ github.run_id }}" --name linux-release --dir dist
+          ls -l dist
+
+      - name: Create a draft release
+        run: |
+          version="${TAG#v}"
+          gh release create "$TAG" \
+            "dist/EVEFarm-$version-win64.zip" "dist/EVEFarm-$version-win64.zip.sig" \
+            "dist/EVEFarm-$version-win64.zip.sha256" \
+            "dist/EVEFarm-$version-linux-x64.tar.gz" "dist/EVEFarm-$version-linux-x64.tar.gz.sig" \
+            "dist/EVEFarm-$version-linux-x64.tar.gz.sha256" \
+            "dist/EVEFarm-$version-sbom.cdx.json" \
+            --draft --title "EVE Farm $version" --generate-notes
