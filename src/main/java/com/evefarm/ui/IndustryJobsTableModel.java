@@ -20,7 +20,8 @@ public final class IndustryJobsTableModel extends ColumnTableModel<IndustryJobRo
             5, "Copying",
             7, "Reverse Engineering",
             8, "Invention",
-            9, "Reactions"
+            9, "Reactions",
+            11, "Reactions"
     );
 
     private static final List<ColumnDef<IndustryJobRow>> COLUMNS = List.of(

@@ -4,6 +4,7 @@ import com.evefarm.db.Database;
 import com.evefarm.db.MigrationRunner;
 import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.service.BackupRestoreService;
+import com.evefarm.ui.ComboBoxFocus;
 import com.evefarm.ui.CompactMenuItemUI;
 import com.evefarm.ui.CompactToolTips;
 import com.evefarm.ui.EveLaf;
@@ -161,6 +162,7 @@ public final class Main {
                 CompactMenuItemUI.install();
                 UnderlineTabbedPaneUI.install();
                 TableStyler.installCellPadding();
+                ComboBoxFocus.hideDashedOutline();
             }
             CompactToolTips.install();
             boolean flat = UIManager.getLookAndFeel() instanceof FlatLaf;

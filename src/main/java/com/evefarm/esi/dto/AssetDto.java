@@ -11,6 +11,7 @@ public record AssetDto(
         @JsonProperty("location_id") long locationId,
         @JsonProperty("location_type") String locationType,
         @JsonProperty("location_flag") String locationFlag,
-        @JsonProperty("is_singleton") boolean isSingleton
+        @JsonProperty("is_singleton") boolean isSingleton,
+        @JsonProperty("is_blueprint_copy") boolean isBlueprintCopy
 ) {
 }

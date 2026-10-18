@@ -90,6 +90,7 @@ import com.evefarm.service.OfficerService;
 import com.evefarm.service.OreCatalogService;
 import com.evefarm.service.PriceService;
 import com.evefarm.service.SchedulerService;
+import com.evefarm.service.SellingFeesService;
 import com.evefarm.service.SkillCatalogService;
 import com.evefarm.service.SkillService;
 import com.evefarm.service.StandingService;
@@ -143,6 +144,7 @@ public final class AppContext {
     public final StandingService standingService;
     public final SkillCatalogService skillCatalogService;
     public final SkillService skillService;
+    public final SellingFeesService sellingFeesService;
     public final IndustryCatalogService industryCatalogService;
     public final IndustryService industryService;
     public final LoyaltyPointService loyaltyPointService;
@@ -235,17 +237,18 @@ public final class AppContext {
         this.aggroWatchService = new AggroWatchService(killService, characterDao);
         this.voiceService = new VoiceService();
         this.marketHistoryService = new MarketHistoryService(marketsApi, new DailyVolumeDao(database));
-        this.lpOfferPricingService = new LpOfferPricingService(loyaltyApi, fuzzworkApi, typeNameCacheService,
-                priceService, marketHistoryService);
-        this.itemIconService = new ItemIconService();
         SkillCatalogApi skillCatalogApi = new SkillCatalogApi(esiHttpClient);
         this.industryCatalogService = new IndustryCatalogService(fuzzworkApi, skillCatalogApi,
                 new IndustryCatalogDao(database), settingsDao);
+        this.lpOfferPricingService = new LpOfferPricingService(loyaltyApi, fuzzworkApi, industryCatalogService,
+                typeNameCacheService, priceService, marketHistoryService);
+        this.itemIconService = new ItemIconService();
         this.trackerSnapshotService = new TrackerSnapshotService(authService, walletApi, clonesApi, marketsApi,
                 contractsApi, industryApi, skillsApi, loyaltyPointService, priceService, assetDao,
                 snapshotDao, skillPointFilterDao, settingsDao, industryCatalogService);
         this.journalService = new JournalService(authService, walletApi, entityNameCacheService, walletJournalDao);
-        this.marketWatchService = new MarketWatchService(authService, marketsApi, new OrderCompetitionDao(database));
+        this.marketWatchService = new MarketWatchService(authService, marketsApi, new OrderCompetitionDao(database),
+                marketOrderDao);
         this.marketOrderService = new MarketOrderService(authService, marketsApi, typeNameCacheService,
                 locationNameCacheService, marketOrderDao, priceService, marketWatchService, walletJournalDao);
         this.transactionService = new TransactionService(authService, walletApi, typeNameCacheService,
@@ -264,6 +267,7 @@ public final class AppContext {
                 new SkillCatalogDao(database), new ImplantBonusDao(database), acceleratorDao, settingsDao);
         this.skillService = new SkillService(authService, characterDao, skillsApi, clonesApi, skillCatalogService,
                 new CharacterSkillDao(database), new SkillPlanDao(database), acceleratorDao);
+        this.sellingFeesService = new SellingFeesService(characterService, skillService, standingService);
         this.industryService = new IndustryService(industryCatalogService,
                 new IndustryMarketService(new IndustryIndexApi(esiHttpClient), marketsApi), priceService, skillService,
                 assetService);
@@ -273,8 +277,9 @@ public final class AppContext {
         this.updateService = new UpdateService(settingsDao);
         this.updateInstaller = new UpdateInstaller(backupRestoreService);
         this.lpPurchaseService = new LpPurchaseService(new LpPurchaseDao(database), walletJournalDao,
-                walletTransactionDao, marketOrderDao, assetDao, priceService, marketHistoryService, skillService,
-                settingsDao, lpOfferPricingService, loyaltyPointService, characterService, typeNameCacheService);
+                walletTransactionDao, marketOrderDao, assetDao, priceService, marketHistoryService,
+                sellingFeesService, settingsDao, lpOfferPricingService, loyaltyPointService, characterService,
+                typeNameCacheService);
         this.notificationService = new NotificationService(authService, characterService, industryJobService,
                 marketWatchService, skillsApi, contractsApi, typeNameCacheService, new NotificationDao(database),
                 settingsDao, lpPurchaseService);

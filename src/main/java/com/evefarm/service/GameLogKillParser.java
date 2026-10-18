@@ -37,7 +37,7 @@ public final class GameLogKillParser {
 
     private static final Pattern MISSES_TARGET = Pattern.compile("^([A-Za-z0-9'’.\\- ]+?) misses you\\b");
 
-    private static final Pattern DAMAGE_PREFIX = Pattern.compile("^(\\d+)\\s+(to|from)\\b");
+    private static final Pattern DAMAGE_PREFIX = Pattern.compile("^(\\d{1,18})\\s+(to|from)\\b");
 
     private static final Pattern BOUNTY_AMOUNT = Pattern.compile("^([0-9][0-9.,\\s\\u00a0]*)\\s*ISK\\b");
     private static final Pattern DECIMAL_TAIL = Pattern.compile("^(.*)[.,](\\d{2})$");

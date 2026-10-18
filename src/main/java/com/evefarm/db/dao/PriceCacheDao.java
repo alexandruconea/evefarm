@@ -22,6 +22,9 @@ import java.util.stream.Collectors;
 
 public final class PriceCacheDao {
 
+    private static final List<String> MARKET_SIDE_COLUMNS = List.of("sell_max", "sell_avg", "sell_median",
+            "sell_percentile", "sell_min", "buy_max", "buy_avg", "buy_median", "buy_percentile", "buy_min");
+
     private final Database database;
 
     public PriceCacheDao(Database database) {
@@ -29,6 +32,14 @@ public final class PriceCacheDao {
     }
 
     public OptionalDouble findUnitPrice(int typeId, PriceMode mode) {
+        return findPrice(typeId, mode, false);
+    }
+
+    public OptionalDouble findMarketSidePrice(int typeId, PriceMode mode) {
+        return findPrice(typeId, mode, true);
+    }
+
+    private OptionalDouble findPrice(int typeId, PriceMode mode, boolean sameSideOnly) {
         String sql = """
                 SELECT average_price, adjusted_price, sell_max, sell_avg, sell_median,
                        sell_percentile, sell_min, buy_max, buy_avg, buy_median, buy_percentile, buy_min
@@ -42,7 +53,7 @@ public final class PriceCacheDao {
                     if (!rs.next()) {
                         return OptionalDouble.empty();
                     }
-                    Double value = resolveUnitPrice(rs, mode);
+                    Double value = resolveUnitPrice(rs, mode, sameSideOnly);
                     return value == null ? OptionalDouble.empty() : OptionalDouble.of(value);
                 }
             } catch (SQLException e) {
@@ -52,6 +63,14 @@ public final class PriceCacheDao {
     }
 
     public Map<Integer, Double> findAllUnitPrices(PriceMode mode) {
+        return findAllPrices(mode, false);
+    }
+
+    public Map<Integer, Double> findAllMarketSidePrices(PriceMode mode) {
+        return findAllPrices(mode, true);
+    }
+
+    private Map<Integer, Double> findAllPrices(PriceMode mode, boolean sameSideOnly) {
         String sql = """
                 SELECT type_id, average_price, adjusted_price, sell_max, sell_avg, sell_median,
                        sell_percentile, sell_min, buy_max, buy_avg, buy_median, buy_percentile, buy_min
@@ -63,7 +82,7 @@ public final class PriceCacheDao {
             try (PreparedStatement ps = connection.prepareStatement(sql);
                  ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    Double value = resolveUnitPrice(rs, mode);
+                    Double value = resolveUnitPrice(rs, mode, sameSideOnly);
                     if (value != null) {
                         result.put(rs.getInt("type_id"), value);
                     }
@@ -75,7 +94,7 @@ public final class PriceCacheDao {
         }
     }
 
-    private Double resolveUnitPrice(ResultSet rs, PriceMode mode) throws SQLException {
+    private Double resolveUnitPrice(ResultSet rs, PriceMode mode, boolean sameSideOnly) throws SQLException {
         Double specific = switch (mode) {
             case SELL_MAX -> JdbcUtil.getNullableDouble(rs, "sell_max");
             case SELL_AVG -> JdbcUtil.getNullableDouble(rs, "sell_avg");
@@ -93,12 +112,24 @@ public final class PriceCacheDao {
         if (specific != null && specific > 0) {
             return specific;
         }
+        if (sameSideOnly && hasMarketSides(rs)) {
+            return null;
+        }
         double average = rs.getDouble("average_price");
         if (!rs.wasNull() && average > 0) {
             return average;
         }
         double adjusted = rs.getDouble("adjusted_price");
         return rs.wasNull() ? null : adjusted;
+    }
+
+    private static boolean hasMarketSides(ResultSet rs) throws SQLException {
+        for (String column : MARKET_SIDE_COLUMNS) {
+            if (JdbcUtil.getNullableDouble(rs, column) != null) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private Double midpoint(Double sellMin, Double buyMax) {

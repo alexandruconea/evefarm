@@ -18,6 +18,7 @@ public final class IndustryCalculator {
     public static final double NPC_STATION_TAX = 0.0025;
     public static final double BASE_SALES_TAX = 0.075;
     public static final double MIN_BROKER_FEE = 100;
+    public static final double BASE_BROKER_FEE = 0.03;
     public static final int INVENTED_BASE_ME = 2;
     public static final int INVENTED_BASE_TE = 4;
     public static final int MAX_ME = 10;
@@ -28,6 +29,7 @@ public final class IndustryCalculator {
     private static final int MASS_PRODUCTION = 3387;
     private static final int ADVANCED_MASS_PRODUCTION = 24625;
     private static final int ACCOUNTING = 16622;
+    private static final int BROKER_RELATIONS = 3446;
     private static final int REACTIONS = 45746;
     private static final int MASS_REACTIONS = 45748;
     private static final int ADVANCED_MASS_REACTIONS = 45749;
@@ -218,6 +220,11 @@ public final class IndustryCalculator {
 
     public static double salesTax(IntUnaryOperator level) {
         return BASE_SALES_TAX * (1 - 0.11 * level.applyAsInt(ACCOUNTING));
+    }
+
+    public static double brokerFee(IntUnaryOperator level, double factionStanding, double corporationStanding) {
+        return Math.max(0, BASE_BROKER_FEE - 0.003 * level.applyAsInt(BROKER_RELATIONS)
+                - 0.0003 * factionStanding - 0.0002 * corporationStanding);
     }
 
     public static boolean hasSkills(List<SkillRequirement> requiredSkills, IntUnaryOperator level) {

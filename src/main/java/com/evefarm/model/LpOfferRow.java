@@ -26,7 +26,8 @@ public record LpOfferRow(
         int outputTypeId,
         long outputUnits,
         Double unitsForSale,
-        Double dailyVolume
+        Double dailyVolume,
+        LpNetValues net
 ) {
 
     public Double daysToSell() {
@@ -40,6 +41,33 @@ public record LpOfferRow(
         return new LpOfferRow(offerId, typeId, itemName, categoryName, quantity, lpCost, iskCost, akCost,
                 requiredItemsSummary, requiredItems, requiredItemsCost, buildMaterialsSummary, buildMaterials,
                 buildMaterialsCost, sellPricePerUnit, buyPricePerUnit, iskPerLpSell, iskPerLpBuy, profitSell,
-                profitBuy, outputTypeId, outputUnits, unitsForSale, volume);
+                profitBuy, outputTypeId, outputUnits, unitsForSale, volume, net);
+    }
+
+    public LpOfferRow withNet(LpNetValues values) {
+        return new LpOfferRow(offerId, typeId, itemName, categoryName, quantity, lpCost, iskCost, akCost,
+                requiredItemsSummary, requiredItems, requiredItemsCost, buildMaterialsSummary, buildMaterials,
+                buildMaterialsCost, sellPricePerUnit, buyPricePerUnit, iskPerLpSell, iskPerLpBuy, profitSell,
+                profitBuy, outputTypeId, outputUnits, unitsForSale, dailyVolume, values);
+    }
+
+    public Double otherCost() {
+        return requiredItemsCost == null || buildMaterialsCost == null ? null : requiredItemsCost + buildMaterialsCost;
+    }
+
+    public Double netIskPerLpSell() {
+        return net == null ? null : net.iskPerLpSell();
+    }
+
+    public Double netIskPerLpBuy() {
+        return net == null ? null : net.iskPerLpBuy();
+    }
+
+    public Double netProfitSell() {
+        return net == null ? null : net.profitSell();
+    }
+
+    public Double netProfitBuy() {
+        return net == null ? null : net.profitBuy();
     }
 }

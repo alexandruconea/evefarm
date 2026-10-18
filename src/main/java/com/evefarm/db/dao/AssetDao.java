@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -30,8 +31,8 @@ public final class AssetDao {
         String insertSql = """
                 INSERT INTO asset_current(
                   character_id, item_id, type_id, quantity, location_id, location_flag,
-                  is_singleton, name, container_name, unit_price, total_value, fetched_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  is_singleton, is_blueprint_copy, name, container_name, unit_price, total_value, fetched_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         String now = Instant.now().toString();
         database.transaction("Failed to replace assets for character " + characterId, connection -> {
@@ -48,11 +49,12 @@ public final class AssetDao {
                     JdbcUtil.setNullable(ps, 5, entry.locationId());
                     ps.setString(6, entry.locationFlag());
                     ps.setInt(7, entry.isSingleton() ? 1 : 0);
-                    ps.setString(8, entry.name());
-                    ps.setString(9, entry.containerName());
-                    ps.setDouble(10, entry.unitPrice());
-                    ps.setDouble(11, entry.totalValue());
-                    ps.setString(12, now);
+                    ps.setInt(8, entry.blueprintCopy() ? 1 : 0);
+                    ps.setString(9, entry.name());
+                    ps.setString(10, entry.containerName());
+                    ps.setDouble(11, entry.unitPrice());
+                    ps.setDouble(12, entry.totalValue());
+                    ps.setString(13, now);
                     ps.addBatch();
                 }
                 ps.executeBatch();
@@ -70,9 +72,10 @@ public final class AssetDao {
         }
         try (PreparedStatement copy = connection.prepareStatement("""
                 INSERT INTO asset_archive(character_id, month, captured_at, item_id, type_id, quantity, location_id,
-                                          location_flag, is_singleton, name, container_name, unit_price, total_value)
+                                          location_flag, is_singleton, is_blueprint_copy, name, container_name,
+                                          unit_price, total_value)
                 SELECT character_id, ?, fetched_at, item_id, type_id, quantity, location_id, location_flag,
-                       is_singleton, name, container_name, unit_price, total_value
+                       is_singleton, is_blueprint_copy, name, container_name, unit_price, total_value
                 FROM asset_current WHERE character_id = ?
                 """)) {
             copy.setString(1, month);
@@ -123,6 +126,24 @@ public final class AssetDao {
         }
     }
 
+    public Map<Long, String> findNames(long characterId) {
+        String sql = "SELECT item_id, name FROM asset_current WHERE character_id = ? AND name IS NOT NULL";
+        synchronized (database) {
+            try (PreparedStatement ps = database.connection().prepareStatement(sql)) {
+                ps.setLong(1, characterId);
+                Map<Long, String> names = new HashMap<>();
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        names.put(rs.getLong("item_id"), rs.getString("name"));
+                    }
+                }
+                return names;
+            } catch (SQLException e) {
+                throw new IllegalStateException("Failed to read the asset names of character " + characterId, e);
+            }
+        }
+    }
+
     public Map<Integer, Long> usableStock(Long solarSystemId) {
         String sql = """
                 SELECT a.type_id, SUM(a.quantity) AS quantity
@@ -153,17 +174,23 @@ public final class AssetDao {
     }
 
     public List<AssetRow> listRows(Set<Long> characterIdFilter) {
-        return queryRows("asset_current", null, characterIdFilter);
+        return queryRows("asset_current", null, characterIdFilter, null, false);
     }
 
     public List<AssetRow> listArchivedRows(String month, Set<Long> characterIdFilter) {
-        return queryRows("asset_archive", month, characterIdFilter);
+        return queryRows("asset_archive", month, characterIdFilter, null, false);
     }
 
-    private List<AssetRow> queryRows(String table, String month, Set<Long> characterIdFilter) {
+    public Optional<AssetRow> mostValuable(Set<Long> characterIdFilter, String categoryName) {
+        return queryRows("asset_current", null, characterIdFilter, categoryName, true).stream().findFirst();
+    }
+
+    private List<AssetRow> queryRows(String table, String month, Set<Long> characterIdFilter, String categoryName,
+                                     boolean mostValuableOnly) {
         StringBuilder sql = new StringBuilder("""
                 SELECT a.item_id, a.character_id, c.character_name, a.type_id,
-                       COALESCE(t.name, 'Type #' || a.type_id) AS type_name,
+                       COALESCE(t.name, 'Type #' || a.type_id)
+                           || CASE WHEN a.is_blueprint_copy = 1 THEN ' (Blueprint Copy)' ELSE '' END AS type_name,
                        t.group_name, t.category_name, a.quantity,
                        COALESCE(l.name, CASE WHEN a.location_id IS NULL THEN 'Unknown'
                                              ELSE 'Location #' || a.location_id END) AS location_name,
@@ -183,7 +210,11 @@ public final class AssetDao {
             String placeholders = characterIdFilter.stream().map(id -> "?").collect(Collectors.joining(","));
             sql.append(" AND a.character_id IN (").append(placeholders).append(")");
         }
-        sql.append(" ORDER BY a.total_value DESC");
+        if (categoryName != null) {
+            sql.append(" AND t.category_name = ?");
+        }
+        sql.append(mostValuableOnly ? " ORDER BY a.unit_price DESC, a.total_value DESC LIMIT 1"
+                : " ORDER BY a.total_value DESC");
 
         synchronized (database) {
             Connection connection = database.connection();
@@ -197,6 +228,9 @@ public final class AssetDao {
                     for (Long id : characterIdFilter) {
                         ps.setLong(index++, id);
                     }
+                }
+                if (categoryName != null) {
+                    ps.setString(index, categoryName);
                 }
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {

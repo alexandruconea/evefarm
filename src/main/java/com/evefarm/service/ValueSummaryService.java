@@ -10,6 +10,7 @@ import com.evefarm.model.ValueSummary;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.ToDoubleFunction;
 
 public final class ValueSummaryService {
 
@@ -77,24 +78,12 @@ public final class ValueSummaryService {
     }
 
     private Best findBest(Set<Long> characterIdFilter) {
-        List<AssetRow> rows = assetDao.listRows(characterIdFilter);
-        AssetRow bestAsset = null;
-        AssetRow bestShip = null;
-        AssetRow bestModule = null;
-        for (AssetRow row : rows) {
-            if (bestAsset == null || row.unitPrice() > bestAsset.unitPrice()) {
-                bestAsset = row;
-            }
-            if (CATEGORY_SHIP.equals(row.categoryName()) && (bestShip == null || row.unitPrice() > bestShip.unitPrice())) {
-                bestShip = row;
-            }
-            if (CATEGORY_MODULE.equals(row.categoryName()) && (bestModule == null || row.unitPrice() > bestModule.unitPrice())) {
-                bestModule = row;
-            }
-        }
-        return new Best(
-                bestAsset == null ? null : bestAsset.typeName(), bestAsset == null ? 0 : bestAsset.unitPrice(),
-                bestShip == null ? null : bestShip.typeName(), bestShip == null ? 0 : bestShip.unitPrice(),
-                bestModule == null ? null : bestModule.typeName(), bestModule == null ? 0 : bestModule.unitPrice());
+        Optional<AssetRow> asset = assetDao.mostValuable(characterIdFilter, null);
+        Optional<AssetRow> ship = assetDao.mostValuable(characterIdFilter, CATEGORY_SHIP);
+        Optional<AssetRow> module = assetDao.mostValuable(characterIdFilter, CATEGORY_MODULE);
+        ToDoubleFunction<Optional<AssetRow>> price = row -> row.map(AssetRow::unitPrice).orElse(0.0);
+        return new Best(asset.map(AssetRow::typeName).orElse(null), price.applyAsDouble(asset),
+                ship.map(AssetRow::typeName).orElse(null), price.applyAsDouble(ship),
+                module.map(AssetRow::typeName).orElse(null), price.applyAsDouble(module));
     }
 }

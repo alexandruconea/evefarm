@@ -20,6 +20,7 @@ import com.evefarm.model.MarketOrderEntry;
 import com.evefarm.model.NpcCorporationRow;
 import com.evefarm.model.OwnedSkill;
 import com.evefarm.model.PriceMode;
+import com.evefarm.model.StandingRow;
 import com.evefarm.model.TransactionEntry;
 import com.evefarm.model.TypeInfo;
 import com.evefarm.service.LpPurchaseService.Candidate;
@@ -52,10 +53,12 @@ class LpPurchaseServiceTest {
     private static final int GOLEM_BLUEPRINT = 28711;
     private static final int GOLEM = 28710;
     private static final int ACCOUNTING = 16622;
+    private static final int BROKER_RELATIONS = 3446;
 
     private final PriceService prices = mock(PriceService.class);
     private final MarketHistoryService history = mock(MarketHistoryService.class);
     private final SkillService skills = mock(SkillService.class);
+    private final StandingService standings = mock(StandingService.class);
     private final LpOfferPricingService offers = mock(LpOfferPricingService.class);
     private final LoyaltyPointService loyalty = mock(LoyaltyPointService.class);
     private final CharacterService characters = mock(CharacterService.class);
@@ -80,7 +83,8 @@ class LpPurchaseServiceTest {
         when(characters.listCharacters()).thenReturn(List.of(new EveCharacter(PILOT, "Malpais Legate", List.of(),
                 Instant.parse("2026-01-01T00:00:00Z"))));
         service = new LpPurchaseService(purchases, journal, transactions, orders,
-                new AssetDao(database), prices, history, skills, settings, offers, loyalty, characters, types);
+                new AssetDao(database), prices, history, new SellingFeesService(characters, skills, standings),
+                settings, offers, loyalty, characters, types);
     }
 
     private static LpPurchase purchase(long id, int typeId, long units, double cashCost, String boughtOn) {
@@ -104,7 +108,7 @@ class LpPurchaseServiceTest {
                                     Double requiredItemsCost, Double iskPerLp, int outputTypeId, long outputUnits) {
         return new LpOfferRow(offerId, typeId, name, "Module", outputUnits, lpCost, iskCost, 0, "", List.of(),
                 requiredItemsCost, "", List.of(), 0.0, null, null, iskPerLp, null, null, null, outputTypeId,
-                outputUnits, null, null);
+                outputUnits, null, null, null);
     }
 
     private static JournalEntry payment(long entryId, String date, String refType, double amount) {
@@ -246,7 +250,6 @@ class LpPurchaseServiceTest {
 
     @Test
     void lotsUseTheMarketPricesAndTheSellersTaxAndFee() {
-        settings.set(SettingsDao.INDUSTRY_BROKER_FEE, "2");
         service.record(purchase(0, WEBIFIER, 30, 30_000_000, "2026-10-01T12:00:00Z"));
         transactions.saveForCharacter(PILOT, List.of(
                 new TransactionEntry(1, "2026-10-02T12:00:00Z", WEBIFIER, 12, 3_300_000, 1, 60003760L, false, true, 1),
@@ -255,21 +258,25 @@ class LpPurchaseServiceTest {
         when(prices.getUnitPrices(PriceMode.BUY_MAX)).thenReturn(Map.of(WEBIFIER, 3_100_000.0));
         when(history.dailyVolumes(any())).thenReturn(Map.of(WEBIFIER, 4.0));
         when(skills.skills(PILOT)).thenReturn(Optional.of(new CharacterSkills(PILOT,
-                List.of(new OwnedSkill(ACCOUNTING, 256_000, 5, 5)), null, List.of(), 0, 0, null, null, null, null)));
+                List.of(new OwnedSkill(ACCOUNTING, 256_000, 5, 5), new OwnedSkill(BROKER_RELATIONS, 45_255, 4, 4)),
+                null, List.of(), 0, 0, null, null, null, null)));
+        when(standings.getRows()).thenReturn(List.of(new StandingRow(PILOT, "Malpais Legate",
+                SellingFeesService.JITA_STATION_CORPORATION, "npc_corp", "Caldari Navy", 5.0, null, null, null, null,
+                null)));
 
         Lot lot = service.lots().getFirst();
 
         assertEquals("Malpais Legate", lot.purchase().characterName());
         assertEquals(12, lot.sold(), "the purchase on 2026-10-03 is not a sale");
         assertEquals(12 * 3_300_000, lot.revenue(), 1e-6);
-        assertEquals(0.075 * (1 - 0.11 * 5) + 0.02, lot.feeRate(), 1e-12);
+        assertEquals(0.075 * (1 - 0.11 * 5) + 0.03 - 0.003 * 4 - 0.0002 * 5, lot.feeRate(), 1e-12);
         assertEquals(3_250_000, lot.sellNow(), 1e-9);
         assertEquals(3_100_000, lot.buyNow(), 1e-9);
         assertEquals(4.0, lot.dailyVolume(), 1e-9);
 
         when(skills.skills(PILOT)).thenReturn(Optional.empty());
-        assertEquals(0.075 * (1 - 0.11 * 4) + 0.02, service.lots().getFirst().feeRate(), 1e-12,
-                "unknown skills count as Accounting IV");
+        assertEquals(0.075 * (1 - 0.11 * 4) + 0.03 - 0.003 * 4 - 0.0002 * 5, service.lots().getFirst().feeRate(),
+                1e-12, "unknown skills count as level IV");
     }
 
     @Test

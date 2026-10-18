@@ -7,6 +7,7 @@ public record AssetEntry(
         Long locationId,
         String locationFlag,
         boolean isSingleton,
+        boolean blueprintCopy,
         String name,
         String containerName,
         double unitPrice,

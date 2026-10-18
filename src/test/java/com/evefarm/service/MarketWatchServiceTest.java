@@ -3,10 +3,14 @@ package com.evefarm.service;
 import com.evefarm.auth.AuthService;
 import com.evefarm.db.Database;
 import com.evefarm.db.MigrationRunner;
+import com.evefarm.db.dao.CharacterDao;
+import com.evefarm.db.dao.MarketOrderDao;
 import com.evefarm.db.dao.OrderCompetitionDao;
 import com.evefarm.esi.MarketsApi;
 import com.evefarm.esi.dto.MarketOrderDto;
 import com.evefarm.model.EveCharacter;
+import com.evefarm.model.MarketOrderEntry;
+import com.evefarm.model.MarketOrderRow;
 import com.evefarm.model.OrderCompetition;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,19 +45,22 @@ class MarketWatchServiceTest {
 
     private final AuthService auth = mock(AuthService.class);
     private final MarketsApi markets = mock(MarketsApi.class);
+    private Database database;
     private OrderCompetitionDao dao;
+    private MarketOrderDao savedOrders;
 
     @BeforeEach
     void setUp() {
-        Database database = new Database(":memory:");
+        database = new Database(":memory:");
         MigrationRunner.run(database);
         dao = new OrderCompetitionDao(database);
+        savedOrders = new MarketOrderDao(database);
         when(auth.getValidAccessToken(PILOT)).thenReturn("token");
         when(auth.getValidAccessToken(ALT)).thenReturn("alt-token");
     }
 
     private MarketWatchService watch(Instant now) {
-        return new MarketWatchService(auth, markets, dao, Clock.fixed(now, ZoneOffset.UTC));
+        return new MarketWatchService(auth, markets, dao, savedOrders, Clock.fixed(now, ZoneOffset.UTC));
     }
 
     private static EveCharacter character(long id) {
@@ -116,6 +123,22 @@ class MarketWatchServiceTest {
         assertEquals(new OrderCompetition(200, 9.5, false, NOW), saved.get(200L));
         verify(markets, times(1)).listRegionOrders(FORGE, TRITANIUM);
         assertEquals(1, heard.get());
+    }
+
+    @Test
+    void theSavedOrdersOfAnAltThatCannotBeReadStillDontCount() {
+        MarketOrderDto mine = order(100, false, 10.0, JITA);
+        new CharacterDao(database).upsert(ALT, "Pilot " + ALT, List.of(), "owner");
+        savedOrders.saveForCharacter(ALT, List.of(new MarketOrderEntry(200, TRITANIUM, false, 9.0, 100, 100, null,
+                JITA, "2026-10-09T10:00:00Z", 90, MarketOrderRow.ACTIVE, "station", 1L)));
+        when(markets.listCharacterOrders(PILOT, "token")).thenReturn(List.of(mine));
+        when(markets.listCharacterOrders(ALT, "alt-token")).thenThrow(new IllegalStateException("ESI is down"));
+        when(markets.listRegionOrders(FORGE, TRITANIUM)).thenReturn(List.of(mine, order(200, false, 9.0, JITA)));
+
+        Map<EveCharacter, List<MarketWatchService.Outbid>> outbid = watch(NOW).check(List.of(character(PILOT),
+                character(ALT)));
+
+        assertEquals(List.of(), outbid.get(character(PILOT)));
     }
 
     @Test

@@ -1,6 +1,7 @@
 package com.evefarm.service;
 
 import com.evefarm.db.dao.EntityNameCacheDao;
+import com.evefarm.esi.IdLookup;
 import com.evefarm.esi.UniverseApi;
 import com.evefarm.esi.dto.UniverseNameDto;
 
@@ -36,7 +37,7 @@ public final class EntityNameCacheService {
             return;
         }
         try {
-            List<UniverseNameDto> resolved = universeApi.resolveNames(missing);
+            List<UniverseNameDto> resolved = IdLookup.skippingInvalidIds(missing, universeApi::resolveNames);
             Set<Long> resolvedIds = resolved.stream().map(UniverseNameDto::id).collect(Collectors.toSet());
             for (UniverseNameDto dto : resolved) {
                 entityNameCacheDao.upsert(dto.id(), dto.name(), dto.category());

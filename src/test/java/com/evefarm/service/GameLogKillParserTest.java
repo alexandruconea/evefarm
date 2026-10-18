@@ -217,6 +217,19 @@ class GameLogKillParserTest {
     }
 
     @Test
+    void aDamageNumberTooBigToCountStillShowsTheNpc() {
+        List<String> lines = List.of(
+                "[ 2026.10.02 21:00:00 ] (combat) <color=0xff00ffff><b>98765432109876543210</b> "
+                        + "<color=0x77ffffff><font size=10>to</font> <b><color=0xffffffff>Pithi Despoiler</b>"
+                        + "<font size=10><color=0x77ffffff> - Hits");
+
+        ParsedEncounter.Npc npc = GameLogKillParser.parse(lines).encounters().getFirst().npcs().getFirst();
+
+        assertEquals("Pithi Despoiler", npc.name());
+        assertEquals(0, npc.damageDealt());
+    }
+
+    @Test
     void aPauseLongerThanTheGapStartsANewFight() {
         List<String> lines = List.of(
                 "[ 2026.10.02 21:00:00 ] (combat) <color=0xff00ffff><b>100</b> <color=0x77ffffff><font size=10>to</font> <b><color=0xffffffff>Pithi Despoiler</b><font size=10><color=0x77ffffff> - Hits",

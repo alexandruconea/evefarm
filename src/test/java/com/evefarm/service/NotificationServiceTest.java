@@ -4,6 +4,7 @@ import com.evefarm.auth.AuthService;
 import com.evefarm.auth.OAuthConfig;
 import com.evefarm.db.Database;
 import com.evefarm.db.MigrationRunner;
+import com.evefarm.db.dao.MarketOrderDao;
 import com.evefarm.db.dao.NotificationDao;
 import com.evefarm.db.dao.OrderCompetitionDao;
 import com.evefarm.db.dao.SettingsDao;
@@ -70,7 +71,8 @@ class NotificationServiceTest {
                 List.of(OAuthConfig.SKILL_QUEUE_SCOPE), NOW)));
         when(types.resolveType(TRITANIUM)).thenReturn(new TypeInfo(TRITANIUM, "Tritanium", null, null, 0.01));
         Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
-        MarketWatchService watch = new MarketWatchService(auth, markets, new OrderCompetitionDao(database), clock);
+        MarketWatchService watch = new MarketWatchService(auth, markets, new OrderCompetitionDao(database),
+                new MarketOrderDao(database), clock);
         service = new NotificationService(auth, characters, jobs, watch, skills, contracts, types,
                 new NotificationDao(database), settings, lpPurchases, clock);
         service.addListener(sent::add);

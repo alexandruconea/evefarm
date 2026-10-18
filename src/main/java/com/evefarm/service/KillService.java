@@ -117,7 +117,7 @@ public final class KillService {
             encounterDao.replaceForLogFile(characterId.get(), fileName, parsed.encounters());
             killDao.saveProgress(fileName, currentSize, GameLogKillParser.PARSER_VERSION);
             return true;
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
             LOG.log(Level.WARNING, "Failed to read Gamelog file " + file, e);
             return false;
         }

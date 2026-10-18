@@ -150,8 +150,9 @@ final class LpPaymentsDialog extends JDialog {
                 try {
                     payments = new ArrayList<>(get());
                 } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Couldn't load the LP Store payments", e);
-                    statusLabel.setText("Couldn't look up the payments: " + e.getMessage());
+                    Throwable cause = e.getCause() != null ? e.getCause() : e;
+                    LOG.log(Level.WARNING, "Couldn't load the LP Store payments", cause);
+                    statusLabel.setText("Couldn't look up the payments: " + cause.getMessage());
                     return;
                 }
                 showPayments();

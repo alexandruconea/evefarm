@@ -69,11 +69,12 @@ public final class TabVisibilityDialog extends JDialog {
             }
         });
 
-        JButton up = new JButton("Move Up");
+        JButton up = new JButton("Move Up", Icons.MOVE_UP);
         up.addActionListener(e -> move(-1));
-        JButton down = new JButton("Move Down");
+        JButton down = new JButton("Move Down", Icons.MOVE_DOWN);
         down.addActionListener(e -> move(1));
-        JPanel sideButtons = ButtonSizing.column(4, up, down);
+        JPanel sideButtons = new JPanel(new BorderLayout());
+        sideButtons.add(ButtonSizing.column(4, up, down), BorderLayout.NORTH);
 
         JButton save = new JButton("Save", Icons.SAVE);
         save.addActionListener(e -> save());

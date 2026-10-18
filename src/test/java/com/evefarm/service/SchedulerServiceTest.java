@@ -8,9 +8,13 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -20,6 +24,24 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class SchedulerServiceTest {
+
+    @Test
+    void aTaskThatFailsKeepsRunningOnItsSchedule() throws Exception {
+        AtomicInteger runs = new AtomicInteger();
+        Runnable failing = SchedulerService.logged("read loyalty points", () -> {
+            runs.incrementAndGet();
+            throw new IllegalStateException("database is busy");
+        });
+        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+        try {
+            executor.scheduleWithFixedDelay(failing, 0, 10, TimeUnit.MILLISECONDS);
+            Thread.sleep(200);
+        } finally {
+            executor.shutdownNow();
+        }
+
+        assertTrue(runs.get() > 1, "a task that throws would run only once");
+    }
 
     @Test
     void failedPriceRefreshDoesNotAdvanceTheCooldown() {

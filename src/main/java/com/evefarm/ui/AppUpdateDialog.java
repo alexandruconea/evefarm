@@ -44,9 +44,9 @@ final class AppUpdateDialog extends JDialog {
     private final Runnable exitApp;
     private final Optional<Path> installDir = UpdateInstaller.installDirectory();
     private final JButton updateButton = new JButton();
-    private final JButton pageButton = new JButton("Release Page");
-    private final JButton skipButton = new JButton("Skip This Version");
-    private final JButton laterButton = new JButton("Later");
+    private final JButton pageButton = new JButton("Release Page", Icons.DOCUMENT);
+    private final JButton skipButton = new JButton("Skip This Version", Icons.CLEAR);
+    private final JButton laterButton = new JButton("Later", Icons.CANCEL);
     private final JProgressBar progressBar = new JProgressBar();
     private final JLabel statusLabel = new JLabel(" ");
 

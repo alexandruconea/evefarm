@@ -72,9 +72,10 @@ public final class AgentsPanel extends JPanel {
                             "Imported " + count + " agents.",
                             "Refresh Agent Data", JOptionPane.INFORMATION_MESSAGE);
                 } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Failed to import agent data", e);
+                    Throwable cause = e.getCause() != null ? e.getCause() : e;
+                    LOG.log(Level.WARNING, "Failed to import agent data", cause);
                     JOptionPane.showMessageDialog(AgentsPanel.this,
-                            "Failed to import agent data: " + e.getCause(),
+                            "Failed to import agent data: " + cause.getMessage(),
                             "Refresh Agent Data", JOptionPane.ERROR_MESSAGE);
                 }
             }

@@ -15,10 +15,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public final class FuzzworkApi {
 
+    private static final Logger LOG = Logger.getLogger(FuzzworkApi.class.getName());
     private static final String BASE_URL = "https://market.fuzzwork.co.uk/aggregates/";
     private static final String BLUEPRINT_URL = "https://www.fuzzwork.co.uk/blueprint/api/blueprint.php";
     private static final String STATIC_DATA_CSV_URL = "https://www.fuzzwork.co.uk/dump/latest/csv/";
@@ -68,6 +71,9 @@ public final class FuzzworkApi {
         } catch (IllegalStateException e) {
             throw e;
         } catch (Exception e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
             throw new IllegalStateException("Failed to reach Fuzzwork Market Data", e);
         }
     }
@@ -87,6 +93,10 @@ public final class FuzzworkApi {
             }
             return Optional.ofNullable(objectMapper.readValue(response.body(), FuzzworkBlueprintDto.class));
         } catch (Exception e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            LOG.log(Level.WARNING, "Couldn't read the materials of blueprint " + blueprintTypeId + " from Fuzzwork", e);
             return Optional.empty();
         }
     }
@@ -107,6 +117,9 @@ public final class FuzzworkApi {
         } catch (IllegalStateException e) {
             throw e;
         } catch (Exception e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
             throw new IllegalStateException("Failed to reach Fuzzwork static data dump for " + fileName, e);
         }
     }

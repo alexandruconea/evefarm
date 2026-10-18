@@ -447,7 +447,8 @@ public final class MainFrame extends JFrame {
                 }
             }
             return icon;
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Couldn't load the app icon", e);
             return null;
         }
     }

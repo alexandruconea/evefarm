@@ -4,6 +4,7 @@ import com.evefarm.db.Database;
 import com.evefarm.db.MigrationRunner;
 import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.util.AppPaths;
+import org.sqlite.SQLiteConfig;
 
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
@@ -13,7 +14,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -197,7 +197,9 @@ public final class BackupRestoreService {
         if (!Files.isRegularFile(file)) {
             return "Not a file.";
         }
-        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
+        SQLiteConfig readOnly = new SQLiteConfig();
+        readOnly.setReadOnly(true);
+        try (Connection connection = readOnly.createConnection("jdbc:sqlite:" + file);
              Statement statement = connection.createStatement()) {
             try (ResultSet rs = statement.executeQuery("PRAGMA integrity_check")) {
                 if (!rs.next() || !"ok".equalsIgnoreCase(rs.getString(1))) {

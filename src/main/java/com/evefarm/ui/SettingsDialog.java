@@ -176,7 +176,9 @@ public final class SettingsDialog extends JDialog {
         if (result == JOptionPane.YES_OPTION) {
             try {
                 Desktop.getDesktop().browse(URI.create(discordUrl));
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this, "Couldn't open the browser:\n" + discordUrl,
+                        "Janice API Key", JOptionPane.WARNING_MESSAGE);
             }
         }
     }

@@ -66,6 +66,9 @@ public final class JaniceApi {
         } catch (IllegalStateException e) {
             throw e;
         } catch (Exception e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
             throw new IllegalStateException("Failed to reach Janice", e);
         }
     }

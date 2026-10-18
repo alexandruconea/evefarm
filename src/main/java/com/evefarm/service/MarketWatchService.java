@@ -1,6 +1,7 @@
 package com.evefarm.service;
 
 import com.evefarm.auth.AuthService;
+import com.evefarm.db.dao.MarketOrderDao;
 import com.evefarm.db.dao.OrderCompetitionDao;
 import com.evefarm.esi.MarketsApi;
 import com.evefarm.esi.dto.MarketOrderDto;
@@ -34,18 +35,21 @@ public final class MarketWatchService {
     private final AuthService authService;
     private final MarketsApi marketsApi;
     private final OrderCompetitionDao orderCompetitionDao;
+    private final MarketOrderDao marketOrderDao;
     private final Clock clock;
     private final List<Runnable> listeners = new CopyOnWriteArrayList<>();
 
-    public MarketWatchService(AuthService authService, MarketsApi marketsApi, OrderCompetitionDao orderCompetitionDao) {
-        this(authService, marketsApi, orderCompetitionDao, Clock.systemUTC());
+    public MarketWatchService(AuthService authService, MarketsApi marketsApi, OrderCompetitionDao orderCompetitionDao,
+                              MarketOrderDao marketOrderDao) {
+        this(authService, marketsApi, orderCompetitionDao, marketOrderDao, Clock.systemUTC());
     }
 
     MarketWatchService(AuthService authService, MarketsApi marketsApi, OrderCompetitionDao orderCompetitionDao,
-                       Clock clock) {
+                       MarketOrderDao marketOrderDao, Clock clock) {
         this.authService = authService;
         this.marketsApi = marketsApi;
         this.orderCompetitionDao = orderCompetitionDao;
+        this.marketOrderDao = marketOrderDao;
         this.clock = clock;
     }
 
@@ -64,6 +68,7 @@ public final class MarketWatchService {
                 orders.forEach(order -> ownOrderIds.add(order.orderId()));
             } catch (RuntimeException e) {
                 failed(character, e);
+                ownOrderIds.addAll(marketOrderDao.openOrderIds(character.characterId()));
             }
         }
         Map<String, List<MarketOrderDto>> markets = new HashMap<>();

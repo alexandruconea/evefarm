@@ -1,6 +1,7 @@
 package com.evefarm.ui.column;
 
 import com.evefarm.ui.ButtonSizing;
+import com.evefarm.ui.Icons;
 
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
@@ -72,10 +73,10 @@ public final class ColumnChooserDialog extends JDialog {
             }
         });
 
-        JButton up = new JButton("Move Up");
+        JButton up = new JButton("Move Up", Icons.MOVE_UP);
         up.setToolTipText("Move the selected column to the left in the table. You can also drag the column headers");
         up.addActionListener(e -> move(-1));
-        JButton down = new JButton("Move Down");
+        JButton down = new JButton("Move Down", Icons.MOVE_DOWN);
         down.setToolTipText("Move the selected column to the right in the table. You can also drag the column "
                 + "headers");
         down.addActionListener(e -> move(1));
@@ -91,14 +92,15 @@ public final class ColumnChooserDialog extends JDialog {
             checked.clear();
             list.repaint();
         });
-        JPanel sideButtons = ButtonSizing.column(4, up, down, showAll, hideAll);
+        JPanel sideButtons = new JPanel(new BorderLayout());
+        sideButtons.add(ButtonSizing.column(4, up, down, showAll, hideAll), BorderLayout.NORTH);
 
         JButton ok = new JButton("OK");
         ok.addActionListener(e -> {
             confirmed = true;
             dispose();
         });
-        JButton cancel = new JButton("Cancel");
+        JButton cancel = new JButton("Cancel", Icons.CANCEL);
         cancel.addActionListener(e -> dispose());
         JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         bottom.add(ButtonSizing.row(6, ok, cancel));

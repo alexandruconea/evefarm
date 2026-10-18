@@ -12,6 +12,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -69,6 +70,25 @@ public final class MarketOrderDao {
                 ps.executeBatch();
             }
         });
+    }
+
+    public Set<Long> openOrderIds(long characterId) {
+        String sql = "SELECT order_id FROM market_order_current WHERE character_id = ? AND state = ?";
+        synchronized (database) {
+            try (PreparedStatement ps = database.connection().prepareStatement(sql)) {
+                ps.setLong(1, characterId);
+                ps.setString(2, MarketOrderRow.ACTIVE);
+                Set<Long> orderIds = new HashSet<>();
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        orderIds.add(rs.getLong("order_id"));
+                    }
+                }
+                return orderIds;
+            } catch (SQLException e) {
+                throw new IllegalStateException("Failed to read the open orders of character " + characterId, e);
+            }
+        }
     }
 
     public List<MarketOrderRow> listRows(Set<Long> characterIdFilter, boolean includeClosed) {

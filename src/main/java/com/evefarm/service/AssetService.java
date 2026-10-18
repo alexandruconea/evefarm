@@ -3,6 +3,7 @@ package com.evefarm.service;
 import com.evefarm.auth.AuthService;
 import com.evefarm.db.dao.AssetDao;
 import com.evefarm.esi.AssetsApi;
+import com.evefarm.esi.IdLookup;
 import com.evefarm.esi.dto.AssetDto;
 import com.evefarm.esi.dto.AssetNameDto;
 import com.evefarm.model.AssetEntry;
@@ -72,13 +73,13 @@ public final class AssetService {
         List<AssetEntry> entries = new ArrayList<>(assets.size());
         double total = 0;
         for (AssetDto asset : assets) {
-            double unitPrice = unitPrices.getOrDefault(asset.typeId(), 0.0);
+            double unitPrice = asset.isBlueprintCopy() ? 0 : unitPrices.getOrDefault(asset.typeId(), 0.0);
             double totalValue = unitPrice * asset.quantity();
             total += totalValue;
             long displayLocationId = topLevelLocationByItemId.get(asset.itemId());
             entries.add(new AssetEntry(
                     asset.itemId(), asset.typeId(), asset.quantity(), displayLocationId,
-                    asset.locationFlag(), asset.isSingleton(), customNames.get(asset.itemId()),
+                    asset.locationFlag(), asset.isSingleton(), asset.isBlueprintCopy(), customNames.get(asset.itemId()),
                     containerNameByItemId.get(asset.itemId()), unitPrice, totalValue));
         }
 
@@ -144,14 +145,16 @@ public final class AssetService {
             Map<Long, String> names = new HashMap<>();
             for (int start = 0; start < singletonIds.size(); start += 1000) {
                 List<Long> batch = singletonIds.subList(start, Math.min(start + 1000, singletonIds.size()));
-                for (AssetNameDto dto : assetsApi.resolveNames(characterId, accessToken, batch)) {
+                for (AssetNameDto dto : IdLookup.skippingInvalidIds(batch,
+                        ids -> assetsApi.resolveNames(characterId, accessToken, ids))) {
                     names.put(dto.itemId(), dto.name());
                 }
             }
             return names;
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "Failed to resolve custom asset names for character " + characterId, e);
-            return Map.of();
+            LOG.log(Level.WARNING, "Failed to resolve custom asset names for character " + characterId
+                    + " - keeping the names read last time", e);
+            return assetDao.findNames(characterId);
         }
     }
 }

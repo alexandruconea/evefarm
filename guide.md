@@ -72,6 +72,7 @@ To choose what to update, open **Update > Update...**:
 
 | Line | What it fetches | Can run again after |
 | --- | --- | --- |
+| Market Prices | Item prices from your price provider | 1 hour |
 | Assets | Every item your characters own, where it is and what it's worth | 1 hour |
 | Market Orders | Your open orders, plus the orders that closed since the last update | 20 minutes |
 | Journal | Your wallet journal | 1 hour |
@@ -79,7 +80,6 @@ To choose what to update, open **Update > Update...**:
 | Contracts | Your contracts | 1 hour |
 | Industry Jobs | Your industry jobs | 1 hour |
 | Tracker Snapshot | Wallet, net worth and skill points, saved as one point in the Tracker chart | 1 hour |
-| Market Prices | Item prices from your price provider | 1 hour |
 | Loyalty Points | Your LP with every corporation | 1 hour |
 | NPC Kills | Reads your Gamelogs for new NPC kills | 1 hour |
 | Mining Ledger | What your characters mined | 10 minutes |
@@ -140,6 +140,7 @@ Every item your characters own: location, quantity, unit price, total value, vol
 
 - **Show:** chooses what you see. **Current assets** is the list from the last update. EVE Farm also saves your whole asset list as it was at the end of each month, so you can pick a past month to see what you owned then.
 - The total value of what's shown is at the bottom.
+- Blueprint copies have **(Blueprint Copy)** after their name and count as 0 ISK, as copies can't be sold on the market.
 
 ### Journal
 
@@ -181,6 +182,7 @@ For each offer you see the item, quantity, LP cost, ISK cost, the other items it
 
 - **ISK/LP (Sell)** and **ISK/LP (Buy)**: the ISK you make per LP, selling at the lowest sell price or to the highest buy order, after the ISK cost and the other costs.
 - **Profit (Sell)** and **Profit (Buy)**: the ISK you make on the whole offer.
+- **Net ISK/LP** and **Net Profit**: the same after the fees your main character pays when selling in Jita 4-4. Selling with a sell order pays the sales tax and the broker fee; selling to buy orders pays only the sales tax. The sales tax is 7.5% less 11% for each level of Accounting. The broker fee is 3% less 0.3% for each level of Broker Relations, less 0.03% for each point of standing with the Caldari State and 0.02% for each point with the Caldari Navy, and at least 100 ISK. The line under the table shows the character and the fees used. Skills EVE Farm has not read yet count as level IV.
 - **Sold per Day**: how many units people buy from sell orders per day in The Forge, the region of Jita, over the last 30 days. EVE's market history doesn't say which side each sale was on, so EVE Farm estimates it from each day's average, lowest and highest price; sales into buy orders are left out. It is refreshed once a day. For a blueprint, it is the item the blueprint builds. Check it before you buy an offer, so you don't end up with items nobody buys.
 - **Days to Sell**: the units of the offer divided by **Sold per Day**, that is how many days of sales the whole offer equals. **No sales** means nobody bought from sell orders in the last 30 days. You share the market with other sellers, so expect it to take longer.
 - **For Sale** (hidden at first): how many units are for sale in Jita 4-4 right now, with Fuzzwork prices.
@@ -222,7 +224,7 @@ The top table has one row per item. The bottom table shows each purchase of the 
 - **ISK/LP Now** (bottom table): the ISK/LP the purchase makes at today's lowest sell price.
 - The bottom table also has **Corporation**, **Offers**, **Used**, **LP Spent**, **ISK Spent** and **Other Cost**, hidden at first. Right-click a header and choose **Choose Columns...** to show them.
 
-Your market sales come from **Update**: each sale of the item by any of your characters counts against the oldest purchase made before it. Sales of the same item that did not come from an LP store count too. Used some units yourself? Select the purchase, click **Edit...** and set **Units used**. **Show sold** also lists what you have sold or used up. The sales tax comes from each character's Accounting skill (IV when EVE Farm doesn't know the skills), and the broker fee is the **Broker fee %** of the Industry Calculator.
+Your market sales come from **Update**: each sale of the item by any of your characters counts against the oldest purchase made before it. Sales of the same item that did not come from an LP store count too. Used some units yourself? Select the purchase, click **Edit...** and set **Units used**. **Show sold** also lists what you have sold or used up. The sales tax and the broker fee are those of the character who made the purchase, worked out as for the **Net** columns of the LP Store tab: from its Accounting and Broker Relations skills and its standings with the Caldari State and the Caldari Navy (skills EVE Farm has not read yet count as level IV).
 
 ### NPC Kills
 

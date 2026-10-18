@@ -113,6 +113,19 @@ class IndustryCalculatorTest {
     }
 
     @Test
+    void brokerFeeFallsWithBrokerRelationsAndTheStandingsOfTheStationOwner() {
+        IntUnaryOperator brokerRelationsV = levels(Map.of(3446, 5));
+
+        assertEquals(0.03, IndustryCalculator.brokerFee(levels(Map.of()), 0, 0), 1e-12);
+        assertEquals(0.03 - 0.015 - 0.0003 * 7.436762069 - 0.0002 * 9.401696114,
+                IndustryCalculator.brokerFee(brokerRelationsV, 7.436762069, 9.401696114), 1e-12,
+                "1.09%, what Malpais Legate pays in Jita 4-4");
+        assertEquals(0.01, IndustryCalculator.brokerFee(brokerRelationsV, 10, 10), 1e-12);
+        assertEquals(0.03 + 0.0003 * 5, IndustryCalculator.brokerFee(levels(Map.of()), -5, 0), 1e-12,
+                "bad standings cost more");
+    }
+
+    @Test
     void skillsDecideTheLinesTheSalesTaxAndWhatCanBeBuilt() {
         IntUnaryOperator trained = levels(Map.of(MASS_PRODUCTION, 5, ADVANCED_MASS_PRODUCTION, 4, ACCOUNTING, 5,
                 INDUSTRY, 4));

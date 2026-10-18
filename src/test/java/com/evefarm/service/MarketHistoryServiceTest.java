@@ -109,7 +109,7 @@ class MarketHistoryServiceTest {
     @Test
     void daysToSellIsTheOffersUnitsOverTheDailyVolume() {
         LpOfferRow row = new LpOfferRow(1, JAGUAR, "Jaguar", "Ship", 5, 1000, 0, 0, "", List.of(), null, "",
-                List.of(), null, null, null, null, null, null, null, JAGUAR, 5, null, null);
+                List.of(), null, null, null, null, null, null, null, JAGUAR, 5, null, null, null);
 
         assertNull(row.daysToSell());
         assertEquals(2.5, row.withDailyVolume(2.0).daysToSell(), 1e-9);

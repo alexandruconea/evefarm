@@ -157,7 +157,7 @@ public final class PriceService {
     }
 
     public OptionalDouble getUnitPrice(int typeId, PriceMode mode) {
-        return priceCacheDao.findUnitPrice(typeId, mode);
+        return priceCacheDao.findMarketSidePrice(typeId, mode);
     }
 
     public Map<Integer, Double> getUnitPrices() {
@@ -165,7 +165,7 @@ public final class PriceService {
     }
 
     public Map<Integer, Double> getUnitPrices(PriceMode mode) {
-        return priceCacheDao.findAllUnitPrices(mode);
+        return priceCacheDao.findAllMarketSidePrices(mode);
     }
 
     private boolean unpricedSince(String provider, int typeId, Instant freshSince) {

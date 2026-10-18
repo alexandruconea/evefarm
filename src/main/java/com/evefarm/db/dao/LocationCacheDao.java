@@ -7,6 +7,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HashSet;
@@ -17,18 +18,26 @@ import java.util.stream.Collectors;
 
 public final class LocationCacheDao {
 
+    static final Duration UNKNOWN_RETRY = Duration.ofDays(1);
+    private static final String STILL_VALID = " AND NOT (location_type = 'unknown' AND cached_at < ?)";
+
     private final Database database;
 
     public LocationCacheDao(Database database) {
         this.database = database;
     }
 
+    private static String unknownRetryAfter() {
+        return Instant.now().minus(UNKNOWN_RETRY).toString();
+    }
+
     public Optional<String> findName(long locationId) {
-        String sql = "SELECT name FROM location_cache WHERE location_id = ?";
+        String sql = "SELECT name FROM location_cache WHERE location_id = ?" + STILL_VALID;
         synchronized (database) {
             Connection connection = database.connection();
             try (PreparedStatement ps = connection.prepareStatement(sql)) {
                 ps.setLong(1, locationId);
+                ps.setString(2, unknownRetryAfter());
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {
                         return Optional.ofNullable(rs.getString("name"));
@@ -50,12 +59,14 @@ public final class LocationCacheDao {
             for (int start = 0; start < distinct.size(); start += chunkSize) {
                 List<Long> chunk = distinct.subList(start, Math.min(start + chunkSize, distinct.size()));
                 String placeholders = chunk.stream().map(id -> "?").collect(Collectors.joining(","));
-                String sql = "SELECT location_id FROM location_cache WHERE location_id IN (" + placeholders + ")";
+                String sql = "SELECT location_id FROM location_cache WHERE location_id IN (" + placeholders + ")"
+                        + STILL_VALID;
                 try (PreparedStatement ps = connection.prepareStatement(sql)) {
                     int index = 1;
                     for (Long id : chunk) {
                         ps.setLong(index++, id);
                     }
+                    ps.setString(index, unknownRetryAfter());
                     try (ResultSet rs = ps.executeQuery()) {
                         while (rs.next()) {
                             result.add(rs.getLong("location_id"));

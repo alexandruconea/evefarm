@@ -9,7 +9,9 @@ import com.evefarm.model.LpOfferRow;
 import com.evefarm.model.LpPurchase;
 import com.evefarm.model.LpRequiredItem;
 import com.evefarm.model.NpcCorporationRow;
+import com.evefarm.model.SellingFees;
 import com.evefarm.service.ItemIconService;
+import com.evefarm.service.SellingFeesService;
 import com.evefarm.ui.column.ColumnCopySupport;
 import com.evefarm.ui.column.ColumnSorting;
 import com.evefarm.ui.column.ColumnVisibilitySupport;
@@ -35,6 +37,8 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Font;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.LinkedHashMap;
@@ -42,9 +46,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public final class LpStorePanel extends JPanel {
 
+    private static final Logger LOG = Logger.getLogger(LpStorePanel.class.getName());
     private static final String PANEL_KEY = "lpStore";
 
     private final AppContext appContext;
@@ -59,6 +66,10 @@ public final class LpStorePanel extends JPanel {
     private double targetIskPerLp;
     private long yourLp = 0;
     private String mainCharacterName;
+    private SellingFees sellingFees;
+
+    private record PricedOffers(List<LpOfferRow> rows, SellingFees fees) {
+    }
 
     public LpStorePanel(AppContext appContext) {
         initComponents();
@@ -82,6 +93,7 @@ public final class LpStorePanel extends JPanel {
         filterBarContainer.setLayout(new BorderLayout());
         filterBarContainer.add(filterBarPanel, BorderLayout.CENTER);
 
+        refreshOffersButton.setIcon(Icons.REFRESH);
         setTargetButton.setIcon(Icons.TARGET);
         yourLpLabel.setFont(yourLpLabel.getFont().deriveFont(Font.BOLD));
         ColumnCopySupport.install(table, tableModel, this::copyLpColumn);
@@ -130,19 +142,24 @@ public final class LpStorePanel extends JPanel {
         table.setDefaultRenderer(Object.class, (tbl, value, isSelected, hasFocus, row, column) -> {
             Component c = defaultRenderer.getTableCellRendererComponent(tbl, value, isSelected, hasFocus, row, column);
             if (!isSelected && targetIskPerLp > 0) {
-                int modelColumn = tbl.convertColumnIndexToModel(column);
-                String key = tableModel.columns().get(modelColumn).key();
-                if ("iskPerLpSell".equals(key) || "iskPerLpBuy".equals(key)) {
-                    LpOfferRow offerRow = tableModel.rowAt(tbl.convertRowIndexToModel(row));
-                    Double raw = "iskPerLpSell".equals(key) ? offerRow.iskPerLpSell() : offerRow.iskPerLpBuy();
-                    Color background = colorFor(raw);
-                    if (background != null) {
-                        c.setBackground(background);
-                    }
+                String key = tableModel.columns().get(tbl.convertColumnIndexToModel(column)).key();
+                Color background = colorFor(iskPerLp(tableModel.rowAt(tbl.convertRowIndexToModel(row)), key));
+                if (background != null) {
+                    c.setBackground(background);
                 }
             }
             return c;
         });
+    }
+
+    static Double iskPerLp(LpOfferRow row, String columnKey) {
+        return switch (columnKey) {
+            case "iskPerLpSell" -> row.iskPerLpSell();
+            case "iskPerLpBuy" -> row.iskPerLpBuy();
+            case "netIskPerLpSell" -> row.netIskPerLpSell();
+            case "netIskPerLpBuy" -> row.netIskPerLpBuy();
+            default -> null;
+        };
     }
 
     private Color colorFor(Double iskPerLp) {
@@ -158,10 +175,38 @@ public final class LpStorePanel extends JPanel {
 
     public void onShown() {
         reloadCharacters(false);
+        updateSellingFees();
     }
 
     public void refreshCharacterFilter() {
         reloadCharacters(true);
+        updateSellingFees();
+    }
+
+    private void updateSellingFees() {
+        SellingFees fees = appContext.sellingFeesService.mainCharacterFees();
+        if (fees.equals(sellingFees)) {
+            return;
+        }
+        showSellingFees(fees);
+        tableModel.setRows(tableModel.rows().stream().map(row -> SellingFeesService.afterFees(row, fees)).toList());
+        applyFilter();
+    }
+
+    private void showSellingFees(SellingFees fees) {
+        sellingFees = fees;
+        feesLabel.setText(feesText(fees));
+    }
+
+    static String feesText(SellingFees fees) {
+        String seller = fees.characterName() == null ? "skills at level IV" : fees.characterName();
+        return "Net columns: " + seller + ", sales tax " + percent(fees.salesTax()) + ", broker fee "
+                + percent(fees.brokerFee());
+    }
+
+    private static String percent(double fraction) {
+        return BigDecimal.valueOf(fraction * 100).setScale(3, RoundingMode.HALF_UP).stripTrailingZeros()
+                .toPlainString() + "%";
     }
 
     private void reloadCharacters(boolean selectMain) {
@@ -200,6 +245,7 @@ public final class LpStorePanel extends JPanel {
                 try {
                     allCorporations = get();
                 } catch (Exception e) {
+                    LOG.log(Level.WARNING, "Couldn't load the NPC corporations", e);
                     allCorporations = List.of();
                 }
                 DefaultComboBoxModel<String> model = new DefaultComboBoxModel<>();
@@ -268,23 +314,31 @@ public final class LpStorePanel extends JPanel {
         }
         long corporationId = selectedCorporationId;
         refreshOffersButton.setEnabled(false);
-        new SwingWorker<List<LpOfferRow>, Void>() {
+        new SwingWorker<PricedOffers, Void>() {
             @Override
-            protected List<LpOfferRow> doInBackground() {
-                return appContext.lpOfferPricingService.listPricedOffers(corporationId);
+            protected PricedOffers doInBackground() {
+                SellingFees fees = appContext.sellingFeesService.mainCharacterFees();
+                return new PricedOffers(appContext.lpOfferPricingService.listPricedOffers(corporationId).stream()
+                        .map(row -> SellingFeesService.afterFees(row, fees)).toList(), fees);
             }
 
             @Override
             protected void done() {
                 refreshOffersButton.setEnabled(true);
+                if (corporationId != selectedCorporationId) {
+                    return;
+                }
                 try {
-                    List<LpOfferRow> rows = get();
+                    PricedOffers priced = get();
+                    List<LpOfferRow> rows = priced.rows();
+                    showSellingFees(priced.fees());
                     tableModel.setRows(rows);
                     offerCount = rows.size();
                     TableStyler.packColumns(table);
                     applyFilter();
                     loadIcons(rows);
-                } catch (Exception ignored) {
+                } catch (Exception e) {
+                    LOG.log(Level.WARNING, "Couldn't load the offers of corporation " + corporationId, e);
                     offerCount = -1;
                 }
                 updateOfferCountLabel();
@@ -396,6 +450,7 @@ public final class LpStorePanel extends JPanel {
     private JTable table;
     private JLabel wealthLabel;
     private JLabel yourLpLabel;
+    private JLabel feesLabel;
 
     private void initComponents() {
 
@@ -406,6 +461,10 @@ public final class LpStorePanel extends JPanel {
         favoriteCheckBox = new JCheckBox();
         yourLpLabel = new JLabel();
         wealthLabel = new JLabel();
+        feesLabel = UiColors.mutedLabel(" ");
+        feesLabel.setToolTipText("The Net columns take these off. The broker fee is the one in Jita 4-4: 3% less 0.3% "
+                + "for each level of Broker Relations, less the standings with Caldari State and Caldari Navy. "
+                + "Selling to buy orders has no broker fee");
         refreshOffersButton = new JButton();
         setTargetButton = new JButton();
         historyButton = new JButton("LP History...");
@@ -460,7 +519,9 @@ public final class LpStorePanel extends JPanel {
                                 .addGap(18, 18, 18)
                                 .addComponent(yourLpLabel)
                                 .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(wealthLabel))
+                                .addComponent(wealthLabel)
+                                .addGap(18, 18, 18)
+                                .addComponent(feesLabel))
                             .addGroup(layout.createSequentialGroup()
                                 .addComponent(characterLabel)
                                 .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
@@ -504,7 +565,8 @@ public final class LpStorePanel extends JPanel {
                 .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
                     .addComponent(offerCountLabel)
                     .addComponent(yourLpLabel)
-                    .addComponent(wealthLabel))
+                    .addComponent(wealthLabel)
+                    .addComponent(feesLabel))
                 .addContainerGap())
         );
     }

@@ -83,9 +83,9 @@ public final class SkillsPanel extends JPanel {
     private final JButton deletePlanButton = new JButton("Delete", Icons.REMOVE);
     private final JButton addSkillButton = new JButton("Add Skills...", Icons.ADD);
     private final JButton removeButton = new JButton("Remove", Icons.REMOVE);
-    private final JButton moveUpButton = new JButton("Move Up");
-    private final JButton moveDownButton = new JButton("Move Down");
-    private final JButton notesButton = new JButton("Notes...");
+    private final JButton moveUpButton = new JButton("Move Up", Icons.MOVE_UP);
+    private final JButton moveDownButton = new JButton("Move Down", Icons.MOVE_DOWN);
+    private final JButton notesButton = new JButton("Notes...", Icons.NOTEBOOK);
     private final JButton importButton = new JButton("Import...", Icons.LOAD);
     private final JButton queueButton = new JButton("From Skill Queue", Icons.LOAD);
     private final JButton exportButton = new JButton("Copy as Text", Icons.CLIPBOARD);
@@ -661,6 +661,7 @@ public final class SkillsPanel extends JPanel {
         if (text.isBlank()) {
             return;
         }
+        long planId = plan.planId();
         importButton.setEnabled(false);
         new SwingWorker<SkillCatalogService.ItemRequirements, Void>() {
             @Override
@@ -675,11 +676,15 @@ public final class SkillsPanel extends JPanel {
             @Override
             protected void done() {
                 updateButtons();
+                if (plan == null || plan.planId() != planId) {
+                    return;
+                }
                 try {
                     applyImport(get());
                 } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Failed to import into the skill plan", e);
-                    JOptionPane.showMessageDialog(SkillsPanel.this, "Couldn't import: " + e.getMessage(),
+                    Throwable cause = e.getCause() != null ? e.getCause() : e;
+                    LOG.log(Level.WARNING, "Failed to import into the skill plan", cause);
+                    JOptionPane.showMessageDialog(SkillsPanel.this, "Couldn't import: " + cause.getMessage(),
                             "Import", JOptionPane.WARNING_MESSAGE);
                 }
             }

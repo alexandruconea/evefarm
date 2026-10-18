@@ -26,10 +26,16 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.GridBagConstraints;
+import java.awt.GraphicsConfiguration;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Rectangle;
+import java.awt.Toolkit;
 import java.awt.Window;
+import java.awt.font.FontRenderContext;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.ZoneId;
@@ -87,7 +93,37 @@ public final class EveSettingsCopyDialog extends JDialog {
         loadProfiles();
         pack();
         setMinimumSize(new Dimension(690, getHeight()));
+        fitAccountChoices();
         setLocationRelativeTo(owner);
+    }
+
+    private void fitAccountChoices() {
+        int shortBy = Math.max(shortBy(sourceAccount), shortBy(targetAccount));
+        if (shortBy <= 0 || !isDisplayable()) {
+            return;
+        }
+        GraphicsConfiguration screen = getGraphicsConfiguration();
+        Insets taskbar = Toolkit.getDefaultToolkit().getScreenInsets(screen);
+        Rectangle bounds = screen.getBounds();
+        int left = bounds.x + taskbar.left;
+        int usableWidth = bounds.width - taskbar.left - taskbar.right;
+        int width = Math.min(getWidth() + shortBy, usableWidth);
+        setBounds(Math.max(left, Math.min(getX(), left + usableWidth - width)), getY(), width, getHeight());
+        validate();
+    }
+
+    private static int shortBy(JComboBox<?> combo) {
+        Font font = combo.getFont();
+        FontMetrics layout = combo.getFontMetrics(font);
+        FontRenderContext screen = new FontRenderContext(combo.getGraphicsConfiguration().getDefaultTransform(),
+                true, false);
+        int widerOnScreen = 0;
+        for (int index = 0; index < combo.getItemCount(); index++) {
+            String text = String.valueOf(combo.getItemAt(index));
+            int onScreen = (int) Math.ceil(font.getStringBounds(text, screen).getWidth());
+            widerOnScreen = Math.max(widerOnScreen, onScreen - layout.stringWidth(text));
+        }
+        return combo.getUI().getPreferredSize(combo).width + widerOnScreen - combo.getWidth();
     }
 
     private void buildUi() {
@@ -259,6 +295,7 @@ public final class EveSettingsCopyDialog extends JDialog {
                         }
                     });
                     profilesChanged();
+                    fitAccountChoices();
                 } catch (Exception e) {
                     LOG.log(Level.FINE, "Could not resolve EVE character names", e);
                 } finally {
@@ -459,6 +496,8 @@ public final class EveSettingsCopyDialog extends JDialog {
         includeAccount.setEnabled(accountsAvailable && !isBusy());
         sourceAccount.setEnabled(includeAccount.isSelected() && !isBusy());
         targetAccount.setEnabled(includeAccount.isSelected() && !isBusy());
+        sourceAccount.setToolTipText(fullText(sourceAccount.getSelectedItem()));
+        targetAccount.setToolTipText(fullText(targetAccount.getSelectedItem()));
         boolean valid = scan != null && sourceCharacter.getSelectedItem() != null
                 && targetCharacter.getSelectedItem() != null
                 && (!includeAccount.isSelected()
@@ -542,6 +581,10 @@ public final class EveSettingsCopyDialog extends JDialog {
         };
         copyWorker.execute();
         updateControls();
+    }
+
+    private static String fullText(Object choice) {
+        return choice == null ? null : choice.toString();
     }
 
     private boolean isBusy() {

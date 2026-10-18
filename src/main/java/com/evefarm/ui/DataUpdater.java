@@ -61,6 +61,9 @@ final class DataUpdater {
     DataUpdater(AppContext appContext) {
         this.appContext = appContext;
         this.categories = List.of(
+                new Category(UpdateCategories.MARKET_PRICES, "Market Prices", Duration.ofHours(1),
+                        (characters, failures) -> attempt(failures, "Market Prices",
+                                appContext.priceService::refreshPrices)),
                 new Category(UpdateCategories.ASSETS, "Assets", Duration.ofHours(1),
                         perCharacter(appContext.assetService::refreshAssetsForCharacter)),
                 new Category(UpdateCategories.MARKET_ORDERS, "Market Orders", Duration.ofMinutes(20),
@@ -75,9 +78,6 @@ final class DataUpdater {
                         perCharacter(appContext.industryJobService::refreshJobsForCharacter)),
                 new Category(UpdateCategories.TRACKER, "Tracker Snapshot", Duration.ofHours(1),
                         perCharacter(appContext.trackerSnapshotService::captureSnapshot)),
-                new Category(UpdateCategories.MARKET_PRICES, "Market Prices", Duration.ofHours(1),
-                        (characters, failures) -> attempt(failures, "Market Prices",
-                                appContext.priceService::refreshPrices)),
                 new Category(UpdateCategories.LOYALTY_POINTS, "Loyalty Points", Duration.ofHours(1),
                         perCharacter(appContext.loyaltyPointService::refreshLoyaltyPointsForCharacter)),
                 new Category(UpdateCategories.KILLS, "NPC Kills", Duration.ofHours(1),

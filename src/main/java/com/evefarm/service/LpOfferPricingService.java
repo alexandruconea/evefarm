@@ -4,16 +4,19 @@ import com.evefarm.esi.FuzzworkApi;
 import com.evefarm.esi.LoyaltyApi;
 import com.evefarm.esi.dto.FuzzworkBlueprintDto;
 import com.evefarm.esi.dto.LoyaltyOfferDto;
+import com.evefarm.model.IndustryActivity;
 import com.evefarm.model.LpOfferRow;
 import com.evefarm.model.LpRequiredItem;
 import com.evefarm.model.PriceMode;
 import com.evefarm.model.TypeInfo;
+import com.evefarm.model.TypeQuantity;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -26,15 +29,18 @@ public final class LpOfferPricingService {
 
     private final LoyaltyApi loyaltyApi;
     private final FuzzworkApi fuzzworkApi;
+    private final IndustryCatalogService industryCatalogService;
     private final TypeNameCacheService typeNameCacheService;
     private final PriceService priceService;
     private final MarketHistoryService marketHistoryService;
 
     public LpOfferPricingService(LoyaltyApi loyaltyApi, FuzzworkApi fuzzworkApi,
+                                  IndustryCatalogService industryCatalogService,
                                   TypeNameCacheService typeNameCacheService, PriceService priceService,
                                   MarketHistoryService marketHistoryService) {
         this.loyaltyApi = loyaltyApi;
         this.fuzzworkApi = fuzzworkApi;
+        this.industryCatalogService = industryCatalogService;
         this.typeNameCacheService = typeNameCacheService;
         this.priceService = priceService;
         this.marketHistoryService = marketHistoryService;
@@ -51,11 +57,11 @@ public final class LpOfferPricingService {
             }
         }
         typeNameCacheService.resolveTypes(typeIds);
-        Map<Integer, FuzzworkBlueprintDto> blueprints = blueprints(offers);
+        Map<Integer, Blueprint> blueprints = blueprints(offers);
         Set<Integer> products = new HashSet<>();
-        for (FuzzworkBlueprintDto blueprint : blueprints.values()) {
-            products.add(blueprint.blueprintDetails().productTypeId());
-            manufacturingMaterials(blueprint).forEach(material -> typeIds.add(material.typeId()));
+        for (Blueprint blueprint : blueprints.values()) {
+            products.add(blueprint.productTypeId());
+            blueprint.materials().forEach(material -> typeIds.add(material.typeId()));
         }
         typeNameCacheService.resolveTypes(products);
         typeIds.addAll(products);
@@ -71,20 +77,52 @@ public final class LpOfferPricingService {
         return priced.stream().map(row -> row.withDailyVolume(dailyVolumes.get(row.outputTypeId()))).toList();
     }
 
-    private Map<Integer, FuzzworkBlueprintDto> blueprints(List<LoyaltyOfferDto> offers) {
-        Map<Integer, FuzzworkBlueprintDto> blueprints = new HashMap<>();
+    private record Blueprint(int productTypeId, long productQuantity, List<Material> materials) {
+    }
+
+    private record Material(int typeId, String name, long quantity) {
+    }
+
+    private Map<Integer, Blueprint> blueprints(List<LoyaltyOfferDto> offers) {
+        Map<Integer, Blueprint> blueprints = new HashMap<>();
         Set<Integer> checked = new HashSet<>();
         for (LoyaltyOfferDto offer : offers) {
             if (checked.add(offer.typeId())
                     && CATEGORY_BLUEPRINT.equals(typeNameCacheService.resolveType(offer.typeId()).categoryName())) {
-                fuzzworkApi.fetchBlueprintMaterials(offer.typeId())
-                        .filter(blueprint -> blueprint.blueprintDetails() != null
-                                && blueprint.blueprintDetails().productTypeId() != null
-                                && !manufacturingMaterials(blueprint).isEmpty())
+                fromIndustryCatalog(offer.typeId()).or(() -> fromFuzzwork(offer.typeId()))
                         .ifPresent(blueprint -> blueprints.put(offer.typeId(), blueprint));
             }
         }
         return blueprints;
+    }
+
+    private Optional<Blueprint> fromIndustryCatalog(int blueprintTypeId) {
+        return industryCatalogService.activity(blueprintTypeId, IndustryActivity.MANUFACTURING)
+                .filter(activity -> activity.product() != null && !activity.materials().isEmpty())
+                .map(this::toBlueprint);
+    }
+
+    private Blueprint toBlueprint(IndustryActivity activity) {
+        Map<Integer, String> names = industryCatalogService.names(
+                activity.materials().stream().map(TypeQuantity::typeId).toList());
+        List<Material> materials = activity.materials().stream()
+                .map(material -> new Material(material.typeId(),
+                        names.getOrDefault(material.typeId(), "Type #" + material.typeId()), material.quantity()))
+                .toList();
+        return new Blueprint(activity.product().typeId(), activity.product().quantity(), materials);
+    }
+
+    private Optional<Blueprint> fromFuzzwork(int blueprintTypeId) {
+        return fuzzworkApi.fetchBlueprintMaterials(blueprintTypeId)
+                .filter(blueprint -> blueprint.blueprintDetails() != null
+                        && blueprint.blueprintDetails().productTypeId() != null
+                        && !manufacturingMaterials(blueprint).isEmpty())
+                .map(blueprint -> new Blueprint(blueprint.blueprintDetails().productTypeId(),
+                        blueprint.blueprintDetails().productQuantity() == null
+                                ? 1 : blueprint.blueprintDetails().productQuantity(),
+                        manufacturingMaterials(blueprint).stream()
+                                .map(material -> new Material(material.typeId(), material.name(), material.quantity()))
+                                .toList()));
     }
 
     private static List<FuzzworkBlueprintDto.MaterialEntry> manufacturingMaterials(FuzzworkBlueprintDto blueprint) {
@@ -93,8 +131,7 @@ public final class LpOfferPricingService {
         return materials == null ? List.of() : materials;
     }
 
-    private LpOfferRow price(LoyaltyOfferDto offer, Map<Integer, Double> unitsForSale,
-                             FuzzworkBlueprintDto blueprintData) {
+    private LpOfferRow price(LoyaltyOfferDto offer, Map<Integer, Double> unitsForSale, Blueprint blueprintData) {
         TypeInfo type = typeNameCacheService.resolveType(offer.typeId());
 
         int outputTypeId = offer.typeId();
@@ -144,19 +181,19 @@ public final class LpOfferPricingService {
                 String.join(", ", summaryParts), requiredItems, requiredItemsCost,
                 buildMaterialsSummary, buildMaterials, buildMaterialsCost, sellPrice, buyPrice,
                 iskPerLpSell, iskPerLpBuy, profitSell, profitBuy, outputTypeId, outputUnits,
-                unitsForSale.get(outputTypeId), null);
+                unitsForSale.get(outputTypeId), null, null);
     }
 
-    private record BlueprintPricing(int productTypeId, int productQuantityPerRun, String summary,
+    private record BlueprintPricing(int productTypeId, long productQuantityPerRun, String summary,
                                      List<LpRequiredItem> materials, Double cost) {
     }
 
-    private BlueprintPricing priceBlueprintOffer(FuzzworkBlueprintDto blueprint, long totalRuns) {
+    private BlueprintPricing priceBlueprintOffer(Blueprint blueprint, long totalRuns) {
         double cost = 0;
         boolean allPriced = true;
         List<String> summaryParts = new ArrayList<>();
         List<LpRequiredItem> materialItems = new ArrayList<>();
-        for (FuzzworkBlueprintDto.MaterialEntry material : manufacturingMaterials(blueprint)) {
+        for (Material material : blueprint.materials()) {
             long quantityAtMe = applyMaterialEfficiency(material.quantity(), totalRuns, MATERIAL_EFFICIENCY_LEVEL);
             summaryParts.add(quantityAtMe + "x " + material.name());
             materialItems.add(new LpRequiredItem(material.name(), quantityAtMe));
@@ -168,9 +205,7 @@ public final class LpOfferPricingService {
             cost += price * quantityAtMe;
         }
 
-        int productQuantity = blueprint.blueprintDetails().productQuantity() == null
-                ? 1 : blueprint.blueprintDetails().productQuantity();
-        return new BlueprintPricing(blueprint.blueprintDetails().productTypeId(), productQuantity,
+        return new BlueprintPricing(blueprint.productTypeId(), blueprint.productQuantity(),
                 String.join(", ", summaryParts), materialItems, allPriced ? cost : null);
     }
 

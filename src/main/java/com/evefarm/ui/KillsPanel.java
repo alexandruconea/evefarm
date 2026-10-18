@@ -477,9 +477,10 @@ public final class KillsPanel extends JPanel {
                             "Report saved to:\n" + finalTarget,
                             "Export Kills Report", JOptionPane.INFORMATION_MESSAGE);
                 } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Failed to generate kills report", e);
+                    Throwable cause = e.getCause() != null ? e.getCause() : e;
+                    LOG.log(Level.WARNING, "Failed to generate kills report", cause);
                     JOptionPane.showMessageDialog(KillsPanel.this,
-                            "Failed to generate the report: " + e.getCause(),
+                            "Failed to generate the report: " + cause.getMessage(),
                             "Export Kills Report", JOptionPane.ERROR_MESSAGE);
                 }
             }

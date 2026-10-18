@@ -12,7 +12,6 @@ import com.evefarm.model.EveCharacter;
 import com.evefarm.model.LpOfferRow;
 import com.evefarm.model.LpPurchase;
 import com.evefarm.model.NpcCorporationRow;
-import com.evefarm.model.OwnedSkill;
 import com.evefarm.model.PriceMode;
 
 import java.time.Duration;
@@ -31,8 +30,6 @@ import java.util.stream.Collectors;
 
 public final class LpPurchaseService {
 
-    private static final int ASSUMED_LEVEL = 4;
-    private static final double DEFAULT_BROKER_FEE_PERCENT = 1.5;
     private static final Duration EVIDENCE_WINDOW = Duration.ofDays(30);
     private static final Duration RECORDED_PAYMENT_WINDOW = Duration.ofDays(7);
 
@@ -145,7 +142,7 @@ public final class LpPurchaseService {
     private final AssetDao assetDao;
     private final PriceService priceService;
     private final MarketHistoryService marketHistoryService;
-    private final SkillService skillService;
+    private final SellingFeesService sellingFeesService;
     private final SettingsDao settingsDao;
     private final LpOfferPricingService lpOfferPricingService;
     private final LoyaltyPointService loyaltyPointService;
@@ -155,7 +152,7 @@ public final class LpPurchaseService {
     public LpPurchaseService(LpPurchaseDao lpPurchaseDao, WalletJournalDao walletJournalDao,
                              WalletTransactionDao walletTransactionDao, MarketOrderDao marketOrderDao,
                              AssetDao assetDao, PriceService priceService, MarketHistoryService marketHistoryService,
-                             SkillService skillService, SettingsDao settingsDao,
+                             SellingFeesService sellingFeesService, SettingsDao settingsDao,
                              LpOfferPricingService lpOfferPricingService, LoyaltyPointService loyaltyPointService,
                              CharacterService characterService, TypeNameCacheService typeNameCacheService) {
         this.lpPurchaseDao = lpPurchaseDao;
@@ -165,7 +162,7 @@ public final class LpPurchaseService {
         this.assetDao = assetDao;
         this.priceService = priceService;
         this.marketHistoryService = marketHistoryService;
-        this.skillService = skillService;
+        this.sellingFeesService = sellingFeesService;
         this.settingsDao = settingsDao;
         this.lpOfferPricingService = lpOfferPricingService;
         this.loyaltyPointService = loyaltyPointService;
@@ -217,11 +214,11 @@ public final class LpPurchaseService {
         Map<Integer, Double> volumes = marketHistoryService.dailyVolumes(typeIds);
         Map<Long, Matched> matched = matchSales(purchases, walletTransactionDao.findSales(typeIds));
         Map<Long, Double> feeRates = new HashMap<>();
-        double brokerFee = settingsDao.getDouble(SettingsDao.INDUSTRY_BROKER_FEE, DEFAULT_BROKER_FEE_PERCENT) / 100;
         List<Lot> lots = new ArrayList<>();
         for (LpPurchase purchase : purchases) {
             Matched sold = matched.getOrDefault(purchase.purchaseId(), new Matched(0, 0));
-            double feeRate = feeRates.computeIfAbsent(purchase.characterId(), id -> salesTax(id) + brokerFee);
+            double feeRate = feeRates.computeIfAbsent(purchase.characterId(),
+                    id -> sellingFeesService.characterFees(id, purchase.characterName()).sellOrderRate());
             lots.add(new Lot(purchase, sold.units(), sold.revenue(), feeRate, sells.get(purchase.typeId()),
                     buys.get(purchase.typeId()), volumes.get(purchase.typeId())));
         }
@@ -384,14 +381,6 @@ public final class LpPurchaseService {
     private Double defaultTarget() {
         double target = settingsDao.getDouble(SettingsDao.LP_STORE_TARGET_ISK_PER_LP, 0);
         return target > 0 ? target : null;
-    }
-
-    private double salesTax(long characterId) {
-        Map<Integer, Integer> levels = skillService.skills(characterId)
-                .map(skills -> skills.skills().stream()
-                        .collect(Collectors.toMap(OwnedSkill::skillId, OwnedSkill::activeLevel, (a, b) -> a)))
-                .orElse(null);
-        return IndustryCalculator.salesTax(skillId -> levels == null ? ASSUMED_LEVEL : levels.getOrDefault(skillId, 0));
     }
 
     private static double orZero(Double value) {

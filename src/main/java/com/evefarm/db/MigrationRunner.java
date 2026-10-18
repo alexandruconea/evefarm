@@ -66,7 +66,9 @@ public final class MigrationRunner {
             "db/migrations/V41__market_volume_sell_orders.sql",
             "db/migrations/V42__loyalty_point_checks.sql",
             "db/migrations/V43__loyalty_point_next_read.sql",
-            "db/migrations/V44__tracker_lp_value_at_target.sql"
+            "db/migrations/V44__tracker_lp_value_at_target.sql",
+            "db/migrations/V45__lp_store_net_columns.sql",
+            "db/migrations/V46__asset_blueprint_copies.sql"
     );
 
     public static void run(Database database) {

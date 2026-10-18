@@ -282,6 +282,16 @@ public final class Icons {
         }
     });
 
+    public static final Icon MOVE_UP = icon(Tone.NEUTRAL, g -> {
+        g.draw(line(8, 13.5, 8, 2.5));
+        g.draw(path(4, 6.5, 8, 2.5, 12, 6.5));
+    });
+
+    public static final Icon MOVE_DOWN = icon(Tone.NEUTRAL, g -> {
+        g.draw(line(8, 2.5, 8, 13.5));
+        g.draw(path(4, 9.5, 8, 13.5, 12, 9.5));
+    });
+
     public static Icon disabled(Icon icon) {
         if (icon instanceof LineIcon line) {
             return new LineIcon(line.tone, line.painter, true);

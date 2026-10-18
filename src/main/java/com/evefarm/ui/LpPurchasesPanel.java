@@ -168,8 +168,9 @@ public final class LpPurchasesPanel extends JPanel {
                     reviewButton.setText(reviewText(loaded.pendingPayments()));
                     show(lots);
                 } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Couldn't load the LP Store purchases", e);
-                    summaryLabel.setText("Couldn't load the purchases: " + e.getMessage());
+                    Throwable cause = e.getCause() != null ? e.getCause() : e;
+                    LOG.log(Level.WARNING, "Couldn't load the LP Store purchases", cause);
+                    summaryLabel.setText("Couldn't load the purchases: " + cause.getMessage());
                 }
             }
         }.execute();

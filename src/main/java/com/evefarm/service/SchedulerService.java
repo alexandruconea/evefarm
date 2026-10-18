@@ -80,14 +80,27 @@ public final class SchedulerService {
     }
 
     public void start() {
-        executor.scheduleWithFixedDelay(this::refreshTokens, 0, 5, TimeUnit.MINUTES);
-        executor.scheduleWithFixedDelay(this::refreshPrices, 0, 24, TimeUnit.HOURS);
-        backupExecutor.scheduleWithFixedDelay(backupRestoreService::autoBackupIfDue, 10, 6 * 60 * 60, TimeUnit.SECONDS);
-        executor.schedule(this::captureAllSnapshots, 0, TimeUnit.SECONDS);
-        executor.scheduleWithFixedDelay(this::refreshLoyaltyPoints, 0, LOYALTY_POINT_CHECK_MINUTES, TimeUnit.MINUTES);
-        gamelogExecutor.scheduleWithFixedDelay(this::scanGamelogs, 15, GAMELOG_SCAN_SECONDS, TimeUnit.SECONDS);
-        notificationExecutor.scheduleWithFixedDelay(this::checkNotifications, 1, NOTIFICATION_CHECK_MINUTES,
-                TimeUnit.MINUTES);
+        executor.scheduleWithFixedDelay(logged("refresh the logins", this::refreshTokens), 0, 5, TimeUnit.MINUTES);
+        executor.scheduleWithFixedDelay(logged("refresh market prices", this::refreshPrices), 0, 24, TimeUnit.HOURS);
+        backupExecutor.scheduleWithFixedDelay(logged("back up", backupRestoreService::autoBackupIfDue), 10,
+                6 * 60 * 60, TimeUnit.SECONDS);
+        executor.schedule(logged("capture snapshots", this::captureAllSnapshots), 0, TimeUnit.SECONDS);
+        executor.scheduleWithFixedDelay(logged("read loyalty points", this::refreshLoyaltyPoints), 0,
+                LOYALTY_POINT_CHECK_MINUTES, TimeUnit.MINUTES);
+        gamelogExecutor.scheduleWithFixedDelay(logged("scan Gamelogs", this::scanGamelogs), 15, GAMELOG_SCAN_SECONDS,
+                TimeUnit.SECONDS);
+        notificationExecutor.scheduleWithFixedDelay(logged("check notifications", this::checkNotifications), 1,
+                NOTIFICATION_CHECK_MINUTES, TimeUnit.MINUTES);
+    }
+
+    static Runnable logged(String task, Runnable work) {
+        return () -> {
+            try {
+                work.run();
+            } catch (RuntimeException | Error e) {
+                LOG.log(Level.SEVERE, "Couldn't " + task + "; trying again next time", e);
+            }
+        };
     }
 
     public void addSnapshotListener(Runnable listener) {
