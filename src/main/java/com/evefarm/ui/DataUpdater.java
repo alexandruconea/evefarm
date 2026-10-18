@@ -31,7 +31,10 @@ final class DataUpdater {
     private static final Logger LOG = Logger.getLogger(DataUpdater.class.getName());
     private static final int COOLDOWN_RELOAD_MILLIS = 15_000;
 
-    record Category(String key, String label, Duration cooldown, Step step) {
+    record Category(String key, String label, Duration cooldown, boolean usesLogins, Step step) {
+    }
+
+    record Result(List<String> failures, List<String> needLogin) {
     }
 
     @FunctionalInterface
@@ -54,40 +57,40 @@ final class DataUpdater {
     private final Set<String> pending = new LinkedHashSet<>();
     private final Map<String, Instant> lastRefreshed = new HashMap<>();
     private final List<Runnable> listeners = new ArrayList<>();
-    private final List<Consumer<List<String>>> finishedListeners = new ArrayList<>();
+    private final List<Consumer<Result>> finishedListeners = new ArrayList<>();
     private Category current;
     private boolean reloading;
 
     DataUpdater(AppContext appContext) {
         this.appContext = appContext;
         this.categories = List.of(
-                new Category(UpdateCategories.MARKET_PRICES, "Market Prices", Duration.ofHours(1),
+                new Category(UpdateCategories.MARKET_PRICES, "Market Prices", Duration.ofHours(1), false,
                         (characters, failures) -> attempt(failures, "Market Prices",
                                 appContext.priceService::refreshPrices)),
-                new Category(UpdateCategories.ASSETS, "Assets", Duration.ofHours(1),
+                new Category(UpdateCategories.ASSETS, "Assets", Duration.ofHours(1), true,
                         perCharacter(appContext.assetService::refreshAssetsForCharacter)),
-                new Category(UpdateCategories.MARKET_ORDERS, "Market Orders", Duration.ofMinutes(20),
+                new Category(UpdateCategories.MARKET_ORDERS, "Market Orders", Duration.ofMinutes(20), true,
                         perCharacter(appContext.marketOrderService::refreshOrdersForCharacter)),
-                new Category(UpdateCategories.JOURNAL, "Journal", Duration.ofHours(1),
+                new Category(UpdateCategories.JOURNAL, "Journal", Duration.ofHours(1), true,
                         perCharacter(appContext.journalService::refreshJournalForCharacter)),
-                new Category(UpdateCategories.TRANSACTIONS, "Transactions", Duration.ofHours(1),
+                new Category(UpdateCategories.TRANSACTIONS, "Transactions", Duration.ofHours(1), true,
                         perCharacter(appContext.transactionService::refreshTransactionsForCharacter)),
-                new Category(UpdateCategories.CONTRACTS, "Contracts", Duration.ofHours(1),
+                new Category(UpdateCategories.CONTRACTS, "Contracts", Duration.ofHours(1), true,
                         perCharacter(appContext.contractService::refreshContractsForCharacter)),
-                new Category(UpdateCategories.INDUSTRY_JOBS, "Industry Jobs", Duration.ofHours(1),
+                new Category(UpdateCategories.INDUSTRY_JOBS, "Industry Jobs", Duration.ofHours(1), true,
                         perCharacter(appContext.industryJobService::refreshJobsForCharacter)),
-                new Category(UpdateCategories.TRACKER, "Tracker Snapshot", Duration.ofHours(1),
+                new Category(UpdateCategories.TRACKER, "Tracker Snapshot", Duration.ofHours(1), true,
                         perCharacter(appContext.trackerSnapshotService::captureSnapshot)),
-                new Category(UpdateCategories.LOYALTY_POINTS, "Loyalty Points", Duration.ofHours(1),
+                new Category(UpdateCategories.LOYALTY_POINTS, "Loyalty Points", Duration.ofHours(1), true,
                         perCharacter(appContext.loyaltyPointService::refreshLoyaltyPointsForCharacter)),
-                new Category(UpdateCategories.KILLS, "NPC Kills", Duration.ofHours(1),
+                new Category(UpdateCategories.KILLS, "NPC Kills", Duration.ofHours(1), false,
                         (characters, failures) -> attempt(failures, "Gamelogs",
                                 appContext.killService::refreshKillsFromLogs)),
-                new Category(UpdateCategories.MINING, "Mining Ledger", Duration.ofMinutes(10),
+                new Category(UpdateCategories.MINING, "Mining Ledger", Duration.ofMinutes(10), true,
                         perCharacter(appContext.miningService::refreshLedgerForCharacter)),
-                new Category(UpdateCategories.STANDINGS, "Standings", Duration.ofHours(1),
+                new Category(UpdateCategories.STANDINGS, "Standings", Duration.ofHours(1), true,
                         perCharacter(appContext.standingService::refreshStandingsForCharacter)),
-                new Category(UpdateCategories.SKILLS, "Skills", Duration.ofMinutes(5),
+                new Category(UpdateCategories.SKILLS, "Skills", Duration.ofMinutes(5), true,
                         perCharacter(appContext.skillService::refreshSkillsForCharacter)));
         new Timer(COOLDOWN_RELOAD_MILLIS, e -> reloadCooldowns()).start();
         reloadCooldowns();
@@ -105,7 +108,7 @@ final class DataUpdater {
         listeners.remove(listener);
     }
 
-    void addFinishedListener(Consumer<List<String>> listener) {
+    void addFinishedListener(Consumer<Result> listener) {
         finishedListeners.add(listener);
     }
 
@@ -169,15 +172,27 @@ final class DataUpdater {
 
     private void run(List<Category> toRun, boolean firstCharacterOnly) {
         List<String> failures = new ArrayList<>();
+        Set<String> needLogin = new LinkedHashSet<>();
+        Set<Long> loginsFromAnotherSystem = loginsFromAnotherSystem();
         for (Category category : toRun) {
             SwingUtilities.invokeLater(() -> {
                 current = category;
                 fireChanged();
             });
             List<String> categoryFailures = new ArrayList<>();
+            boolean skippedCharacters = false;
             try {
-                category.step().run(characters(firstCharacterOnly), categoryFailures);
-                if (categoryFailures.isEmpty()) {
+                List<EveCharacter> characters = characters(firstCharacterOnly);
+                if (category.usesLogins()) {
+                    List<EveCharacter> withoutLogin = characters.stream()
+                            .filter(character -> loginsFromAnotherSystem.contains(character.characterId()))
+                            .toList();
+                    withoutLogin.forEach(character -> needLogin.add(character.characterName()));
+                    characters = characters.stream().filter(character -> !withoutLogin.contains(character)).toList();
+                    skippedCharacters = !withoutLogin.isEmpty();
+                }
+                category.step().run(characters, categoryFailures);
+                if (categoryFailures.isEmpty() && !skippedCharacters) {
                     appContext.updateCooldownDao.markRefreshed(category.key());
                 }
             } catch (RuntimeException | Error e) {
@@ -185,7 +200,7 @@ final class DataUpdater {
                 categoryFailures.add(describe(e));
             }
             Instant finished = Instant.now();
-            boolean refreshed = categoryFailures.isEmpty();
+            boolean refreshed = categoryFailures.isEmpty() && !skippedCharacters;
             categoryFailures.forEach(failure -> failures.add(category.label() + " - " + failure));
             SwingUtilities.invokeLater(() -> {
                 pending.remove(category.key());
@@ -198,8 +213,17 @@ final class DataUpdater {
                 fireChanged();
             });
         }
-        List<String> result = List.copyOf(failures);
+        Result result = new Result(List.copyOf(failures), List.copyOf(needLogin));
         SwingUtilities.invokeLater(() -> finishedListeners.forEach(listener -> listener.accept(result)));
+    }
+
+    private Set<Long> loginsFromAnotherSystem() {
+        try {
+            return appContext.tokenDao.characterIdsWithLoginsFromAnotherSystem();
+        } catch (RuntimeException e) {
+            LOG.log(Level.WARNING, "Couldn't check which saved logins come from another system", e);
+            return Set.of();
+        }
     }
 
     private List<EveCharacter> characters(boolean firstCharacterOnly) {

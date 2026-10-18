@@ -655,7 +655,7 @@ final class AbyssRunDialog extends JDialog {
 
     static Double parseIsk(String text) {
         String value = text.strip().toUpperCase(Locale.ROOT).replace("ISK", "").replace(",", "")
-                .replace(" ", "").replace(" ", "");
+                .replace(" ", "").replace("\u00A0", "");
         if (value.isEmpty()) {
             return null;
         }

@@ -38,7 +38,7 @@ EVEFARM_LINUX_ARCHIVE="$archive" EVEFARM_LINUX_APP_DIR="$work/app/EVEFarm" \
 EVEFARM_KEYRING_TEST=1 dbus-run-session -- sh -c \
     'printf ci-keyring | gnome-keyring-daemon --unlock >/dev/null; ./mvnw -B -q surefire:test -Dtest=LinuxKeyringTest'
 
-HOME="$work/home" xvfb-run -a dbus-run-session -- sh -c \
+HOME="$work/home" JAVA_TOOL_OPTIONS="-Duser.home=$work/home" xvfb-run -a dbus-run-session -- sh -c \
     'printf ci-keyring | gnome-keyring-daemon --unlock >/dev/null; exec "$0"' \
     "$work/app/EVEFarm/bin/EVEFarm" > "$work/app-output.txt" 2>&1 &
 sleep 45

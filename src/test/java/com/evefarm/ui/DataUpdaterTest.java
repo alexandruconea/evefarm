@@ -22,7 +22,7 @@ class DataUpdaterTest {
     private static final List<Category> CATEGORIES = List.of(ASSETS, JOURNAL, SKILLS);
 
     private static Category category(String key, String label, Duration cooldown) {
-        return new Category(key, label, cooldown, (characters, failures) -> {
+        return new Category(key, label, cooldown, true, (characters, failures) -> {
         });
     }
 

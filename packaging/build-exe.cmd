@@ -42,6 +42,7 @@ jpackage ^
   --name EVEFarm ^
   --main-jar evefarm.jar ^
   --main-class com.evefarm.Main ^
+  --java-options --enable-native-access=ALL-UNNAMED ^
   --icon packaging\evefarm.ico ^
   --app-version %APP_VERSION% ^
   --vendor "Alex Conea" ^

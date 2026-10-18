@@ -18,6 +18,7 @@ mkdir -p packaging/linux/stage dist
 cp target/evefarm.jar packaging/linux/stage/
 jpackage --type app-image --input packaging/linux/stage --dest dist --name EVEFarm \
     --main-jar evefarm.jar --main-class com.evefarm.Main --icon packaging/linux/evefarm.png \
+    --java-options --enable-native-access=ALL-UNNAMED \
     --app-version "$version" --vendor "Alex Conea" \
     --description "EVE Online multi-character asset and net-worth tracker"
 rm -rf packaging/linux/stage

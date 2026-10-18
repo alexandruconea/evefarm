@@ -9,6 +9,7 @@ import com.evefarm.util.AppInfo;
 import com.evefarm.util.AppPaths;
 import com.evefarm.util.Browser;
 import com.evefarm.util.Platform;
+import com.evefarm.util.Text;
 import com.formdev.flatlaf.FlatLaf;
 
 import javax.imageio.ImageIO;
@@ -158,9 +159,9 @@ public final class MainFrame extends JFrame {
         rebuildTabs();
         installTabMenu();
         dataUpdater = new DataUpdater(appContext);
-        dataUpdater.addFinishedListener(failures -> {
+        dataUpdater.addFinishedListener(result -> {
             onDataUpdated();
-            showUpdateFailures(failures);
+            showUpdateFailures(result);
         });
         getContentPane().remove(tabbedPane);
         getContentPane().add(TabBarOverlay.wrap(tabbedPane, new UpdateButton(dataUpdater)), BorderLayout.CENTER);
@@ -399,7 +400,7 @@ public final class MainFrame extends JFrame {
                 updateAvailableButton.setVisible(true);
                 if (userAsked || (check == UpdateCheck.STARTUP && isVisible())) {
                     showUpdateDialog(availableRelease);
-                } else if (trayIcon != null && !isVisible()) {
+                } else if (!isVisible() || (getExtendedState() & JFrame.ICONIFIED) != 0) {
                     showTrayNotification(AppInfo.NAME + " " + availableRelease.version() + " is available",
                             "Open EVE Farm to update.");
                 }
@@ -457,7 +458,7 @@ public final class MainFrame extends JFrame {
     }
 
     private void setupTrayIcon(Image appIcon) {
-        if (!SystemTray.isSupported() || appIcon == null) {
+        if (Platform.isLinux() || !SystemTray.isSupported() || appIcon == null) {
             return;
         }
         PopupMenu popup = new PopupMenu();
@@ -482,8 +483,8 @@ public final class MainFrame extends JFrame {
         if (trayIcon != null) {
             SystemTray.getSystemTray().remove(trayIcon);
         }
-        setVisible(true);
         setExtendedState(getExtendedState() & ~JFrame.ICONIFIED);
+        setVisible(true);
         toFront();
         requestFocus();
     }
@@ -838,20 +839,42 @@ public final class MainFrame extends JFrame {
         new UpdateDialog(this, dataUpdater).setVisible(true);
     }
 
-    private void showUpdateFailures(List<String> failures) {
-        if (failures.isEmpty()) {
+    private void showUpdateFailures(DataUpdater.Result result) {
+        List<String> failures = result.failures();
+        List<String> needLogin = result.needLogin();
+        if (failures.isEmpty() && needLogin.isEmpty()) {
             return;
         }
-        JTextArea text = new JTextArea(String.join("\n", failures));
-        TextAreaStyler.scrollable(text);
-        JScrollPane scroll = new JScrollPane(text);
-        scroll.setPreferredSize(new Dimension(520, 180));
         JPanel panel = new JPanel(new BorderLayout(0, 8));
-        panel.add(new JLabel("<html>These updates failed and weren't counted as done, so you can retry them right "
-                + "away.<br>Details are also in the log (" + AppPaths.appDataDir().resolve("logs") + ").</html>"),
-                BorderLayout.NORTH);
-        panel.add(scroll, BorderLayout.CENTER);
-        JOptionPane.showMessageDialog(this, panel, "Some updates failed", JOptionPane.WARNING_MESSAGE);
+        if (!needLogin.isEmpty()) {
+            panel.add(new JLabel("<html><b>Add " + Text.escapeHtml(String.join(", ", needLogin)) + " again.</b><br>"
+                    + "Their saved logins were protected on another computer or system, for example in a backup "
+                    + "made on Windows,<br>so they can't be read here. Adding a character again keeps all its "
+                    + "history.</html>"), BorderLayout.NORTH);
+        }
+        if (!failures.isEmpty()) {
+            JTextArea text = new JTextArea(String.join("\n", failures));
+            TextAreaStyler.scrollable(text);
+            JScrollPane scroll = new JScrollPane(text);
+            scroll.setPreferredSize(new Dimension(520, 180));
+            JPanel failed = new JPanel(new BorderLayout(0, 8));
+            failed.add(new JLabel("<html>These updates failed and weren't counted as done, so you can retry them "
+                    + "right away.<br>Details are also in the log (" + AppPaths.appDataDir().resolve("logs")
+                    + ").</html>"), BorderLayout.NORTH);
+            failed.add(scroll, BorderLayout.CENTER);
+            panel.add(failed, BorderLayout.CENTER);
+        }
+        String title = failures.isEmpty() ? "Add your characters again" : "Some updates failed";
+        if (needLogin.isEmpty()) {
+            JOptionPane.showMessageDialog(this, panel, title, JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        Object[] options = {"Add Characters...", "Close"};
+        int choice = JOptionPane.showOptionDialog(this, panel, title, JOptionPane.DEFAULT_OPTION,
+                JOptionPane.WARNING_MESSAGE, null, options, options[0]);
+        if (choice == 0) {
+            charactersItemActionPerformed(null);
+        }
     }
 
     private void onDataUpdated() {

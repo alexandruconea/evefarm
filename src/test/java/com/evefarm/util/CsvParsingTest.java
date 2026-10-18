@@ -15,7 +15,7 @@ class CsvParsingTest {
 
     @Test
     void parseRecordsKeepsAQuotedNewlineInsideItsField() {
-        String csv = "﻿\"id\",\"description\"\r\n\"1\",\"first line\r\nsecond, with comma\"\r\n\"2\",\"say \"\"hi\"\"\"\r\n";
+        String csv = "\uFEFF\"id\",\"description\"\r\n\"1\",\"first line\r\nsecond, with comma\"\r\n\"2\",\"say \"\"hi\"\"\"\r\n";
         assertEquals(List.of(
                 List.of("id", "description"),
                 List.of("1", "first line\r\nsecond, with comma"),
@@ -60,7 +60,7 @@ class CsvParsingTest {
 
     @Test
     void aTableFindsItsColumnsByNameAndReadsNumbers() {
-        CsvTable table = CsvTable.parse("﻿typeID,typeName,portionSize,security,marketGroupID\n"
+        CsvTable table = CsvTable.parse("\uFEFFtypeID,typeName,portionSize,security,marketGroupID\n"
                 + "1230,Veldspar,100,0.94,None\n");
         List<String> row = table.rows().getFirst();
 

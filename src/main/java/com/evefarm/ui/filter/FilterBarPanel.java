@@ -141,7 +141,7 @@ public final class FilterBarPanel extends JPanel {
                 boolean result = true;
                 for (int i = 0; i < active.size(); i++) {
                     FilterCondition condition = active.get(i);
-                    boolean matches = matches(entry, condition);
+                    boolean matches = matches(entry, condition, columnNames);
                     if (i == 0) {
                         result = matches;
                     } else if (condition.getLogicOp() == FilterCondition.LogicOp.OR) {
@@ -155,14 +155,15 @@ public final class FilterBarPanel extends JPanel {
         };
     }
 
-    private boolean matches(RowFilter.Entry<?, ?> entry, FilterCondition condition) {
+    static boolean matches(RowFilter.Entry<?, ?> entry, FilterCondition condition, List<String> columnNames) {
         if (FilterCondition.ALL_COLUMNS.equals(condition.getColumn())) {
+            boolean negated = condition.getOperator() == FilterCondition.Operator.NOT_EQUALS;
             for (int col = 0; col < entry.getValueCount(); col++) {
-                if (matchesCell(entry.getValue(col), condition)) {
-                    return true;
+                if (matchesCell(entry.getValue(col), condition) != negated) {
+                    return !negated;
                 }
             }
-            return false;
+            return negated;
         }
         int col = columnNames.indexOf(condition.getColumn());
         if (col < 0) {
@@ -171,12 +172,12 @@ public final class FilterBarPanel extends JPanel {
         return matchesCell(entry.getValue(col), condition);
     }
 
-    private boolean matchesCell(Object cellValue, FilterCondition condition) {
+    private static boolean matchesCell(Object cellValue, FilterCondition condition) {
         String text = String.valueOf(cellValue);
         String needle = condition.getValue();
         return switch (condition.getOperator()) {
             case CONTAINS -> text.toLowerCase(Locale.ROOT).contains(needle.toLowerCase(Locale.ROOT));
-            case NOT_EQUALS -> !text.equalsIgnoreCase(needle);
+            case NOT_EQUALS -> !(text.equalsIgnoreCase(needle) || compareNumeric(cellValue, needle) == 0);
             case STARTS_WITH -> text.toLowerCase(Locale.ROOT).startsWith(needle.toLowerCase(Locale.ROOT));
             case ENDS_WITH -> text.toLowerCase(Locale.ROOT).endsWith(needle.toLowerCase(Locale.ROOT));
             case EQUALS -> text.equalsIgnoreCase(needle) || compareNumeric(cellValue, needle) == 0;
@@ -185,7 +186,7 @@ public final class FilterBarPanel extends JPanel {
         };
     }
 
-    private int compareNumeric(Object cellValue, String needle) {
+    private static int compareNumeric(Object cellValue, String needle) {
         Double cellNumber = toNumber(cellValue);
         Double needleNumber = toNumber(needle);
         if (cellNumber != null && needleNumber != null) {
@@ -194,7 +195,7 @@ public final class FilterBarPanel extends JPanel {
         return String.valueOf(cellValue).compareToIgnoreCase(needle);
     }
 
-    private Double toNumber(Object value) {
+    private static Double toNumber(Object value) {
         if (value instanceof Number number) {
             return number.doubleValue();
         }

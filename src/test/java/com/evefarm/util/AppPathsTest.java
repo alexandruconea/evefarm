@@ -130,6 +130,24 @@ class AppPathsTest {
     }
 
     @Test
+    @EnabledOnOs(OS.LINUX)
+    void onLinuxAWindowsFolderFromARestoredBackupIsNotUsed() {
+        assertEquals(Optional.empty(), AppPaths.configuredPath("C:\\Users\\Alex\\Documents\\EVE\\logs\\Gamelogs"));
+        assertEquals(Optional.empty(), AppPaths.configuredPath("relative/Gamelogs"));
+        assertEquals(Optional.empty(), AppPaths.configuredPath(" "));
+        assertEquals(Optional.empty(), AppPaths.configuredPath(null));
+        assertEquals(Optional.of(Path.of("/home/alex/Gamelogs")), AppPaths.configuredPath(" /home/alex/Gamelogs "));
+        assertEquals(AppPaths.defaultGameLogDirectory(), AppPaths.gameLogDirectory("C:\\Users\\Alex\\Gamelogs"));
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    void onWindowsALinuxFolderFromARestoredBackupIsNotUsed() {
+        assertEquals(Optional.empty(), AppPaths.configuredPath("/home/alex/Gamelogs"));
+        assertEquals(Optional.of(Path.of("C:\\Users\\Alex\\Gamelogs")), AppPaths.configuredPath("C:\\Users\\Alex\\Gamelogs"));
+    }
+
+    @Test
     void restrictingTheDataFolderKeepsItUsable() throws IOException {
         Path data = Files.createDirectories(windows.resolve("data"));
 

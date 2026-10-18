@@ -171,7 +171,7 @@ public final class UpdateInstaller {
             if (!Files.isRegularFile(failureFile)) {
                 return Optional.empty();
             }
-            String reason = Files.readString(failureFile, StandardCharsets.UTF_8).replace("﻿", "").strip();
+            String reason = Files.readString(failureFile, StandardCharsets.UTF_8).replace("\uFEFF", "").strip();
             Files.deleteIfExists(failureFile);
             if (reason.length() > 300) {
                 reason = reason.substring(0, 300) + "...";

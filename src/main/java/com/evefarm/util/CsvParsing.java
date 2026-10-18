@@ -11,7 +11,7 @@ public final class CsvParsing {
         StringBuilder current = new StringBuilder();
         boolean inQuotes = false;
         boolean recordHasContent = false;
-        int start = text.startsWith("﻿") ? 1 : 0;
+        int start = text.startsWith("\uFEFF") ? 1 : 0;
         for (int i = start; i < text.length(); i++) {
             char c = text.charAt(i);
             if (inQuotes) {

@@ -42,8 +42,10 @@ public final class Main {
             Optional<SingleInstance> acquired = SingleInstance.acquire(AppPaths.createAppDataDir());
             if (acquired.isEmpty()) {
                 if (!SingleInstance.signalRunningInstance(AppPaths.appDataDir())) {
-                    showMessage("EVE Farm is already running - look for its window or its icon in the "
-                            + "system tray.",
+                    showMessage(Platform.isWindows()
+                                    ? "EVE Farm is already running - look for its window or its icon in the "
+                                    + "system tray."
+                                    : "EVE Farm is already running - look for its window in the taskbar.",
                             JOptionPane.INFORMATION_MESSAGE);
                 }
                 return;
@@ -175,7 +177,8 @@ public final class Main {
                 ComboBoxFocus.hideDashedOutline();
             }
             CompactToolTips.install();
-            boolean decorated = UIManager.getLookAndFeel() instanceof FlatLaf && Platform.isWindows();
+            boolean decorated = UIManager.getLookAndFeel() instanceof FlatLaf
+                    && (Platform.isWindows() || Platform.isLinux());
             JFrame.setDefaultLookAndFeelDecorated(decorated);
             JDialog.setDefaultLookAndFeelDecorated(decorated);
         } catch (Exception e) {

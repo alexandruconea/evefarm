@@ -112,7 +112,12 @@ public final class PriceService {
     }
 
     private Set<Integer> refreshJanicePrices(List<Integer> typeIds) {
-        String apiKey = TokenCipher.decrypt(settingsDao.getOrDefault(SettingsDao.JANICE_API_KEY, ""));
+        String storedKey = settingsDao.getOrDefault(SettingsDao.JANICE_API_KEY, "");
+        if (TokenCipher.isFromAnotherSystem(storedKey)) {
+            throw new IllegalStateException("The Janice API key was saved on another computer or system and can't "
+                    + "be read here - enter it again in Options > Settings");
+        }
+        String apiKey = TokenCipher.decrypt(storedKey);
         if (apiKey.isBlank()) {
             throw new IllegalStateException("Janice is selected as price provider, but no API key is configured");
         }

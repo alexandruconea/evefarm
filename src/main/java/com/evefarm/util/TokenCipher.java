@@ -74,6 +74,14 @@ public final class TokenCipher {
         return stored;
     }
 
+    public static boolean isFromAnotherSystem(String stored) {
+        return isFromAnotherSystem(PROTECTION, stored);
+    }
+
+    static boolean isFromAnotherSystem(Protection protection, String stored) {
+        return isEncrypted(stored) && (protection.prefix().isEmpty() || !stored.startsWith(protection.prefix()));
+    }
+
     public static boolean isEncrypted(String stored) {
         return stored != null && PREFIXES.stream().anyMatch(stored::startsWith);
     }

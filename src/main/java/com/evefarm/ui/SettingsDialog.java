@@ -226,8 +226,8 @@ public final class SettingsDialog extends JDialog {
         } catch (IllegalArgumentException e) {
             defaultPriceCombo.setSelectedItem(PriceMode.SELL_AVG);
         }
-        gameLogDirectoryField.setText(settingsDao.getOrDefault(
-                SettingsDao.GAMELOG_DIRECTORY, AppPaths.defaultGameLogDirectory().toString()));
+        gameLogDirectoryField.setText(AppPaths.gameLogDirectory(
+                settingsDao.get(SettingsDao.GAMELOG_DIRECTORY).orElse(null)).toString());
         backupCopyDirectoryField.setText(settingsDao.getOrDefault(SettingsDao.BACKUP_COPY_DIRECTORY, ""));
         updateCheckBox.setSelected(!"false".equals(settingsDao.getOrDefault(SettingsDao.UPDATE_AUTO_CHECK, "true")));
         notifyJobsBox.setSelected(isOn(SettingsDao.NOTIFY_INDUSTRY_JOBS));

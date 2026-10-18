@@ -14,7 +14,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
@@ -45,9 +44,7 @@ public final class KillService {
     }
 
     public Path gameLogDirectory() {
-        String configured = settingsDao.get(SettingsDao.GAMELOG_DIRECTORY).orElse(null);
-        return (configured == null || configured.isBlank())
-                ? AppPaths.defaultGameLogDirectory() : Paths.get(configured);
+        return AppPaths.gameLogDirectory(settingsDao.get(SettingsDao.GAMELOG_DIRECTORY).orElse(null));
     }
 
     public void addLogChangeListener(Runnable listener) {

@@ -71,10 +71,10 @@ class NpcCatalogTest {
 
     @Test
     void parsesOnlyEntityTypesFromTheSdeExports() {
-        String groups = "﻿\"groupID\",\"categoryID\",\"groupName\"\r\n"
+        String groups = "\uFEFF\"groupID\",\"categoryID\",\"groupName\"\r\n"
                 + "\"559\",\"11\",\"Asteroid Guristas Officer\"\r\n"
                 + "\"25\",\"6\",\"Frigate\"\r\n";
-        String types = "﻿\"typeID\",\"groupID\",\"typeName\",\"description\"\r\n"
+        String types = "\uFEFF\"typeID\",\"groupID\",\"typeName\",\"description\"\r\n"
                 + "\"13536\",\"559\",\"Estamel Tharchon\",\"Line one,\r\nline two \"\"quoted\"\"\"\r\n"
                 + "\"587\",\"25\",\"Rifter\",\"A player ship\"\r\n";
 

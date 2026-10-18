@@ -45,6 +45,7 @@ jobs:
           Copy-Item target/evefarm.jar stage/
           jpackage --type app-image --input stage --dest dist --name EVEFarm `
             --main-jar evefarm.jar --main-class com.evefarm.Main --icon packaging/evefarm.ico `
+            --java-options --enable-native-access=ALL-UNNAMED `
             --app-version $env:VERSION --vendor "Alex Conea" `
             --description "EVE Online multi-character asset and net-worth tracker"
           Copy-Item packaging/README.txt dist/EVEFarm/

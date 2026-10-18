@@ -179,7 +179,7 @@ public final class MigrationRunner {
     }
 
     static String checksum(String sql) {
-        String normalized = sql.replace("﻿", "").replace("\r\n", "\n").replace('\r', '\n');
+        String normalized = sql.replace("\uFEFF", "").replace("\r\n", "\n").replace('\r', '\n');
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
                     .digest(normalized.getBytes(StandardCharsets.UTF_8)));

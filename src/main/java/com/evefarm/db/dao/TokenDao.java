@@ -10,8 +10,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.logging.Logger;
 
 public final class TokenDao {
@@ -82,6 +84,24 @@ public final class TokenDao {
                 throw new IllegalStateException("Failed to check for stored tokens", e);
             }
         }
+    }
+
+    public Set<Long> characterIdsWithLoginsFromAnotherSystem() {
+        Set<Long> characterIds = new HashSet<>();
+        synchronized (database) {
+            Connection connection = database.connection();
+            try (PreparedStatement ps = connection.prepareStatement("SELECT character_id, refresh_token FROM tokens");
+                 ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    if (TokenCipher.isFromAnotherSystem(rs.getString("refresh_token"))) {
+                        characterIds.add(rs.getLong("character_id"));
+                    }
+                }
+            } catch (SQLException e) {
+                throw new IllegalStateException("Failed to check which saved logins come from another system", e);
+            }
+        }
+        return characterIds;
     }
 
     public void migrateLegacyPlaintextTokens() {

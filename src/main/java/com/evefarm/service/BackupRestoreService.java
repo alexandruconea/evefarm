@@ -11,7 +11,6 @@ import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -138,8 +137,14 @@ public final class BackupRestoreService {
         if (extra.isBlank()) {
             return;
         }
+        Optional<Path> configured = AppPaths.configuredPath(extra);
+        if (configured.isEmpty()) {
+            LOG.warning("The extra backup folder " + extra + " isn't a full path on this computer, so the "
+                    + "automatic backup wasn't copied there - choose the folder again in Options > Settings");
+            return;
+        }
         try {
-            Path directory = Paths.get(extra);
+            Path directory = configured.get();
             Files.createDirectories(directory);
             Path partial = directory.resolve(file.getFileName() + ".partial");
             Files.copy(file, partial, StandardCopyOption.REPLACE_EXISTING);

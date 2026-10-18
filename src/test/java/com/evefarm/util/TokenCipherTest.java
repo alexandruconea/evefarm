@@ -184,6 +184,16 @@ class TokenCipherTest {
     }
 
     @Test
+    void onlyLoginsSavedOnTheOtherSystemCountAsFromAnotherSystem() {
+        KeyringProtection keyring = new KeyringProtection(new MemoryKeyStore());
+
+        assertTrue(TokenCipher.isFromAnotherSystem(keyring, "dpapi:AQAAANCMnd8BFdERjHoAwE"));
+        assertFalse(TokenCipher.isFromAnotherSystem(keyring, TokenCipher.encrypt(keyring, "refresh-token")));
+        assertFalse(TokenCipher.isFromAnotherSystem(keyring, "legacy-plaintext"));
+        assertFalse(TokenCipher.isFromAnotherSystem(keyring, null));
+    }
+
+    @Test
     void legacyPlaintextIsReadOnlyWhileProtectionWorks() {
         KeyringProtection keyring = new KeyringProtection(new MemoryKeyStore());
 

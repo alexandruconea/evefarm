@@ -59,6 +59,22 @@ public final class AppPaths {
         return candidates.stream().filter(Files::isDirectory).findFirst().orElse(candidates.getFirst());
     }
 
+    public static Path gameLogDirectory(String configured) {
+        return configuredPath(configured).orElseGet(AppPaths::defaultGameLogDirectory);
+    }
+
+    public static Optional<Path> configuredPath(String configured) {
+        if (configured == null || configured.isBlank()) {
+            return Optional.empty();
+        }
+        try {
+            Path path = Path.of(configured.strip());
+            return path.isAbsolute() ? Optional.of(path) : Optional.empty();
+        } catch (InvalidPathException e) {
+            return Optional.empty();
+        }
+    }
+
     static List<Path> gameLogDirectoryCandidates(Platform platform, Path home, List<Path> eveUserDirectories,
                                                  Optional<Path> windowsDocuments) {
         Set<Path> candidates = new LinkedHashSet<>();

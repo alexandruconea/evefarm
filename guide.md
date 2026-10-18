@@ -476,8 +476,8 @@ A backup restored on another computer, user account or system keeps all the hist
 
 ## Tray icon and notifications
 
-- Minimizing EVE Farm hides it in the tray, next to the clock. Click the tray icon, or right-click it and choose **Open**, to bring it back. **Exit** closes the app. On a Linux desktop without a tray, such as GNOME without extensions, EVE Farm minimizes like any other window.
-- EVE Farm shows desktop notifications (on Linux through `notify-send`) for Abyss runs (entering the Abyss, a run saved, the loot counted, a ship lost), for every 1,000 NPCs killed in belts, and for a new version while the window is hidden.
+- Minimizing EVE Farm hides it in the tray, next to the clock. Click the tray icon, or right-click it and choose **Open**, to bring it back. **Exit** closes the app. On Linux, EVE Farm minimizes to the taskbar like any other window, because Java's tray icon doesn't respond to clicks on many Linux desktops.
+- EVE Farm shows desktop notifications (on Linux through `notify-send`) for Abyss runs (entering the Abyss, a run saved, the loot counted, a ship lost), for every 1,000 NPCs killed in belts, and for a new version while the window is hidden or minimized.
 - Every 15 minutes while it runs, EVE Farm also checks your characters and tells you about:
   - **industry jobs** that are ready to deliver;
   - **market orders** that someone else has outbid at the same station: a cheaper sell order or a higher buy order. Orders of your own characters don't count;

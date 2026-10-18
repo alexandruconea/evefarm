@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class OreCatalogServiceTest {
 
     private static final String GROUPS = """
-            ﻿groupID,categoryID,groupName,iconID,useBasePrice,anchored,anchorable,fittableNonSingleton,published
+            \uFEFFgroupID,categoryID,groupName,iconID,useBasePrice,anchored,anchorable,fittableNonSingleton,published
             462,25,Veldspar,None,1,0,0,0,1
             465,25,Ice,None,1,0,0,0,1
             711,2,Harvestable Cloud,None,1,0,0,0,1

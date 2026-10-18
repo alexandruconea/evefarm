@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class IndustryCatalogServiceTest {
 
-    private static final String ACTIVITIES = "﻿\"typeID\",\"activityID\",\"time\"\n"
+    private static final String ACTIVITIES = "\uFEFF\"typeID\",\"activityID\",\"time\"\n"
             + "\"691\",\"1\",\"6000\"\n\"691\",\"8\",\"63900\"\n\"11400\",\"1\",\"120000\"\n";
     private static final String MATERIALS = "\"typeID\",\"activityID\",\"materialTypeID\",\"quantity\"\n"
             + "\"691\",\"1\",\"34\",\"32000\"\n\"691\",\"8\",\"20171\",\"2\"\n\"11400\",\"1\",\"587\",\"1\"\n";
@@ -46,7 +46,7 @@ class IndustryCatalogServiceTest {
             + "\"333\",\"17\",\"Datacores\"\n";
     private static final String CATEGORIES = "\"categoryID\",\"categoryName\"\n\"4\",\"Material\"\n\"6\",\"Ship\"\n"
             + "\"9\",\"Blueprint\"\n\"17\",\"Commodity\"\n";
-    private static final String SYSTEMS = "﻿\"regionID\",\"solarSystemID\",\"solarSystemName\",\"security\"\n"
+    private static final String SYSTEMS = "\uFEFF\"regionID\",\"solarSystemID\",\"solarSystemName\",\"security\"\n"
             + "\"10000002\",\"30000142\",\"Jita\",\"0.945913\"\n"
             + "\"10000002\",\"30000140\",\"Maurasi\",\"0.902\"\n"
             + "\"10000060\",\"30004759\",\"1DQ1-A\",\"-0.385782\"\n"

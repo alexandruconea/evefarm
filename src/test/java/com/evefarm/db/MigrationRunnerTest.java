@@ -153,7 +153,7 @@ class MigrationRunnerTest {
         String unix = "CREATE TABLE t (id INTEGER);\nSELECT 1;\n";
 
         assertEquals(MigrationRunner.checksum(unix), MigrationRunner.checksum(unix.replace("\n", "\r\n")));
-        assertEquals(MigrationRunner.checksum(unix), MigrationRunner.checksum("﻿" + unix));
+        assertEquals(MigrationRunner.checksum(unix), MigrationRunner.checksum("\uFEFF" + unix));
     }
 
     @Test

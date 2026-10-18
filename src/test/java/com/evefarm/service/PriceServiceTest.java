@@ -6,6 +6,7 @@ import com.evefarm.db.dao.TypeCacheDao;
 import com.evefarm.esi.FuzzworkApi;
 import com.evefarm.esi.JaniceApi;
 import com.evefarm.esi.MarketsApi;
+import com.evefarm.util.Platform;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 
@@ -15,6 +16,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -53,6 +55,21 @@ class PriceServiceTest {
                 mock(JaniceApi.class), mock(PriceCacheDao.class), mock(TypeCacheDao.class), settings);
 
         assertThrows(IllegalStateException.class, service::refreshPrices);
+    }
+
+    @Test
+    void aJaniceKeySavedOnTheOtherSystemAsksForTheKeyAgain() {
+        SettingsDao settings = mock(SettingsDao.class);
+        when(settings.getOrDefault(SettingsDao.PRICE_PROVIDER, PriceService.PROVIDER_CCP))
+                .thenReturn(PriceService.PROVIDER_JANICE);
+        when(settings.getOrDefault(SettingsDao.JANICE_API_KEY, ""))
+                .thenReturn(Platform.isWindows() ? "keyring:AAAA" : "dpapi:AAAA");
+        PriceService service = new PriceService(mock(MarketsApi.class), mock(FuzzworkApi.class),
+                mock(JaniceApi.class), mock(PriceCacheDao.class), mock(TypeCacheDao.class), settings);
+
+        IllegalStateException error = assertThrows(IllegalStateException.class, service::refreshPrices);
+
+        assertTrue(error.getMessage().contains("enter it again in Options > Settings"), error.getMessage());
     }
 
     @Test
