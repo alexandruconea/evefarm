@@ -52,7 +52,7 @@ public final class JournalService {
         walletJournalDao.saveForCharacter(characterId, journalEntries);
     }
 
-    public List<JournalRow> getJournalRows(Set<Long> characterIdFilter) {
-        return walletJournalDao.listRows(characterIdFilter);
+    public List<JournalRow> getJournalRows() {
+        return walletJournalDao.listRows();
     }
 }

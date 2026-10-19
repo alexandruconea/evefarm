@@ -9,7 +9,7 @@ import com.evefarm.util.IskFormatter;
 import java.util.List;
 import java.util.Locale;
 
-import static com.evefarm.ui.LpHoldingsTableModel.count;
+import static com.evefarm.util.Text.count;
 
 public final class LpLotsTableModel extends ColumnTableModel<Lot> {
 

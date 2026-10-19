@@ -4,6 +4,7 @@ import com.evefarm.model.SpawnMember;
 import com.evefarm.model.SpawnRow;
 import com.evefarm.util.DateUtil;
 import com.evefarm.util.IskFormatter;
+import com.evefarm.util.Text;
 
 import javax.swing.table.TableModel;
 import java.time.Instant;
@@ -83,7 +84,7 @@ final class SpawnReport {
 
     private static String text(Object value) {
         if (value instanceof Integer || value instanceof Long) {
-            return String.format(Locale.US, "%,d", ((Number) value).longValue());
+            return Text.count(((Number) value).longValue());
         }
         return value == null ? "" : value.toString();
     }

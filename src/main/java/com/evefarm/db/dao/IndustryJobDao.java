@@ -12,7 +12,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public final class IndustryJobDao {
 
@@ -83,7 +82,7 @@ public final class IndustryJobDao {
                 WHERE c.removed_at IS NULL
                 """);
         if (characterIdFilter != null && !characterIdFilter.isEmpty()) {
-            String placeholders = characterIdFilter.stream().map(id -> "?").collect(Collectors.joining(","));
+            String placeholders = JdbcUtil.placeholders(characterIdFilter.size());
             sql.append(" AND j.character_id IN (").append(placeholders).append(")");
         }
         sql.append(" ORDER BY j.end_date DESC");

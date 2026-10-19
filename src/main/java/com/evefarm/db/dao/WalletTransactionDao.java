@@ -15,8 +15,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 public final class WalletTransactionDao {
 
@@ -64,8 +62,8 @@ public final class WalletTransactionDao {
         });
     }
 
-    public List<TransactionRow> listRows(Set<Long> characterIdFilter) {
-        StringBuilder sql = new StringBuilder("""
+    public List<TransactionRow> listRows() {
+        String sql = """
                 SELECT t.character_id, c.character_name, t.date, t.type_id,
                        COALESCE(ty.name, 'Type #' || t.type_id) AS type_name,
                        ty.group_name, t.quantity, t.price,
@@ -79,23 +77,13 @@ public final class WalletTransactionDao {
                 LEFT JOIN location_cache l ON l.location_id = t.location_id
                 LEFT JOIN entity_name_cache en ON en.entity_id = t.client_id
                 WHERE c.removed_at IS NULL
-                """);
-        if (characterIdFilter != null && !characterIdFilter.isEmpty()) {
-            String placeholders = characterIdFilter.stream().map(id -> "?").collect(Collectors.joining(","));
-            sql.append(" AND t.character_id IN (").append(placeholders).append(")");
-        }
-        sql.append(" ORDER BY t.date DESC");
+                ORDER BY t.date DESC
+                """;
 
         synchronized (database) {
             Connection connection = database.connection();
             List<TransactionRow> result = new ArrayList<>();
-            try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
-                if (characterIdFilter != null && !characterIdFilter.isEmpty()) {
-                    int index = 1;
-                    for (Long id : characterIdFilter) {
-                        ps.setLong(index++, id);
-                    }
-                }
+            try (PreparedStatement ps = connection.prepareStatement(sql)) {
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
                         result.add(new TransactionRow(
@@ -127,7 +115,7 @@ public final class WalletTransactionDao {
         if (typeIds.isEmpty()) {
             return List.of();
         }
-        String placeholders = typeIds.stream().map(id -> "?").collect(Collectors.joining(","));
+        String placeholders = JdbcUtil.placeholders(typeIds.size());
         String sql = "SELECT transaction_id, date, type_id, quantity, price FROM wallet_transaction "
                 + "WHERE is_buy = 0 AND type_id IN (" + placeholders + ") ORDER BY date, transaction_id";
         synchronized (database) {

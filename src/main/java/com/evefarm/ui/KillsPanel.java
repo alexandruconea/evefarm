@@ -4,13 +4,11 @@ import com.evefarm.AppContext;
 import com.evefarm.model.EveCharacter;
 import com.evefarm.model.KillDayTypeRow;
 import com.evefarm.service.KillsReportService;
-import com.evefarm.util.DateUtil;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultComboBoxModel;
-import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -23,8 +21,6 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
-import javax.swing.ListSelectionModel;
-import javax.swing.SpinnerDateModel;
 import javax.swing.SwingWorker;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.TableRowSorter;
@@ -33,8 +29,6 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.io.File;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -51,8 +45,6 @@ public final class KillsPanel extends JPanel {
     private static final String ALL_SYSTEMS = "All Systems";
 
     private final AppContext appContext;
-    private final DefaultListModel<EveCharacter> characterListModel = new DefaultListModel<>();
-    private Long mainCharacterId;
     private final DefaultComboBoxModel<String> factionComboModel = new DefaultComboBoxModel<>();
     private final DefaultComboBoxModel<String> systemComboModel = new DefaultComboBoxModel<>();
     private final Map<String, JCheckBox> shipTypeCheckBoxes = new LinkedHashMap<>();
@@ -71,12 +63,17 @@ public final class KillsPanel extends JPanel {
 
     private final KillsTableModel killsTableModel = new KillsTableModel();
     private final JTable killsTable = new JTable(killsTableModel);
+    private final CharacterSelection characters;
+    private final DateRangeControls dates;
 
     private boolean populatingFactionOptions;
     private boolean populatingSystemOptions;
 
     public KillsPanel(AppContext appContext) {
         this.appContext = appContext;
+        characters = new CharacterSelection(appContext.characterService, allProfilesCheckBox, characterList,
+                this::reloadFactionOptions);
+        dates = new DateRangeControls(quickDateCombo, fromSpinner, toSpinner, this::reloadTable);
         buildUi();
         quickDateCombo.setSelectedItem("1 Month");
         refreshCharacterFilter();
@@ -98,13 +95,6 @@ public final class KillsPanel extends JPanel {
         exportPdfButton.setIcon(Icons.DOCUMENT);
         exportPdfButton.addActionListener(e -> exportPdf());
 
-        quickDateCombo.setModel(new DefaultComboBoxModel<>(new String[]{
-                "1 Day", "1 Week", "2 Weeks", "1 Month", "3 Months", "6 Months", "1 Year", "2 Years"}));
-        quickDateCombo.addActionListener(e -> applyQuickDate((String) quickDateCombo.getSelectedItem()));
-        fromSpinner.setModel(new SpinnerDateModel());
-        fromSpinner.setEditor(new JSpinner.DateEditor(fromSpinner, "yyyy-MM-dd"));
-        toSpinner.setModel(new SpinnerDateModel());
-        toSpinner.setEditor(new JSpinner.DateEditor(toSpinner, "yyyy-MM-dd"));
 
         factionCombo.setModel(factionComboModel);
         factionCombo.addActionListener(e -> {
@@ -125,26 +115,6 @@ public final class KillsPanel extends JPanel {
         shipTypeScrollPane.setAlignmentX(Component.LEFT_ALIGNMENT);
         shipTypeScrollPane.setPreferredSize(new Dimension(ComboSizing.NAME_WIDTH, 140));
 
-        allProfilesCheckBox.addActionListener(e -> {
-            characterList.setEnabled(!allProfilesCheckBox.isSelected());
-            reloadFactionOptions();
-        });
-        characterList.setModel(characterListModel);
-        characterList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-        characterList.setEnabled(false);
-        characterList.setCellRenderer((list, value, index, isSelected, cellHasFocus) -> {
-            JLabel label = new JLabel(value.characterName());
-            label.setIcon(MainCharacterMarks.iconFor(mainCharacterId, value.characterId()));
-            label.setOpaque(true);
-            label.setBackground(isSelected ? list.getSelectionBackground() : list.getBackground());
-            label.setForeground(isSelected ? list.getSelectionForeground() : list.getForeground());
-            return label;
-        });
-        characterList.addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                reloadFactionOptions();
-            }
-        });
         JScrollPane characterScrollPane = new JScrollPane(characterList);
         characterScrollPane.setAlignmentX(Component.LEFT_ALIGNMENT);
         characterScrollPane.setPreferredSize(new Dimension(ComboSizing.NAME_WIDTH, 140));
@@ -204,43 +174,8 @@ public final class KillsPanel extends JPanel {
     }
 
     public void refreshCharacterFilter() {
-        characterListModel.clear();
-        mainCharacterId = appContext.characterService.mainCharacterId().orElse(null);
-        for (EveCharacter character : appContext.characterService.listCharactersMainFirst()) {
-            characterListModel.addElement(character);
-        }
-        if (!characterListModel.isEmpty()) {
-            characterList.setSelectionInterval(0, characterListModel.size() - 1);
-        }
+        characters.reload();
         reloadFactionOptions();
-    }
-
-    private void applyQuickDate(String option) {
-        LocalDate today = LocalDate.now();
-        LocalDate from = switch (option) {
-            case "1 Day" -> today.minusDays(1);
-            case "1 Week" -> today.minusWeeks(1);
-            case "2 Weeks" -> today.minusWeeks(2);
-            case "3 Months" -> today.minusMonths(3);
-            case "6 Months" -> today.minusMonths(6);
-            case "1 Year" -> today.minusYears(1);
-            case "2 Years" -> today.minusYears(2);
-            default -> today.minusMonths(1);
-        };
-        fromSpinner.setValue(DateUtil.toDate(from));
-        toSpinner.setValue(DateUtil.toDate(today));
-        reloadTable();
-    }
-
-    private Set<Long> selectedCharacterIds() {
-        if (allProfilesCheckBox.isSelected()) {
-            return appContext.characterService.listCharacters().stream()
-                    .map(EveCharacter::characterId)
-                    .collect(Collectors.toSet());
-        }
-        return characterList.getSelectedValuesList().stream()
-                .map(EveCharacter::characterId)
-                .collect(Collectors.toSet());
     }
 
     private Set<String> selectedFactionLabels() {
@@ -262,7 +197,7 @@ public final class KillsPanel extends JPanel {
 
     private void reloadFactionOptions() {
         int generation = reloadGeneration.incrementAndGet();
-        Set<Long> characterIds = selectedCharacterIds();
+        Set<Long> characterIds = characters.selectedIds();
         String previouslySelected = (String) factionCombo.getSelectedItem();
 
         new SwingWorker<List<String>, Void>() {
@@ -304,7 +239,7 @@ public final class KillsPanel extends JPanel {
     }
 
     private void reloadSystemOptions(int generation) {
-        Set<Long> characterIds = selectedCharacterIds();
+        Set<Long> characterIds = characters.selectedIds();
         Set<String> factionLabels = selectedFactionLabels();
         String previouslySelected = (String) systemCombo.getSelectedItem();
 
@@ -348,7 +283,7 @@ public final class KillsPanel extends JPanel {
     }
 
     private void reloadShipTypeOptions(int generation) {
-        Set<Long> characterIds = selectedCharacterIds();
+        Set<Long> characterIds = characters.selectedIds();
         Set<String> factionLabels = selectedFactionLabels();
         String systemFilter = selectedSystemFilter();
 
@@ -395,12 +330,12 @@ public final class KillsPanel extends JPanel {
     }
 
     private void reloadTable(int generation) {
-        Set<Long> characterIds = selectedCharacterIds();
+        Set<Long> characterIds = characters.selectedIds();
         Set<String> factionLabels = selectedFactionLabels();
         Set<String> npcNames = selectedNpcNames();
         String systemFilter = selectedSystemFilter();
-        Instant from = DateUtil.startOfDay(DateUtil.toLocalDate((Date) fromSpinner.getValue()));
-        Instant to = DateUtil.endOfDay(DateUtil.toLocalDate((Date) toSpinner.getValue()));
+        Instant from = dates.from();
+        Instant to = dates.to();
 
         new SwingWorker<List<KillDayTypeRow>, Void>() {
             @Override
@@ -424,16 +359,6 @@ public final class KillsPanel extends JPanel {
         }.execute();
     }
 
-    private String selectedCharacterLabel() {
-        if (allProfilesCheckBox.isSelected()) {
-            return "All Profiles";
-        }
-        List<String> names = characterList.getSelectedValuesList().stream()
-                .map(EveCharacter::characterName)
-                .toList();
-        return names.isEmpty() ? "No characters selected" : String.join(", ", names);
-    }
-
     private void exportPdf() {
         List<KillDayTypeRow> rows = killsTableModel.rows();
 
@@ -454,11 +379,11 @@ public final class KillsPanel extends JPanel {
         File finalTarget = target;
 
         KillsReportService.ReportFilters filters = new KillsReportService.ReportFilters(
-                selectedCharacterLabel(),
+                characters.label(),
                 faction == null ? "(no faction)" : faction,
                 (String) systemCombo.getSelectedItem(),
-                DateUtil.toLocalDate((Date) fromSpinner.getValue()),
-                DateUtil.toLocalDate((Date) toSpinner.getValue()));
+                dates.fromDate(),
+                dates.toDate());
 
         exportPdfButton.setEnabled(false);
         new SwingWorker<Void, Void>() {

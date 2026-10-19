@@ -16,18 +16,15 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
-import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.table.AbstractTableModel;
 import java.awt.BorderLayout;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.Font;
 import java.util.List;
 import java.util.Locale;
 
-public final class MiningPanel extends JPanel {
+public final class MiningPanel extends TabPanel {
 
     private static final String PANEL_KEY = "mining";
     private static final double DEFAULT_REFINE_RATE = 90.6;
@@ -93,10 +90,12 @@ public final class MiningPanel extends JPanel {
         TableStyler.style(statsTable);
     }
 
+    @Override
     public void onShown() {
         support.reload();
     }
 
+    @Override
     public void refreshCharacterFilter() {
         support.reload();
     }
@@ -191,27 +190,7 @@ public final class MiningPanel extends JPanel {
         ledgerPanel.add(new JScrollPane(table), BorderLayout.CENTER);
         ledgerPanel.add(countLabel, BorderLayout.SOUTH);
 
-        JPanel statsHeader = new JPanel(new BorderLayout(12, 0));
-        JLabel statsTitle = new JLabel("Statistics");
-        statsTitle.setFont(statsTitle.getFont().deriveFont(Font.BOLD));
-        JPanel groupBy = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-        groupBy.add(new JLabel("Group by:"));
-        ComboSizing.options(groupByCombo);
-        groupBy.add(groupByCombo);
-        statsHeader.add(statsTitle, BorderLayout.WEST);
-        statsHeader.add(overallLabel, BorderLayout.CENTER);
-        statsHeader.add(groupBy, BorderLayout.EAST);
-        JPanel statsPanel = new JPanel(new BorderLayout(0, 6));
-        statsPanel.setBorder(BorderFactory.createEmptyBorder(4, 8, 8, 8));
-        statsPanel.add(statsHeader, BorderLayout.NORTH);
-        JScrollPane statsScroll = new JScrollPane(statsTable);
-        statsScroll.setPreferredSize(new Dimension(600, 150));
-        statsPanel.add(statsScroll, BorderLayout.CENTER);
-
-        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, ledgerPanel, statsPanel);
-        split.setResizeWeight(0.7);
-        split.setBorder(BorderFactory.createEmptyBorder());
-        add(split, BorderLayout.CENTER);
+        add(StatisticsPane.below(ledgerPanel, overallLabel, groupByCombo, statsTable), BorderLayout.CENTER);
     }
 
     private static final class StatsTableModel extends AbstractTableModel implements ColumnDescriptions {

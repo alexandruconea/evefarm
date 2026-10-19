@@ -33,7 +33,7 @@ class MarketOrderDaoTest {
     }
 
     private Map<Long, String> states(boolean includeClosed) {
-        return orders.listRows(null, includeClosed).stream()
+        return orders.listRows(includeClosed).stream()
                 .collect(Collectors.toMap(MarketOrderRow::orderId, MarketOrderRow::state));
     }
 
@@ -56,13 +56,13 @@ class MarketOrderDaoTest {
 
         orders.saveForCharacter(TRADER, List.of(order(1, "cancelled", 120)));
         assertEquals(Map.of(1L, "cancelled"), states(true));
-        assertEquals(120, orders.listRows(null, true).getFirst().volumeRemain());
+        assertEquals(120, orders.listRows(true).getFirst().volumeRemain());
     }
 
     @Test
     void existingOrdersFromBeforeTheHistoryWereActive() {
         orders.saveForCharacter(TRADER, List.of(order(1, "active", 400)));
 
-        assertEquals(List.of(1L), orders.listRows(null, false).stream().map(MarketOrderRow::orderId).toList());
+        assertEquals(List.of(1L), orders.listRows(false).stream().map(MarketOrderRow::orderId).toList());
     }
 }

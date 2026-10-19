@@ -87,13 +87,9 @@ public final class LocationNameCacheService {
             if (e.statusCode() == 400 || e.statusCode() == 404) {
                 return cacheUnknown(locationId, "Unknown Location #" + locationId);
             }
-            LOG.log(Level.WARNING, "Transient failure resolving station " + locationId
-                    + " (HTTP " + e.statusCode() + ") - not caching, will retry later", e);
-            return "Location #" + locationId;
+            return transientFailure("station", locationId, e);
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "Transient failure resolving station " + locationId
-                    + " - not caching, will retry later", e);
-            return "Location #" + locationId;
+            return transientFailure("station", locationId, e);
         }
     }
 
@@ -106,13 +102,9 @@ public final class LocationNameCacheService {
             if (e.statusCode() == 400 || e.statusCode() == 403 || e.statusCode() == 404) {
                 return cacheUnknown(locationId, "Unknown Structure #" + locationId);
             }
-            LOG.log(Level.WARNING, "Transient failure resolving structure " + locationId
-                    + " (HTTP " + e.statusCode() + ") - not caching, will retry later", e);
-            return "Location #" + locationId;
+            return transientFailure("structure", locationId, e);
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "Transient failure resolving structure " + locationId
-                    + " - not caching, will retry later", e);
-            return "Location #" + locationId;
+            return transientFailure("structure", locationId, e);
         }
     }
 
@@ -129,14 +121,17 @@ public final class LocationNameCacheService {
             if (e.statusCode() == 400 || e.statusCode() == 404) {
                 return cacheUnknown(systemId, "Unknown System #" + systemId);
             }
-            LOG.log(Level.WARNING, "Transient failure resolving solar system " + systemId
-                    + " (HTTP " + e.statusCode() + ") - not caching, will retry later", e);
-            return "Location #" + systemId;
+            return transientFailure("solar system", systemId, e);
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "Transient failure resolving solar system " + systemId
-                    + " - not caching, will retry later", e);
-            return "Location #" + systemId;
+            return transientFailure("solar system", systemId, e);
         }
+    }
+
+    private static String transientFailure(String what, long id, Exception e) {
+        String status = e instanceof EsiException esi ? " (HTTP " + esi.statusCode() + ")" : "";
+        LOG.log(Level.WARNING, "Transient failure resolving " + what + " " + id + status
+                + " - not caching, will retry later", e);
+        return "Location #" + id;
     }
 
     private String cacheUnknown(long locationId, String name) {

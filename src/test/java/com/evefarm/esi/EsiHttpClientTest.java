@@ -1,5 +1,7 @@
 package com.evefarm.esi;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -166,5 +168,19 @@ class EsiHttpClientTest {
         assertTrue(Math.abs(cached.age().minus(Duration.ofMinutes(10)).toSeconds()) <= 5, cached.age().toString());
         assertTrue(Math.abs(cached.freshFor().minus(Duration.ofMinutes(50)).toSeconds()) <= 5,
                 cached.freshFor().toString());
+    }
+
+    @Test
+    void responsesAreParsedPageByPageAndBadJsonNamesWhatFailed() {
+        List<Integer> ids = client.readPages(List.of("[1, 2]", "[3]"), new TypeReference<List<Integer>>() {
+        }, "ids");
+
+        assertEquals(List.of(1, 2, 3), ids);
+        assertEquals(5, client.read("{\"a\": 5}", JsonNode.class, "a node").path("a").asInt());
+        IllegalStateException error = assertThrows(IllegalStateException.class,
+                () -> client.read("{oops", Integer.class, "market orders"));
+        assertEquals("Failed to parse market orders", error.getMessage());
+        assertEquals("Failed to parse ids", assertThrows(IllegalStateException.class,
+                () -> client.readTree("[", "ids")).getMessage());
     }
 }

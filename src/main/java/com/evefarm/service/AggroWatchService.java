@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -27,13 +28,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public final class AggroWatchService {
 
     private static final Logger LOG = Logger.getLogger(AggroWatchService.class.getName());
-    private static final Pattern LOG_FILE = Pattern.compile("^\\d{8}_\\d{6}_(\\d+)\\.txt$");
     private static final long TAIL_MILLIS = 250;
     private static final Duration RESCAN_INTERVAL = Duration.ofSeconds(5);
     private static final int MAX_READ_BYTES = 1024 * 1024;
@@ -172,17 +170,13 @@ public final class AggroWatchService {
         Map<Long, Path> newest = new HashMap<>();
         try (DirectoryStream<Path> files = Files.newDirectoryStream(dir, "*.txt")) {
             for (Path file : files) {
-                Matcher name = LOG_FILE.matcher(file.getFileName().toString());
-                if (!name.matches()) {
+                Optional<Long> characterId = GameLogKillParser.extractCharacterId(file.getFileName().toString());
+                if (characterId.isEmpty() || !known.containsKey(characterId.get())) {
                     continue;
                 }
-                long characterId = Long.parseLong(name.group(1));
-                if (!known.containsKey(characterId)) {
-                    continue;
-                }
-                Path current = newest.get(characterId);
+                Path current = newest.get(characterId.get());
                 if (current == null || file.getFileName().toString().compareTo(current.getFileName().toString()) > 0) {
-                    newest.put(characterId, file);
+                    newest.put(characterId.get(), file);
                 }
             }
         } catch (IOException | RuntimeException e) {

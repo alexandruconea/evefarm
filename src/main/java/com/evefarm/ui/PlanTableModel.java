@@ -4,6 +4,7 @@ import com.evefarm.model.PlanRow;
 import com.evefarm.service.SkillPlanText;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
+import com.evefarm.util.Text;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -33,10 +34,10 @@ public final class PlanTableModel extends ColumnTableModel<PlanRow> {
                     "When the level finishes training, in your local time"),
             new ColumnDef<>("done", "Done", String.class, r -> formatPercent(r.percentDone()),
                     "How much of the level is already trained"),
-            new ColumnDef<>("sp", "SP", String.class, r -> String.format(Locale.US, "%,d", r.spNeeded()),
+            new ColumnDef<>("sp", "SP", String.class, r -> Text.count(r.spNeeded()),
                     "The skill points the level still needs"),
             new ColumnDef<>("spTotal", "Total SP After", String.class, false,
-                    r -> String.format(Locale.US, "%,d", r.spTotalAfter()),
+                    r -> Text.count(r.spTotalAfter()),
                     "The character's total skill points once the level is trained"),
             new ColumnDef<>("rank", "Rank", Integer.class, false, PlanRow::rank,
                     "The skill's rank: how many times longer it takes than a rank 1 skill"),

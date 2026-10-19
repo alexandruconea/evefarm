@@ -39,7 +39,6 @@ final class LpHeatmap extends JComponent {
     private static final int GAP = 3;
     private static final int STEP = CELL + GAP;
     private static final int MARKER = 5;
-    private static final Color FALLBACK_ACCENT = new Color(0x2D6FD6);
     private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("MMM", Locale.US);
     private static final List<DayOfWeek> LABELED_DAYS = List.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY,
             DayOfWeek.FRIDAY);
@@ -169,7 +168,7 @@ final class LpHeatmap extends JComponent {
         FontMetrics metrics = g.getFontMetrics();
         Color background = background();
         Color foreground = getForeground() != null ? getForeground() : Color.BLACK;
-        Color[] levels = levelColors(accent(), foreground, background);
+        Color[] levels = levelColors(Icons.accent(), foreground, background);
         Color outline = blend(foreground, background, 0.22);
         paintLabels(g, metrics);
         LocalDate first = firstShownDay();
@@ -290,10 +289,5 @@ final class LpHeatmap extends JComponent {
         }
         Color panel = UIManager.getColor("Panel.background");
         return panel != null ? panel : Color.WHITE;
-    }
-
-    private static Color accent() {
-        Color color = UIManager.getColor("Component.accentColor");
-        return color == null ? FALLBACK_ACCENT : color;
     }
 }

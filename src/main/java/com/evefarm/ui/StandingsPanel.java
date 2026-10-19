@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-public final class StandingsPanel extends JPanel {
+public final class StandingsPanel extends TabPanel {
 
     private static final String FACTIONS_KEY = "standingsFactions";
     private static final String AGENTS_KEY = "standingsAgents";
@@ -81,12 +81,14 @@ public final class StandingsPanel extends JPanel {
         DividerMemory.install(split, appContext.settingsDao, SettingsDao.STANDINGS_DIVIDER, DEFAULT_DIVIDER);
     }
 
+    @Override
     public void onShown() {
         factionTable.getRowSorter().setSortKeys(null);
         factionSupport.reload();
         agentSupport.reload();
     }
 
+    @Override
     public void refreshCharacterFilter() {
         onShown();
     }

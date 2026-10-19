@@ -16,7 +16,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public final class MarketOrderDao {
 
@@ -91,7 +90,7 @@ public final class MarketOrderDao {
         }
     }
 
-    public List<MarketOrderRow> listRows(Set<Long> characterIdFilter, boolean includeClosed) {
+    public List<MarketOrderRow> listRows(boolean includeClosed) {
         StringBuilder sql = new StringBuilder("""
                 SELECT o.order_id, o.character_id, c.character_name, o.type_id,
                        COALESCE(t.name, 'Type #' || o.type_id) AS type_name,
@@ -108,22 +107,12 @@ public final class MarketOrderDao {
         if (!includeClosed) {
             sql.append(" AND o.state = '").append(MarketOrderRow.ACTIVE).append("'");
         }
-        if (characterIdFilter != null && !characterIdFilter.isEmpty()) {
-            String placeholders = characterIdFilter.stream().map(id -> "?").collect(Collectors.joining(","));
-            sql.append(" AND o.character_id IN (").append(placeholders).append(")");
-        }
         sql.append(" ORDER BY o.issued DESC");
 
         synchronized (database) {
             Connection connection = database.connection();
             List<MarketOrderRow> result = new ArrayList<>();
             try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
-                if (characterIdFilter != null && !characterIdFilter.isEmpty()) {
-                    int index = 1;
-                    for (Long id : characterIdFilter) {
-                        ps.setLong(index++, id);
-                    }
-                }
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
                         result.add(new MarketOrderRow(

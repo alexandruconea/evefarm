@@ -5,6 +5,7 @@ import com.evefarm.service.ItemIconService;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
 import com.evefarm.util.IskFormatter;
+import com.evefarm.util.Text;
 
 import javax.swing.ImageIcon;
 import java.util.List;
@@ -26,7 +27,7 @@ public final class MiningTableModel extends ColumnTableModel<MiningRow> {
                     "The ore, ice or gas mined"),
             new ColumnDef<>("kind", "Kind", String.class, MiningRow::kind,
                     "Ore, Moon ore, Ice or Gas"),
-            new ColumnDef<>("quantity", "Quantity", String.class, r -> String.format(Locale.US, "%,d", r.quantity()),
+            new ColumnDef<>("quantity", "Quantity", String.class, r -> Text.count(r.quantity()),
                     "How many units were mined"),
             new ColumnDef<>("volume", "Volume", String.class, r -> formatVolume(r.volume()),
                     "The volume mined, in m3"),

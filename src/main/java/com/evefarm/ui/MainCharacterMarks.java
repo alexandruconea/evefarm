@@ -1,9 +1,14 @@
 package com.evefarm.ui;
 
+import com.evefarm.model.EveCharacter;
+
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.Icon;
+import javax.swing.JComboBox;
 import javax.swing.JList;
 import java.awt.Component;
+import java.util.List;
 import java.util.function.Supplier;
 
 final class MainCharacterMarks {
@@ -16,6 +21,24 @@ final class MainCharacterMarks {
             return null;
         }
         return mainCharacterId == characterId ? Icons.MAIN : Icons.BLANK;
+    }
+
+    static String mainName(List<EveCharacter> characters, Long mainCharacterId) {
+        return characters.stream()
+                .filter(character -> mainCharacterId != null && character.characterId() == mainCharacterId)
+                .map(EveCharacter::characterName)
+                .findFirst().orElse(null);
+    }
+
+    static void fill(JComboBox<String> combo, List<EveCharacter> characters, String keepSelected) {
+        DefaultComboBoxModel<String> model = new DefaultComboBoxModel<>();
+        characters.forEach(character -> model.addElement(character.characterName()));
+        combo.setModel(model);
+        if (keepSelected != null && model.getIndexOf(keepSelected) >= 0) {
+            combo.setSelectedItem(keepSelected);
+        } else if (model.getSize() > 0) {
+            combo.setSelectedIndex(0);
+        }
     }
 
     static DefaultListCellRenderer comboRenderer(Supplier<String> mainCharacterName) {

@@ -149,6 +149,7 @@ public final class SettingsDialog extends JDialog {
         JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle("EVE Gamelogs folder");
         chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        chooser.setFileHidingEnabled(false);
         String current = gameLogDirectoryField.getText().trim();
         if (!current.isEmpty()) {
             chooser.setCurrentDirectory(new File(current));
@@ -272,7 +273,9 @@ public final class SettingsDialog extends JDialog {
         settingsDao.set(SettingsDao.JANICE_API_KEY, storedJaniceKey);
         PriceMode priceMode = (PriceMode) defaultPriceCombo.getSelectedItem();
         settingsDao.set(SettingsDao.DEFAULT_PRICE_MODE, priceMode.name());
-        settingsDao.set(SettingsDao.GAMELOG_DIRECTORY, gameLogDirectoryField.getText().trim());
+        String gameLogDirectory = gameLogDirectoryField.getText().trim();
+        settingsDao.set(SettingsDao.GAMELOG_DIRECTORY,
+                gameLogDirectory.equals(AppPaths.defaultGameLogDirectory().toString()) ? "" : gameLogDirectory);
         settingsDao.set(SettingsDao.BACKUP_COPY_DIRECTORY, backupCopyDirectoryField.getText().trim());
         settingsDao.set(SettingsDao.UPDATE_AUTO_CHECK, String.valueOf(updateCheckBox.isSelected()));
         settingsDao.set(SettingsDao.NOTIFY_INDUSTRY_JOBS, String.valueOf(notifyJobsBox.isSelected()));

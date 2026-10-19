@@ -18,6 +18,10 @@ public final class Text {
         return out.toString();
     }
 
+    public static String count(long value) {
+        return String.format(Locale.US, "%,d", value);
+    }
+
     public static String titleCase(String identifier) {
         if (identifier == null || identifier.isBlank()) {
             return "";

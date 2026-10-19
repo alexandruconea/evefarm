@@ -4,8 +4,13 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.Collections;
 
 public final class JdbcUtil {
+
+    public static String placeholders(int count) {
+        return String.join(",", Collections.nCopies(count, "?"));
+    }
 
     public static void setNullable(PreparedStatement ps, int index, Integer value) throws SQLException {
         if (value != null) {

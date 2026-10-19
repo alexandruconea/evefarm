@@ -1,6 +1,7 @@
 package com.evefarm.db.dao;
 
 import com.evefarm.db.Database;
+import com.evefarm.db.JdbcUtil;
 import com.evefarm.model.ItemType;
 
 import java.sql.Connection;
@@ -14,7 +15,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public final class ItemTypeDao {
 
@@ -70,7 +70,7 @@ public final class ItemTypeDao {
         if (distinct.isEmpty()) {
             return result;
         }
-        String placeholders = distinct.stream().map(name -> "?").collect(Collectors.joining(","));
+        String placeholders = JdbcUtil.placeholders(distinct.size());
         String sql = "SELECT type_id, type_name, is_officer FROM sde_item_type WHERE type_name COLLATE NOCASE IN ("
                 + placeholders + ")";
         synchronized (database) {

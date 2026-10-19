@@ -69,7 +69,7 @@ public final class MainFrame extends JFrame {
 
     private static final Logger LOG = Logger.getLogger(MainFrame.class.getName());
 
-    private record TabSpec(String label, Icon icon, Component component) {
+    private record TabSpec(String label, Icon icon, TabPanel panel) {
     }
 
     private enum UpdateCheck { MENU, STARTUP, DAILY }
@@ -83,23 +83,7 @@ public final class MainFrame extends JFrame {
     private final JButton updateAvailableButton = new JButton();
     private ReleaseInfo availableRelease;
     private TrayIcon trayIcon;
-    private AssetsPanel assetsPanel;
-    private TrackerPanel trackerPanel;
-    private JournalPanel journalPanel;
     private MarketOrdersPanel marketOrdersPanel;
-    private TransactionsPanel transactionsPanel;
-    private ContractsPanel contractsPanel;
-    private IndustryJobsPanel industryJobsPanel;
-    private ValuesPanel valuesPanel;
-    private LpStoreTabs lpStoreTabs;
-    private LpPurchasesPanel lpPurchasesPanel;
-    private NpcKillsPanel killsPanel;
-    private AgentsPanel agentsPanel;
-    private AbyssPanel abyssPanel;
-    private MiningPanel miningPanel;
-    private StandingsPanel standingsPanel;
-    private SkillsPanel skillsPanel;
-    private IndustryPanel industryPanel;
     private DataUpdater dataUpdater;
 
     public MainFrame(AppContext appContext) {
@@ -120,41 +104,29 @@ public final class MainFrame extends JFrame {
         restoreItem.setIcon(Icons.LOAD);
         exitItem.setIcon(Icons.DOOR);
 
-        assetsPanel = new AssetsPanel(appContext);
-        trackerPanel = new TrackerPanel(appContext);
-        journalPanel = new JournalPanel(appContext);
         marketOrdersPanel = new MarketOrdersPanel(appContext);
-        transactionsPanel = new TransactionsPanel(appContext);
-        contractsPanel = new ContractsPanel(appContext);
-        industryJobsPanel = new IndustryJobsPanel(appContext);
-        valuesPanel = new ValuesPanel(appContext);
-        lpStoreTabs = new LpStoreTabs(appContext);
-        lpPurchasesPanel = new LpPurchasesPanel(appContext);
-        killsPanel = new NpcKillsPanel(appContext);
-        agentsPanel = new AgentsPanel(appContext);
-        abyssPanel = new AbyssPanel(appContext, this::showTrayNotification);
-        miningPanel = new MiningPanel(appContext);
-        standingsPanel = new StandingsPanel(appContext);
-        skillsPanel = new SkillsPanel(appContext);
-        industryPanel = new IndustryPanel(appContext);
-
-        tabSpecs.put("assets", new TabSpec("Assets", Icons.COIN, assetsPanel));
-        tabSpecs.put("tracker", new TabSpec("Tracker", Icons.CHART, trackerPanel));
-        tabSpecs.put("journal", new TabSpec("Journal", Icons.NOTEBOOK, journalPanel));
+        tabSpecs.put("assets", new TabSpec("Assets", Icons.COIN, new AssetsPanel(appContext)));
+        tabSpecs.put("tracker", new TabSpec("Tracker", Icons.CHART, new TrackerPanel(appContext)));
+        tabSpecs.put("journal", new TabSpec("Journal", Icons.NOTEBOOK, new DataTablePanel<>(appContext, "journal",
+                new JournalTableModel(), "entries", appContext.journalService::getJournalRows)));
         tabSpecs.put("marketOrders", new TabSpec("Market Orders", Icons.CLIPBOARD, marketOrdersPanel));
-        tabSpecs.put("transactions", new TabSpec("Transactions", Icons.SWAP, transactionsPanel));
-        tabSpecs.put("contracts", new TabSpec("Contracts", Icons.DOCUMENT, contractsPanel));
-        tabSpecs.put("industryJobs", new TabSpec("Industry Jobs", Icons.FACTORY, industryJobsPanel));
-        tabSpecs.put("values", new TabSpec("Values", Icons.VALUE, valuesPanel));
-        tabSpecs.put("lpStore", new TabSpec("LP Store", Icons.LP, lpStoreTabs));
-        tabSpecs.put("lpPurchases", new TabSpec("LP Purchases", Icons.PACKAGE, lpPurchasesPanel));
-        tabSpecs.put("kills", new TabSpec("NPC Kills", Icons.CROSSHAIR, killsPanel));
-        tabSpecs.put("abyss", new TabSpec("Abyss", Icons.ABYSS, abyssPanel));
-        tabSpecs.put("mining", new TabSpec("Mining", Icons.MINING, miningPanel));
-        tabSpecs.put("agents", new TabSpec("Agents", Icons.MEDAL, agentsPanel));
-        tabSpecs.put("standings", new TabSpec("Standings", Icons.STANDINGS, standingsPanel));
-        tabSpecs.put("skills", new TabSpec("Skills", Icons.SKILLS, skillsPanel));
-        tabSpecs.put("industry", new TabSpec("Industry Calculator", Icons.CALCULATOR, industryPanel));
+        tabSpecs.put("transactions", new TabSpec("Transactions", Icons.SWAP, new DataTablePanel<>(appContext,
+                "transactions", new TransactionsTableModel(), "transactions",
+                appContext.transactionService::getTransactionRows)));
+        tabSpecs.put("contracts", new TabSpec("Contracts", Icons.DOCUMENT, new ContractsPanel(appContext)));
+        tabSpecs.put("industryJobs", new TabSpec("Industry Jobs", Icons.FACTORY, new DataTablePanel<>(appContext,
+                "industryJobs", new IndustryJobsTableModel(), "jobs",
+                () -> appContext.industryJobService.getJobRows(null))));
+        tabSpecs.put("values", new TabSpec("Values", Icons.VALUE, new ValuesPanel(appContext)));
+        tabSpecs.put("lpStore", new TabSpec("LP Store", Icons.LP, new LpStoreTabs(appContext)));
+        tabSpecs.put("lpPurchases", new TabSpec("LP Purchases", Icons.PACKAGE, new LpPurchasesPanel(appContext)));
+        tabSpecs.put("kills", new TabSpec("NPC Kills", Icons.CROSSHAIR, new NpcKillsPanel(appContext)));
+        tabSpecs.put("abyss", new TabSpec("Abyss", Icons.ABYSS, new AbyssPanel(appContext, this::showTrayNotification)));
+        tabSpecs.put("mining", new TabSpec("Mining", Icons.MINING, new MiningPanel(appContext)));
+        tabSpecs.put("agents", new TabSpec("Agents", Icons.MEDAL, new AgentsPanel(appContext)));
+        tabSpecs.put("standings", new TabSpec("Standings", Icons.STANDINGS, new StandingsPanel(appContext)));
+        tabSpecs.put("skills", new TabSpec("Skills", Icons.SKILLS, new SkillsPanel(appContext)));
+        tabSpecs.put("industry", new TabSpec("Industry Calculator", Icons.CALCULATOR, new IndustryPanel(appContext)));
 
         rebuildTabs();
         installTabMenu();
@@ -167,41 +139,8 @@ public final class MainFrame extends JFrame {
         getContentPane().add(TabBarOverlay.wrap(tabbedPane, new UpdateButton(dataUpdater)), BorderLayout.CENTER);
 
         tabbedPane.addChangeListener(e -> {
-            Component selected = tabbedPane.getSelectedComponent();
-            if (selected == assetsPanel) {
-                assetsPanel.onShown();
-            } else if (selected == trackerPanel) {
-                trackerPanel.onShown();
-            } else if (selected == journalPanel) {
-                journalPanel.onShown();
-            } else if (selected == marketOrdersPanel) {
-                marketOrdersPanel.onShown();
-            } else if (selected == transactionsPanel) {
-                transactionsPanel.onShown();
-            } else if (selected == contractsPanel) {
-                contractsPanel.onShown();
-            } else if (selected == industryJobsPanel) {
-                industryJobsPanel.onShown();
-            } else if (selected == valuesPanel) {
-                valuesPanel.onShown();
-            } else if (selected == lpStoreTabs) {
-                lpStoreTabs.onShown();
-            } else if (selected == lpPurchasesPanel) {
-                lpPurchasesPanel.onShown();
-            } else if (selected == killsPanel) {
-                killsPanel.onShown();
-            } else if (selected == agentsPanel) {
-                agentsPanel.onShown();
-            } else if (selected == abyssPanel) {
-                abyssPanel.onShown();
-            } else if (selected == miningPanel) {
-                miningPanel.onShown();
-            } else if (selected == standingsPanel) {
-                standingsPanel.onShown();
-            } else if (selected == skillsPanel) {
-                skillsPanel.onShown();
-            } else if (selected == industryPanel) {
-                industryPanel.onShown();
+            if (tabbedPane.getSelectedComponent() instanceof TabPanel tab) {
+                tab.onShown();
             }
         });
 
@@ -528,7 +467,7 @@ public final class MainFrame extends JFrame {
         for (Map.Entry<String, TabSpec> entry : orderedTabSpecs().entrySet()) {
             if (!hidden.contains(entry.getKey())) {
                 TabSpec spec = entry.getValue();
-                tabbedPane.addTab(spec.label(), spec.icon(), spec.component());
+                tabbedPane.addTab(spec.label(), spec.icon(), spec.panel());
             }
         }
 
@@ -579,7 +518,7 @@ public final class MainFrame extends JFrame {
 
     private String tabKey(Component component) {
         for (Map.Entry<String, TabSpec> entry : tabSpecs.entrySet()) {
-            if (entry.getValue().component() == component) {
+            if (entry.getValue().panel() == component) {
                 return entry.getKey();
             }
         }
@@ -594,21 +533,7 @@ public final class MainFrame extends JFrame {
     }
 
     private void onCharactersChanged() {
-        assetsPanel.refreshCharacterFilter();
-        trackerPanel.refreshCharacterFilter();
-        journalPanel.refreshCharacterFilter();
-        marketOrdersPanel.refreshCharacterFilter();
-        transactionsPanel.refreshCharacterFilter();
-        contractsPanel.refreshCharacterFilter();
-        industryJobsPanel.refreshCharacterFilter();
-        valuesPanel.refreshCharacterFilter();
-        lpStoreTabs.refreshCharacterFilter();
-        killsPanel.refreshCharacterFilter();
-        abyssPanel.refreshCharacterFilter();
-        miningPanel.refreshCharacterFilter();
-        standingsPanel.refreshCharacterFilter();
-        skillsPanel.refreshCharacterFilter();
-        industryPanel.refreshCharacterFilter();
+        tabSpecs.values().forEach(spec -> spec.panel().refreshCharacterFilter());
     }
 
     private Map<String, TabSpec> orderedTabSpecs() {
@@ -878,21 +803,7 @@ public final class MainFrame extends JFrame {
     }
 
     private void onDataUpdated() {
-        assetsPanel.onShown();
-        trackerPanel.onShown();
-        journalPanel.onShown();
-        marketOrdersPanel.onShown();
-        transactionsPanel.onShown();
-        contractsPanel.onShown();
-        industryJobsPanel.onShown();
-        valuesPanel.onShown();
-        lpStoreTabs.onShown();
-        if (tabbedPane.getSelectedComponent() == lpPurchasesPanel) {
-            lpPurchasesPanel.onShown();
-        }
-        killsPanel.onShown();
-        miningPanel.onShown();
-        standingsPanel.onShown();
-        skillsPanel.onShown();
+        Component selected = tabbedPane.getSelectedComponent();
+        tabSpecs.values().forEach(spec -> spec.panel().onDataUpdated(spec.panel() == selected));
     }
 }

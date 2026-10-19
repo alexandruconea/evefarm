@@ -13,8 +13,6 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 public final class WalletJournalDao {
 
@@ -64,8 +62,8 @@ public final class WalletJournalDao {
         });
     }
 
-    public List<JournalRow> listRows(Set<Long> characterIdFilter) {
-        StringBuilder sql = new StringBuilder("""
+    public List<JournalRow> listRows() {
+        String sql = """
                 SELECT j.character_id, c.character_name, j.date, j.ref_type, j.amount, j.balance,
                        j.description, j.first_party_id, j.second_party_id,
                        CASE WHEN j.first_party_id IS NULL THEN NULL
@@ -77,23 +75,13 @@ public final class WalletJournalDao {
                 LEFT JOIN entity_name_cache fp ON fp.entity_id = j.first_party_id
                 LEFT JOIN entity_name_cache sp ON sp.entity_id = j.second_party_id
                 WHERE c.removed_at IS NULL
-                """);
-        if (characterIdFilter != null && !characterIdFilter.isEmpty()) {
-            String placeholders = characterIdFilter.stream().map(id -> "?").collect(Collectors.joining(","));
-            sql.append(" AND j.character_id IN (").append(placeholders).append(")");
-        }
-        sql.append(" ORDER BY j.date DESC");
+                ORDER BY j.date DESC
+                """;
 
         synchronized (database) {
             Connection connection = database.connection();
             List<JournalRow> result = new ArrayList<>();
-            try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
-                if (characterIdFilter != null && !characterIdFilter.isEmpty()) {
-                    int index = 1;
-                    for (Long id : characterIdFilter) {
-                        ps.setLong(index++, id);
-                    }
-                }
+            try (PreparedStatement ps = connection.prepareStatement(sql)) {
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
                         result.add(new JournalRow(

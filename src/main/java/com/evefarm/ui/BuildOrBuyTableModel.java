@@ -3,10 +3,10 @@ package com.evefarm.ui;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
 import com.evefarm.util.IskFormatter;
+import com.evefarm.util.Text;
 
 import java.time.Duration;
 import java.util.List;
-import java.util.Locale;
 import java.util.function.BiConsumer;
 
 public final class BuildOrBuyTableModel extends ColumnTableModel<BuildOrBuyTableModel.Row> {
@@ -41,15 +41,15 @@ public final class BuildOrBuyTableModel extends ColumnTableModel<BuildOrBuyTable
                     "An item the build needs that you could make yourself"),
             new ColumnDef<>("kind", "Made by", String.class, r -> r.reaction() ? "Reaction" : "Manufacturing",
                     "Whether a reaction or a manufacturing job makes it"),
-            new ColumnDef<>("quantity", "Quantity", String.class, r -> String.format(Locale.US, "%,d", r.needed()),
+            new ColumnDef<>("quantity", "Quantity", String.class, r -> Text.count(r.needed()),
                     "How many the whole build needs"),
             new ColumnDef<>("inStock", "In Stock", String.class,
-                    r -> r.inStock() > 0 ? String.format(Locale.US, "%,d", r.inStock()) : "",
+                    r -> r.inStock() > 0 ? Text.count(r.inStock()) : "",
                     "How many come from your assets (see the Stock setting)"),
             new ColumnDef<>("runs", "Runs", Integer.class, Row::runs,
                     "How many runs the job needs"),
             new ColumnDef<>("surplus", "Surplus", String.class,
-                    r -> r.surplus() > 0 ? String.format(Locale.US, "%,d", r.surplus()) : "",
+                    r -> r.surplus() > 0 ? Text.count(r.surplus()) : "",
                     "What the job makes beyond what you need, as it makes whole runs"),
             new ColumnDef<>("market", "Market Price", String.class, r -> IskFormatter.format(r.marketPrice()),
                     "The price of one unit on the market"),

@@ -29,7 +29,7 @@ class MarketOrderServiceTest {
     void outbidComesFromTheLatestCheckAtTheOrdersStation() {
         MarketOrderDao orders = mock(MarketOrderDao.class);
         MarketWatchService watch = mock(MarketWatchService.class);
-        when(orders.listRows(null, false)).thenReturn(List.of(sellOrder(1), sellOrder(2), sellOrder(3)));
+        when(orders.listRows(false)).thenReturn(List.of(sellOrder(1), sellOrder(2), sellOrder(3)));
         when(watch.latestResults()).thenReturn(Map.of(
                 1L, new OrderCompetition(1, 4.5, true, Instant.now()),
                 2L, new OrderCompetition(2, null, false, Instant.now())));
@@ -37,7 +37,7 @@ class MarketOrderServiceTest {
                 mock(TypeNameCacheService.class), mock(LocationNameCacheService.class), orders,
                 mock(PriceService.class), watch, mock(WalletJournalDao.class));
 
-        List<MarketOrderRow> rows = service.getOrderRows(null, false);
+        List<MarketOrderRow> rows = service.getOrderRows(false);
 
         assertEquals(Boolean.TRUE, rows.get(0).outbid());
         assertEquals(4.5, rows.get(0).competitorPrice());

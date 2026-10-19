@@ -72,12 +72,12 @@ public final class MarketOrderService {
                 order.duration(), state, order.range(), order.minVolume());
     }
 
-    public List<MarketOrderRow> getOrderRows(Set<Long> characterIdFilter, boolean includeClosed) {
+    public List<MarketOrderRow> getOrderRows(boolean includeClosed) {
         Map<Integer, Double> marketPrices = priceService.getUnitPrices();
         Map<Integer, Double> sellMins = priceService.getUnitPrices(PriceMode.SELL_MIN);
         Map<Integer, Double> buyMaxes = priceService.getUnitPrices(PriceMode.BUY_MAX);
         Map<Long, OrderCompetition> competition = marketWatchService.latestResults();
-        List<MarketOrderRow> rows = marketOrderDao.listRows(characterIdFilter, includeClosed).stream()
+        List<MarketOrderRow> rows = marketOrderDao.listRows(includeClosed).stream()
                 .map(row -> row.active()
                         ? withMarketPrice(row, marketPrices, sellMins, buyMaxes, competition.get(row.orderId()))
                         : row)

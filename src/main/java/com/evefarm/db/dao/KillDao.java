@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public final class KillDao {
 
@@ -133,7 +132,7 @@ public final class KillDao {
         if (characterIds.isEmpty()) {
             return List.of();
         }
-        String placeholders = characterIds.stream().map(id -> "?").collect(Collectors.joining(","));
+        String placeholders = JdbcUtil.placeholders(characterIds.size());
         String sql = "SELECT DISTINCT faction_label FROM character_kills "
                 + "WHERE character_id IN (" + placeholders + ") ORDER BY faction_label";
         synchronized (database) {
@@ -160,8 +159,8 @@ public final class KillDao {
         if (characterIds.isEmpty() || factionLabels.isEmpty()) {
             return List.of();
         }
-        String characterPlaceholders = characterIds.stream().map(id -> "?").collect(Collectors.joining(","));
-        String factionPlaceholders = factionLabels.stream().map(id -> "?").collect(Collectors.joining(","));
+        String characterPlaceholders = JdbcUtil.placeholders(characterIds.size());
+        String factionPlaceholders = JdbcUtil.placeholders(factionLabels.size());
         String sql = "SELECT DISTINCT COALESCE(solar_system, ?) AS system FROM character_kills "
                 + "WHERE character_id IN (" + characterPlaceholders + ") "
                 + "AND faction_label IN (" + factionPlaceholders + ") "
@@ -194,8 +193,8 @@ public final class KillDao {
         if (characterIds.isEmpty() || factionLabels.isEmpty()) {
             return List.of();
         }
-        String characterPlaceholders = characterIds.stream().map(id -> "?").collect(Collectors.joining(","));
-        String factionPlaceholders = factionLabels.stream().map(id -> "?").collect(Collectors.joining(","));
+        String characterPlaceholders = JdbcUtil.placeholders(characterIds.size());
+        String factionPlaceholders = JdbcUtil.placeholders(factionLabels.size());
         String sql = "SELECT DISTINCT npc_name FROM character_kills "
                 + "WHERE character_id IN (" + characterPlaceholders + ") "
                 + "AND faction_label IN (" + factionPlaceholders + ") "
@@ -248,9 +247,9 @@ public final class KillDao {
         if (characterIds.isEmpty() || factionLabels.isEmpty() || npcNames.isEmpty()) {
             return List.of();
         }
-        String characterPlaceholders = characterIds.stream().map(id -> "?").collect(Collectors.joining(","));
-        String factionPlaceholders = factionLabels.stream().map(id -> "?").collect(Collectors.joining(","));
-        String namePlaceholders = npcNames.stream().map(id -> "?").collect(Collectors.joining(","));
+        String characterPlaceholders = JdbcUtil.placeholders(characterIds.size());
+        String factionPlaceholders = JdbcUtil.placeholders(factionLabels.size());
+        String namePlaceholders = JdbcUtil.placeholders(npcNames.size());
         String sql = "SELECT npc_name, faction_label, solar_system, killed_at FROM character_kills "
                 + "WHERE killed_at BETWEEN ? AND ? "
                 + "AND character_id IN (" + characterPlaceholders + ") "

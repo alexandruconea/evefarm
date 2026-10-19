@@ -17,6 +17,7 @@ import com.evefarm.ui.column.ColumnSorting;
 import com.evefarm.ui.column.ColumnVisibilitySupport;
 import com.evefarm.ui.filter.FilterBarPanel;
 import com.evefarm.util.IskFormatter;
+import com.evefarm.util.Text;
 import com.formdev.flatlaf.FlatLaf;
 
 import javax.swing.DefaultComboBoxModel;
@@ -43,7 +44,6 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.logging.Level;
@@ -211,23 +211,10 @@ public final class LpStorePanel extends JPanel {
 
     private void reloadCharacters(boolean selectMain) {
         characters = appContext.characterService.listCharactersMainFirst();
-        Long mainId = appContext.characterService.mainCharacterId().orElse(null);
-        mainCharacterName = characters.stream()
-                .filter(character -> mainId != null && character.characterId() == mainId)
-                .map(EveCharacter::characterName)
-                .findFirst().orElse(null);
-        String previouslySelected = (String) characterCombo.getSelectedItem();
-
-        DefaultComboBoxModel<String> model = new DefaultComboBoxModel<>();
-        for (EveCharacter character : characters) {
-            model.addElement(character.characterName());
-        }
-        characterCombo.setModel(model);
-        if (!selectMain && previouslySelected != null && model.getIndexOf(previouslySelected) >= 0) {
-            characterCombo.setSelectedItem(previouslySelected);
-        } else if (model.getSize() > 0) {
-            characterCombo.setSelectedIndex(0);
-        }
+        mainCharacterName = MainCharacterMarks.mainName(characters,
+                appContext.characterService.mainCharacterId().orElse(null));
+        MainCharacterMarks.fill(characterCombo, characters,
+                selectMain ? null : (String) characterCombo.getSelectedItem());
         updateYourLpLabel();
     }
 
@@ -372,7 +359,7 @@ public final class LpStorePanel extends JPanel {
                 .filter(b -> b.corporationId() == selectedCorporationId)
                 .mapToLong(LoyaltyPointRow::loyaltyPoints)
                 .findFirst().orElse(0);
-        yourLpLabel.setText("Your LP: " + String.format(Locale.US, "%,d", yourLp));
+        yourLpLabel.setText("Your LP: " + Text.count(yourLp));
         LoyaltyPointCheck check = appContext.loyaltyPointService.checks().get(character.characterId());
         yourLpLabel.setToolTipText(LpProductionPanel.syncText(check == null ? null : check.dataFrom(),
                 check == null ? null : check.nextRead(), Instant.now(), ZoneId.systemDefault()));
@@ -487,17 +474,6 @@ public final class LpStorePanel extends JPanel {
         refreshOffersButton.setText("Show Offers");
 
         setTargetButton.setText("Set ISK/LP Target...");
-
-        GroupLayout filterBarContainerLayout = new GroupLayout(filterBarContainer);
-        filterBarContainer.setLayout(filterBarContainerLayout);
-        filterBarContainerLayout.setHorizontalGroup(
-            filterBarContainerLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
-            .addGap(0, 0, Short.MAX_VALUE)
-        );
-        filterBarContainerLayout.setVerticalGroup(
-            filterBarContainerLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
-            .addGap(0, 60, Short.MAX_VALUE)
-        );
 
         jScrollPane2.setViewportView(table);
 

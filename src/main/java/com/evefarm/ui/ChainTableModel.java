@@ -2,10 +2,10 @@ package com.evefarm.ui;
 
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
+import com.evefarm.util.Text;
 
 import java.time.Duration;
 import java.util.List;
-import java.util.Locale;
 
 public final class ChainTableModel extends ColumnTableModel<ChainTableModel.Row> {
 
@@ -20,15 +20,15 @@ public final class ChainTableModel extends ColumnTableModel<ChainTableModel.Row>
                     "What the job makes"),
             new ColumnDef<>("madeBy", "Made by", String.class, Row::madeBy,
                     "Whether a reaction or a manufacturing job makes it"),
-            new ColumnDef<>("runs", "Runs", String.class, r -> r.runs() > 0 ? count(r.runs()) : "",
+            new ColumnDef<>("runs", "Runs", String.class, r -> r.runs() > 0 ? Text.count(r.runs()) : "",
                     "How many runs the job needs"),
-            new ColumnDef<>("makes", "Makes", String.class, r -> count(r.makes()),
+            new ColumnDef<>("makes", "Makes", String.class, r -> Text.count(r.makes()),
                     "How many units the job makes"),
-            new ColumnDef<>("needed", "Needed", String.class, r -> count(r.needed()),
+            new ColumnDef<>("needed", "Needed", String.class, r -> Text.count(r.needed()),
                     "How many units the chain needs"),
-            new ColumnDef<>("inStock", "In Stock", String.class, r -> r.inStock() > 0 ? count(r.inStock()) : "",
+            new ColumnDef<>("inStock", "In Stock", String.class, r -> r.inStock() > 0 ? Text.count(r.inStock()) : "",
                     "How many come from your assets (see the Stock setting)"),
-            new ColumnDef<>("surplus", "Surplus", String.class, r -> r.surplus() > 0 ? count(r.surplus()) : "",
+            new ColumnDef<>("surplus", "Surplus", String.class, r -> r.surplus() > 0 ? Text.count(r.surplus()) : "",
                     "What the job makes beyond what the chain needs"),
             new ColumnDef<>("time", "Job Time", String.class, r -> PlanTableModel.formatDuration(r.time()),
                     "How long the job takes"),
@@ -42,7 +42,4 @@ public final class ChainTableModel extends ColumnTableModel<ChainTableModel.Row>
         super(COLUMNS);
     }
 
-    private static String count(long value) {
-        return String.format(Locale.US, "%,d", value);
-    }
 }

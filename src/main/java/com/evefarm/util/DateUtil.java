@@ -5,7 +5,9 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Date;
+import java.util.Optional;
 
 public final class DateUtil {
 
@@ -44,10 +46,17 @@ public final class DateUtil {
         if (isoInstant == null || isoInstant.isBlank()) {
             return "";
         }
+        return parseInstant(isoInstant).map(DateUtil::format).orElse(isoInstant);
+    }
+
+    public static Optional<Instant> parseInstant(String isoInstant) {
+        if (isoInstant == null || isoInstant.isBlank()) {
+            return Optional.empty();
+        }
         try {
-            return format(Instant.parse(isoInstant));
-        } catch (Exception e) {
-            return isoInstant;
+            return Optional.of(Instant.parse(isoInstant));
+        } catch (DateTimeParseException e) {
+            return Optional.empty();
         }
     }
 

@@ -5,7 +5,6 @@ import com.evefarm.model.EveCharacter;
 import com.evefarm.model.ValueSummary;
 
 import javax.swing.BorderFactory;
-import javax.swing.DefaultComboBoxModel;
 import javax.swing.GroupLayout;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
@@ -15,7 +14,7 @@ import javax.swing.LayoutStyle;
 import java.awt.GridLayout;
 import java.util.List;
 
-public final class ValuesPanel extends JPanel {
+public final class ValuesPanel extends TabPanel {
 
     private final AppContext appContext;
     private final ValueColumnPanel grandTotalColumn = new ValueColumnPanel();
@@ -43,33 +42,22 @@ public final class ValuesPanel extends JPanel {
         reloadCharacters(true);
     }
 
+    @Override
     public void onShown() {
         reloadCharacters(false);
     }
 
+    @Override
     public void refreshCharacterFilter() {
         reloadCharacters(true);
     }
 
     private void reloadCharacters(boolean selectMain) {
         characters = appContext.characterService.listCharactersMainFirst();
-        Long mainId = appContext.characterService.mainCharacterId().orElse(null);
-        mainCharacterName = characters.stream()
-                .filter(character -> mainId != null && character.characterId() == mainId)
-                .map(EveCharacter::characterName)
-                .findFirst().orElse(null);
-        String previouslySelected = (String) characterCombo.getSelectedItem();
-
-        DefaultComboBoxModel<String> model = new DefaultComboBoxModel<>();
-        for (EveCharacter character : characters) {
-            model.addElement(character.characterName());
-        }
-        characterCombo.setModel(model);
-        if (!selectMain && previouslySelected != null && model.getIndexOf(previouslySelected) >= 0) {
-            characterCombo.setSelectedItem(previouslySelected);
-        } else if (model.getSize() > 0) {
-            characterCombo.setSelectedIndex(0);
-        }
+        mainCharacterName = MainCharacterMarks.mainName(characters,
+                appContext.characterService.mainCharacterId().orElse(null));
+        MainCharacterMarks.fill(characterCombo, characters,
+                selectMain ? null : (String) characterCombo.getSelectedItem());
 
         refreshGrandTotalColumn();
         refreshCharacterColumn();

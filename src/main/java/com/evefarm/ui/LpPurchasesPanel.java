@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public final class LpPurchasesPanel extends JPanel {
+public final class LpPurchasesPanel extends TabPanel {
 
     private static final Logger LOG = Logger.getLogger(LpPurchasesPanel.class.getName());
 
@@ -58,8 +58,16 @@ public final class LpPurchasesPanel extends JPanel {
         buildUi();
     }
 
+    @Override
     public void onShown() {
         reload();
+    }
+
+    @Override
+    void onDataUpdated(boolean selected) {
+        if (selected) {
+            onShown();
+        }
     }
 
     private void buildUi() {

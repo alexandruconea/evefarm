@@ -11,12 +11,15 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 public final class AppPaths {
 
@@ -26,7 +29,25 @@ public final class AppPaths {
             ".local/share/Steam",
             ".steam/steam",
             ".steam/debian-installation",
-            ".var/app/com.valvesoftware.Steam/.local/share/Steam");
+            ".var/app/com.valvesoftware.Steam/.local/share/Steam",
+            "snap/steam/common/.local/share/Steam");
+    private static final List<String> LUTRIS_GAME_CONFIGS = List.of(
+            ".config/lutris/games",
+            ".local/share/lutris/games",
+            ".var/app/net.lutris.Lutris/config/lutris/games",
+            ".var/app/net.lutris.Lutris/data/lutris/games");
+    private static final Pattern LUTRIS_PREFIX = Pattern.compile(
+            "(?m)^[ \\t]+prefix:[ \\t]*['\"]?([^'\"\\r\\n]+?)['\"]?[ \\t]*\\r?$");
+    private static final List<String> WINE_PREFIX_FOLDERS = List.of(
+            "Games",
+            "Games/Heroic/Prefixes",
+            "Games/Heroic/Prefixes/default",
+            ".local/share/bottles/bottles",
+            ".var/app/com.usebottles.bottles/data/bottles/bottles");
+    private static final List<String> EVE_USER_FOLDERS = List.of(
+            "AppData/Local/CCP/EVE",
+            "AppData/Roaming/EVE Online",
+            "Documents/EVE");
 
     public static Path appDataDir() {
         String home = System.getProperty("user.home");
@@ -54,13 +75,35 @@ public final class AppPaths {
     }
 
     public static Path defaultGameLogDirectory() {
-        List<Path> candidates = gameLogDirectoryCandidates(Platform.current(), userHome(), eveUserDirectories(),
-                windowsDocumentsFolder());
-        return candidates.stream().filter(Files::isDirectory).findFirst().orElse(candidates.getFirst());
+        return mostRecentlyUsed(gameLogDirectoryCandidates(Platform.current(), userHome(), eveUserDirectories(),
+                windowsDocumentsFolder()));
     }
 
     public static Path gameLogDirectory(String configured) {
-        return configuredPath(configured).orElseGet(AppPaths::defaultGameLogDirectory);
+        return gameLogDirectory(configuredPath(configured), AppPaths::defaultGameLogDirectory);
+    }
+
+    static Path gameLogDirectory(Optional<Path> configured, Supplier<Path> detected) {
+        if (configured.isPresent() && Files.isDirectory(configured.get())) {
+            return configured.get();
+        }
+        Path found = detected.get();
+        return configured.isPresent() && !Files.isDirectory(found) ? configured.get() : found;
+    }
+
+    static Path mostRecentlyUsed(List<Path> candidates) {
+        return candidates.stream()
+                .filter(Files::isDirectory)
+                .max(Comparator.comparingLong(AppPaths::lastModified))
+                .orElse(candidates.getFirst());
+    }
+
+    private static long lastModified(Path path) {
+        try {
+            return Files.getLastModifiedTime(path).toMillis();
+        } catch (IOException e) {
+            return 0;
+        }
     }
 
     public static Optional<Path> configuredPath(String configured) {
@@ -105,19 +148,85 @@ public final class AppPaths {
 
     static List<Path> linuxEveUserDirectories(Path home, String userName) {
         Set<Path> directories = new LinkedHashSet<>();
+        List<Path> prefixes = new ArrayList<>();
         for (String root : STEAM_ROOTS) {
             for (Path library : steamLibraries(home.resolve(root))) {
-                directories.add(realPathIfPresent(library.resolve("steamapps").resolve("compatdata")
-                        .resolve(EVE_STEAM_APP_ID).resolve("pfx").resolve("drive_c").resolve("users")
-                        .resolve("steamuser")));
+                Path compatData = library.resolve("steamapps").resolve("compatdata");
+                directories.add(realPathIfPresent(compatData.resolve(EVE_STEAM_APP_ID).resolve("pfx")
+                        .resolve("drive_c").resolve("users").resolve("steamuser")));
+                for (Path game : subdirectories(compatData)) {
+                    prefixes.add(game.resolve("pfx"));
+                }
             }
         }
         if (!userName.isBlank()) {
-            directories.add(home.resolve("Games").resolve("eve-online").resolve("drive_c").resolve("users")
-                    .resolve(userName));
-            directories.add(home.resolve(".wine").resolve("drive_c").resolve("users").resolve(userName));
+            directories.add(realPathIfPresent(home.resolve("Games").resolve("eve-online").resolve("drive_c")
+                    .resolve("users").resolve(userName)));
+            directories.add(realPathIfPresent(home.resolve(".wine").resolve("drive_c").resolve("users")
+                    .resolve(userName)));
+        }
+        prefixes.add(home.resolve(".wine"));
+        prefixes.addAll(lutrisPrefixes(home));
+        for (String folder : WINE_PREFIX_FOLDERS) {
+            prefixes.addAll(subdirectories(home.resolve(folder)));
+        }
+        for (Path prefix : prefixes) {
+            for (Path user : subdirectories(prefix.resolve("drive_c").resolve("users"))) {
+                if (!user.getFileName().toString().equals("Public") && hasEveFolder(user)) {
+                    directories.add(realPathIfPresent(user));
+                }
+            }
         }
         return List.copyOf(directories);
+    }
+
+    private static List<Path> lutrisPrefixes(Path home) {
+        List<Path> prefixes = new ArrayList<>();
+        for (String folder : LUTRIS_GAME_CONFIGS) {
+            for (Path config : filesEndingIn(home.resolve(folder), ".yml")) {
+                try {
+                    Matcher prefix = LUTRIS_PREFIX.matcher(Files.readString(config));
+                    while (prefix.find()) {
+                        String value = prefix.group(1);
+                        Path path = value.startsWith("~/") ? home.resolve(value.substring(2)) : Path.of(value);
+                        if (path.isAbsolute()) {
+                            prefixes.add(path);
+                        }
+                    }
+                } catch (IOException | InvalidPathException | SecurityException ignored) {
+                }
+            }
+        }
+        return prefixes;
+    }
+
+    private static boolean hasEveFolder(Path userDirectory) {
+        return EVE_USER_FOLDERS.stream().anyMatch(folder -> Files.isDirectory(userDirectory.resolve(folder)));
+    }
+
+    private static List<Path> subdirectories(Path directory) {
+        if (!Files.isDirectory(directory)) {
+            return List.of();
+        }
+        try (Stream<Path> children = Files.list(directory)) {
+            return children.filter(Files::isDirectory).sorted().toList();
+        } catch (IOException | SecurityException e) {
+            return List.of();
+        }
+    }
+
+    private static List<Path> filesEndingIn(Path directory, String suffix) {
+        if (!Files.isDirectory(directory)) {
+            return List.of();
+        }
+        try (Stream<Path> children = Files.list(directory)) {
+            return children.filter(path -> path.getFileName().toString().endsWith(suffix))
+                    .filter(Files::isRegularFile)
+                    .sorted()
+                    .toList();
+        } catch (IOException | SecurityException e) {
+            return List.of();
+        }
     }
 
     static List<Path> steamLibraries(Path steamRoot) {

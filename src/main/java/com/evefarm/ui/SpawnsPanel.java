@@ -6,6 +6,7 @@ import com.evefarm.model.SpawnMember;
 import com.evefarm.model.SpawnRow;
 import com.evefarm.util.DateUtil;
 import com.evefarm.util.IskFormatter;
+import com.evefarm.util.Text;
 
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -129,7 +130,7 @@ public final class SpawnsPanel extends JPanel {
             if (contribution.bounty() > 0) {
                 text.append(", ").append(IskFormatter.format(contribution.bounty()));
             }
-            text.append(", ").append(String.format(Locale.US, "%,d", contribution.damageDealt())).append(" damage");
+            text.append(", ").append(Text.count(contribution.damageDealt())).append(" damage");
         }
         return text.toString();
     }

@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.List;
 import java.util.Optional;
@@ -76,8 +77,71 @@ class AppPathsTest {
                 home.resolve(".steam/steam").resolve(proton),
                 home.resolve(".steam/debian-installation").resolve(proton),
                 home.resolve(".var/app/com.valvesoftware.Steam/.local/share/Steam").resolve(proton),
+                home.resolve("snap/steam/common/.local/share/Steam").resolve(proton),
                 home.resolve("Games/eve-online/drive_c/users/alex"),
                 home.resolve(".wine/drive_c/users/alex")), directories);
+    }
+
+    @Test
+    void onLinuxEveIsAlsoFoundInOtherWinePrefixes() throws IOException {
+        Path home = windows.resolve("home");
+        Path compatData = home.resolve(".local/share/Steam/steamapps/compatdata");
+        Path shortcut = eveUser(compatData.resolve("3172381235/pfx"), "steamuser", "AppData/Local/CCP/EVE");
+        Path lutris = eveUser(windows.resolve("Wine/eve"), "alex", "AppData/Roaming/EVE Online");
+        Path renamed = eveUser(home.resolve("Games/eve-online"), "olduser", "AppData/Local/CCP/EVE");
+        Path heroic = eveUser(home.resolve("Games/Heroic/Prefixes/default/EVE Online"), "alex",
+                "AppData/Local/CCP/EVE");
+        Path bottles = eveUser(home.resolve(".var/app/com.usebottles.bottles/data/bottles/bottles/EVE"), "alex",
+                "Documents/EVE");
+        eveUser(compatData.resolve("8500/pfx"), "Public", "Documents/EVE");
+        Files.createDirectories(compatData.resolve("570/pfx/drive_c/users/steamuser/AppData/Local"));
+        Path lutrisGames = Files.createDirectories(home.resolve(".config/lutris/games"));
+        Files.writeString(lutrisGames.resolve("eve-online-1758000000.yml"), """
+                game:
+                  exe: %s/drive_c/EVE/eve-online.exe
+                  prefix: '%s'
+                system:
+                  prefix_command: ''
+                """.formatted(windows.resolve("Wine/eve"), windows.resolve("Wine/eve")));
+        Files.writeString(lutrisGames.resolve("other.yml"), "game:\n  prefix: relative/prefix\n");
+
+        List<Path> directories = AppPaths.linuxEveUserDirectories(home, "alex");
+
+        assertEquals(List.of(shortcut, lutris, renamed, heroic, bottles),
+                directories.stream().filter(Files::isDirectory).toList());
+        assertTrue(directories.contains(compatData.resolve("8500/pfx/drive_c/users/steamuser")));
+    }
+
+    @Test
+    void theGamelogsFolderUsedMostRecentlyIsChosen() throws IOException {
+        Path missing = windows.resolve("missing/Gamelogs");
+        Path old = Files.createDirectories(windows.resolve("old/Gamelogs"));
+        Path current = Files.createDirectories(windows.resolve("current/Gamelogs"));
+        Files.setLastModifiedTime(old, FileTime.fromMillis(1_700_000_000_000L));
+        Files.setLastModifiedTime(current, FileTime.fromMillis(1_790_000_000_000L));
+
+        assertEquals(current, AppPaths.mostRecentlyUsed(List.of(missing, old, current)));
+        assertEquals(old, AppPaths.mostRecentlyUsed(List.of(missing, old)));
+        assertEquals(missing, AppPaths.mostRecentlyUsed(List.of(missing, windows.resolve("also-missing"))));
+    }
+
+    @Test
+    void aChosenGamelogsFolderThatIsGoneGivesWayToTheOneFound() throws IOException {
+        Path chosen = Files.createDirectories(windows.resolve("chosen"));
+        Path found = Files.createDirectories(windows.resolve("found"));
+        Path gone = windows.resolve("gone");
+        Path notFound = windows.resolve("not-found");
+
+        assertEquals(chosen, AppPaths.gameLogDirectory(Optional.of(chosen), () -> found));
+        assertEquals(found, AppPaths.gameLogDirectory(Optional.of(gone), () -> found));
+        assertEquals(gone, AppPaths.gameLogDirectory(Optional.of(gone), () -> notFound));
+        assertEquals(found, AppPaths.gameLogDirectory(Optional.empty(), () -> found));
+    }
+
+    private static Path eveUser(Path prefix, String user, String eveFolder) throws IOException {
+        Path userDirectory = prefix.resolve("drive_c").resolve("users").resolve(user);
+        Files.createDirectories(userDirectory.resolve(eveFolder));
+        return userDirectory.toRealPath();
     }
 
     @Test

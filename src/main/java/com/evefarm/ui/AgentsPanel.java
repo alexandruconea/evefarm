@@ -17,7 +17,7 @@ import java.awt.BorderLayout;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public final class AgentsPanel extends JPanel {
+public final class AgentsPanel extends TabPanel {
 
     private static final Logger LOG = Logger.getLogger(AgentsPanel.class.getName());
     private static final String PANEL_KEY = "agents";
@@ -47,8 +47,13 @@ public final class AgentsPanel extends JPanel {
         ZkillboardLinks.install(table);
     }
 
+    @Override
     public void onShown() {
         support.reload();
+    }
+
+    @Override
+    void onDataUpdated(boolean selected) {
     }
 
     private void refreshAgentData() {

@@ -7,6 +7,7 @@ import com.evefarm.service.EveSettingsService.CopyResult;
 import com.evefarm.service.EveSettingsService.Profile;
 import com.evefarm.service.EveSettingsService.ScanResult;
 import com.evefarm.service.EveSettingsService.SettingsFile;
+import com.evefarm.util.Platform;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -220,6 +221,7 @@ public final class EveSettingsCopyDialog extends JDialog {
         JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle("Select the EVE folder ending in _tranquility");
         chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        chooser.setFileHidingEnabled(false);
         if (scan != null) {
             chooser.setCurrentDirectory(scan.settingsRoot().toFile());
         }
@@ -259,7 +261,9 @@ public final class EveSettingsCopyDialog extends JDialog {
             scan = null;
             directoryField.setText("");
             clearChoices();
-            status.setText(e.getMessage() + "\nUse Browse to select the folder whose name ends in _tranquility.");
+            status.setText(e.getMessage() + "\nUse Browse to select the folder whose name ends in _tranquility."
+                    + (Platform.isLinux() ? " It is inside EVE's Proton or Wine folder, under "
+                    + "drive_c/users/<user>/AppData/Local/CCP/EVE." : ""));
         }
         updateControls();
     }

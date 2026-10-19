@@ -5,7 +5,6 @@ import com.evefarm.esi.dto.MarketOrderDto;
 import com.evefarm.esi.dto.MarketPriceDto;
 import com.fasterxml.jackson.core.type.TypeReference;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -19,62 +18,34 @@ public final class MarketsApi {
 
     public List<MarketOrderDto> listCharacterOrders(long characterId, String accessToken) {
         String body = client.get("/characters/" + characterId + "/orders/", accessToken, Map.of());
-        try {
-            return client.objectMapper().readValue(body, new TypeReference<List<MarketOrderDto>>() {
-            });
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to parse market orders", e);
-        }
+        return client.read(body, new TypeReference<List<MarketOrderDto>>() {
+        }, "market orders");
     }
 
     public List<MarketOrderDto> listCharacterOrderHistory(long characterId, String accessToken) {
         List<String> pages = client.getAllPages("/characters/" + characterId + "/orders/history/", accessToken,
                 Map.of());
-        List<MarketOrderDto> result = new ArrayList<>();
-        try {
-            for (String page : pages) {
-                result.addAll(client.objectMapper().readValue(page, new TypeReference<List<MarketOrderDto>>() {
-                }));
-            }
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to parse the market order history", e);
-        }
-        return result;
+        return client.readPages(pages, new TypeReference<List<MarketOrderDto>>() {
+        }, "the market order history");
     }
 
     public List<MarketOrderDto> listRegionOrders(long regionId, int typeId) {
         List<String> pages = client.getAllPages("/markets/" + regionId + "/orders/", null,
                 Map.of("order_type", "all", "type_id", String.valueOf(typeId)));
-        List<MarketOrderDto> result = new ArrayList<>();
-        try {
-            for (String page : pages) {
-                result.addAll(client.objectMapper().readValue(page, new TypeReference<List<MarketOrderDto>>() {
-                }));
-            }
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to parse the market orders of type " + typeId, e);
-        }
-        return result;
+        return client.readPages(pages, new TypeReference<List<MarketOrderDto>>() {
+        }, "the market orders of type " + typeId);
     }
 
     public List<MarketHistoryDto> listRegionHistory(long regionId, int typeId) {
         String body = client.get("/markets/" + regionId + "/history/", null,
                 Map.of("type_id", String.valueOf(typeId)));
-        try {
-            return client.objectMapper().readValue(body, new TypeReference<List<MarketHistoryDto>>() {
-            });
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to parse the market history of type " + typeId, e);
-        }
+        return client.read(body, new TypeReference<List<MarketHistoryDto>>() {
+        }, "the market history of type " + typeId);
     }
 
     public List<MarketPriceDto> listPrices() {
         String body = client.get("/markets/prices/", null, Map.of());
-        try {
-            return client.objectMapper().readValue(body, new TypeReference<List<MarketPriceDto>>() {
-            });
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to parse market prices", e);
-        }
+        return client.read(body, new TypeReference<List<MarketPriceDto>>() {
+        }, "market prices");
     }
 }

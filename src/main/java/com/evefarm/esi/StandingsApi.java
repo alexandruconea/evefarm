@@ -16,11 +16,7 @@ public final class StandingsApi {
 
     public List<StandingDto> listStandings(long characterId, String accessToken) {
         String body = client.get("/characters/" + characterId + "/standings/", accessToken, Map.of());
-        try {
-            return client.objectMapper().readValue(body, new TypeReference<List<StandingDto>>() {
-            });
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to parse standings", e);
-        }
+        return client.read(body, new TypeReference<List<StandingDto>>() {
+        }, "standings");
     }
 }

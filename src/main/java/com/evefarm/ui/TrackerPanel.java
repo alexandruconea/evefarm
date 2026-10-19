@@ -28,8 +28,6 @@ import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.data.xy.XYDataset;
 
 import javax.swing.BoxLayout;
-import javax.swing.DefaultComboBoxModel;
-import javax.swing.DefaultListModel;
 import javax.swing.GroupLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -43,12 +41,9 @@ import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.LayoutStyle;
-import javax.swing.ListSelectionModel;
-import javax.swing.SpinnerDateModel;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.UIManager;
-import javax.swing.event.ListSelectionListener;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
 import java.awt.BasicStroke;
@@ -67,8 +62,6 @@ import java.awt.geom.Line2D;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -79,7 +72,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-public final class TrackerPanel extends JPanel {
+public final class TrackerPanel extends TabPanel {
 
     private static final Logger LOG = Logger.getLogger(TrackerPanel.class.getName());
     private static final int POINT_PICK_RADIUS_PX = 8;
@@ -91,10 +84,10 @@ public final class TrackerPanel extends JPanel {
     private final AppContext appContext;
     private final TrackerChartFactory chartFactory = new TrackerChartFactory();
     private final TrackerHoverOverlay hoverOverlay = new TrackerHoverOverlay();
-    private final DefaultListModel<EveCharacter> characterListModel = new DefaultListModel<>();
-    private Long mainCharacterId;
     private final Map<String, JCheckBox> seriesCheckBoxes = new LinkedHashMap<>();
     private final AtomicInteger reloadGeneration = new AtomicInteger(0);
+    private final CharacterSelection characters;
+    private final DateRangeControls dates;
 
     private ChartPanel chartPanel;
     private ChartTimeNavigator timeNavigator;
@@ -103,20 +96,15 @@ public final class TrackerPanel extends JPanel {
     public TrackerPanel(AppContext appContext) {
         initComponents();
         this.appContext = appContext;
+        characters = new CharacterSelection(appContext.characterService, allProfilesCheckBox, characterList,
+                this::reloadChart);
+        dates = new DateRangeControls(quickDateCombo, fromSpinner, toSpinner, this::reloadChart);
         postInit();
     }
 
     private void postInit() {
         buildChart();
 
-        quickDateCombo.setModel(new DefaultComboBoxModel<>(new String[]{
-                "1 Day", "1 Week", "2 Weeks", "1 Month", "3 Months", "6 Months", "1 Year", "2 Years"}));
-        quickDateCombo.addActionListener(e -> applyQuickDate((String) quickDateCombo.getSelectedItem()));
-
-        fromSpinner.setModel(new SpinnerDateModel());
-        fromSpinner.setEditor(new JSpinner.DateEditor(fromSpinner, "yyyy-MM-dd"));
-        toSpinner.setModel(new SpinnerDateModel());
-        toSpinner.setEditor(new JSpinner.DateEditor(toSpinner, "yyyy-MM-dd"));
         ComboSizing.fix(quickDateCombo, ComboSizing.NAME_WIDTH);
         ComboSizing.fix(fromSpinner, ComboSizing.NAME_WIDTH);
         ComboSizing.fix(toSpinner, ComboSizing.NAME_WIDTH);
@@ -136,34 +124,6 @@ public final class TrackerPanel extends JPanel {
             seriesCheckBoxes.put(name, checkBox);
             seriesPanel.add(checkBox);
         }
-
-        allProfilesCheckBox.addActionListener(e -> {
-            characterList.setEnabled(!allProfilesCheckBox.isSelected());
-            reloadChart();
-        });
-
-        characterList.setModel(characterListModel);
-        characterList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-        characterList.setEnabled(false);
-        characterList.setCellRenderer((list, value, index, isSelected, cellHasFocus) -> {
-            JLabel label = new JLabel(value.characterName());
-            label.setIcon(MainCharacterMarks.iconFor(mainCharacterId, value.characterId()));
-            label.setOpaque(true);
-            if (isSelected) {
-                label.setBackground(list.getSelectionBackground());
-                label.setForeground(list.getSelectionForeground());
-            } else {
-                label.setBackground(list.getBackground());
-                label.setForeground(list.getForeground());
-            }
-            return label;
-        });
-        ListSelectionListener listener = e -> {
-            if (!e.getValueIsAdjusting()) {
-                reloadChart();
-            }
-        };
-        characterList.addListSelectionListener(listener);
 
         quickDateCombo.setSelectedItem("1 Month");
         refreshCharacterFilter();
@@ -315,48 +275,15 @@ public final class TrackerPanel extends JPanel {
         }
     }
 
+    @Override
     public void onShown() {
         reloadChart();
     }
 
+    @Override
     public void refreshCharacterFilter() {
-        characterListModel.clear();
-        mainCharacterId = appContext.characterService.mainCharacterId().orElse(null);
-        for (EveCharacter character : appContext.characterService.listCharactersMainFirst()) {
-            characterListModel.addElement(character);
-        }
-        if (!characterListModel.isEmpty()) {
-            characterList.setSelectionInterval(0, characterListModel.size() - 1);
-        }
+        characters.reload();
         reloadChart();
-    }
-
-    private void applyQuickDate(String option) {
-        LocalDate today = LocalDate.now();
-        LocalDate from = switch (option) {
-            case "1 Day" -> today.minusDays(1);
-            case "1 Week" -> today.minusWeeks(1);
-            case "2 Weeks" -> today.minusWeeks(2);
-            case "3 Months" -> today.minusMonths(3);
-            case "6 Months" -> today.minusMonths(6);
-            case "1 Year" -> today.minusYears(1);
-            case "2 Years" -> today.minusYears(2);
-            default -> today.minusMonths(1);
-        };
-        fromSpinner.setValue(DateUtil.toDate(from));
-        toSpinner.setValue(DateUtil.toDate(today));
-        reloadChart();
-    }
-
-    private Set<Long> selectedCharacterIds() {
-        if (allProfilesCheckBox.isSelected()) {
-            return appContext.characterService.listCharacters().stream()
-                    .map(EveCharacter::characterId)
-                    .collect(Collectors.toSet());
-        }
-        return characterList.getSelectedValuesList().stream()
-                .map(EveCharacter::characterId)
-                .collect(Collectors.toSet());
     }
 
     private Set<String> visibleSeriesNames() {
@@ -371,10 +298,10 @@ public final class TrackerPanel extends JPanel {
             return;
         }
         int generation = reloadGeneration.incrementAndGet();
-        Set<Long> characterIds = selectedCharacterIds();
+        Set<Long> characterIds = characters.selectedIds();
         Set<String> visibleSeries = visibleSeriesNames();
-        Instant from = DateUtil.startOfDay(DateUtil.toLocalDate((Date) fromSpinner.getValue()));
-        Instant to = DateUtil.endOfDay(DateUtil.toLocalDate((Date) toSpinner.getValue()));
+        Instant from = dates.from();
+        Instant to = dates.to();
 
         new SwingWorker<List<TrackerSnapshot>, Void>() {
             @Override
@@ -584,9 +511,9 @@ public final class TrackerPanel extends JPanel {
     }
 
     private void openSnapshotManager() {
-        Set<Long> characterIds = selectedCharacterIds();
-        Instant from = DateUtil.startOfDay(DateUtil.toLocalDate((Date) fromSpinner.getValue()));
-        Instant to = DateUtil.endOfDay(DateUtil.toLocalDate((Date) toSpinner.getValue()));
+        Set<Long> characterIds = characters.selectedIds();
+        Instant from = dates.from();
+        Instant to = dates.to();
 
         manageSnapshotsButton.setEnabled(false);
         new SwingWorker<List<TrackerSnapshot>, Void>() {

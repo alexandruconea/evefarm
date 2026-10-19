@@ -15,11 +15,7 @@ public final class ClonesApi {
 
     public List<Integer> listImplants(long characterId, String accessToken) {
         String body = client.get("/characters/" + characterId + "/implants/", accessToken, Map.of());
-        try {
-            return client.objectMapper().readValue(body, new TypeReference<List<Integer>>() {
-            });
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to parse implants", e);
-        }
+        return client.read(body, new TypeReference<List<Integer>>() {
+        }, "implants");
     }
 }

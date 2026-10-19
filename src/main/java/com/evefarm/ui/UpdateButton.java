@@ -24,7 +24,6 @@ final class UpdateButton extends JButton {
 
     private static final int ICON_SIZE = 20;
     private static final Dimension SIZE = new Dimension(34, 30);
-    private static final Color FALLBACK_ACCENT = new Color(0x2D6FD6);
 
     private final DataUpdater updater;
     private final Timer spin = new Timer(40, e -> turn());
@@ -93,11 +92,6 @@ final class UpdateButton extends JButton {
         }
     }
 
-    private static Color accent() {
-        Color color = UIManager.getColor("Component.accentColor");
-        return color == null ? FALLBACK_ACCENT : color;
-    }
-
     private final class StateIcon implements Icon {
 
         @Override
@@ -107,7 +101,7 @@ final class UpdateButton extends JButton {
             g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
             g2.translate(x, y);
             if (updater.busy()) {
-                Color accent = accent();
+                Color accent = Icons.accent();
                 g2.setStroke(new BasicStroke(2.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                 g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 60));
                 g2.draw(new Ellipse2D.Double(2.5, 2.5, 15, 15));

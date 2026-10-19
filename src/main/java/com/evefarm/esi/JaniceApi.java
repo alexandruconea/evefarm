@@ -1,6 +1,7 @@
 package com.evefarm.esi;
 
 import com.evefarm.esi.dto.JaniceItemDto;
+import com.evefarm.util.Chunks;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -28,8 +29,7 @@ public final class JaniceApi {
 
     public Map<Integer, JaniceItemDto> fetchPrices(List<Integer> typeIds, String apiKey) {
         Map<Integer, JaniceItemDto> result = new HashMap<>();
-        for (int start = 0; start < typeIds.size(); start += BATCH_SIZE) {
-            List<Integer> batch = typeIds.subList(start, Math.min(start + BATCH_SIZE, typeIds.size()));
+        for (List<Integer> batch : Chunks.of(typeIds, BATCH_SIZE)) {
             result.putAll(fetchBatch(batch, apiKey));
         }
         return result;

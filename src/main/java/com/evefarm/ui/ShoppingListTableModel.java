@@ -3,9 +3,9 @@ package com.evefarm.ui;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
 import com.evefarm.util.IskFormatter;
+import com.evefarm.util.Text;
 
 import java.util.List;
-import java.util.Locale;
 
 public final class ShoppingListTableModel extends ColumnTableModel<ShoppingListTableModel.Row> {
 
@@ -23,11 +23,11 @@ public final class ShoppingListTableModel extends ColumnTableModel<ShoppingListT
     private static final List<ColumnDef<Row>> COLUMNS = List.of(
             new ColumnDef<>("item", "Item", String.class, Row::name,
                     "What to buy"),
-            new ColumnDef<>("needed", "Needed", String.class, r -> count(r.needed()),
+            new ColumnDef<>("needed", "Needed", String.class, r -> Text.count(r.needed()),
                     "How many the build needs"),
-            new ColumnDef<>("inStock", "In Stock", String.class, r -> r.inStock() > 0 ? count(r.inStock()) : "",
+            new ColumnDef<>("inStock", "In Stock", String.class, r -> r.inStock() > 0 ? Text.count(r.inStock()) : "",
                     "How many you already have (see the Stock setting)"),
-            new ColumnDef<>("toBuy", "To Buy", String.class, r -> count(r.toBuy()),
+            new ColumnDef<>("toBuy", "To Buy", String.class, r -> Text.count(r.toBuy()),
                     "What is left to buy: needed less in stock"),
             new ColumnDef<>("unitPrice", "Unit Price", String.class, r -> IskFormatter.format(r.unitPrice()),
                     "The price of one unit on the market"),
@@ -41,7 +41,4 @@ public final class ShoppingListTableModel extends ColumnTableModel<ShoppingListT
         super(COLUMNS);
     }
 
-    private static String count(long value) {
-        return String.format(Locale.US, "%,d", value);
-    }
 }

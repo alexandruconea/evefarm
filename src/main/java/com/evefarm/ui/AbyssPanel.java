@@ -13,14 +13,14 @@ import com.evefarm.service.AbyssLootService;
 import com.evefarm.service.AbyssStats;
 import com.evefarm.service.AbyssTrackerService;
 import com.evefarm.service.CargoParser;
-import com.evefarm.ui.column.ColumnDescriptions;
+import com.evefarm.ui.column.ColumnDef;
+import com.evefarm.ui.column.ColumnTableModel;
 import com.evefarm.util.DateUtil;
 import com.evefarm.util.IskFormatter;
 import com.formdev.flatlaf.FlatLaf;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
-import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -28,19 +28,16 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.Timer;
 import javax.swing.UIManager;
-import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableCellRenderer;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
@@ -57,7 +54,7 @@ import java.util.function.BiConsumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public final class AbyssPanel extends JPanel {
+public final class AbyssPanel extends TabPanel {
 
     private static final Logger LOG = Logger.getLogger(AbyssPanel.class.getName());
     private static final String PANEL_KEY = "abyss";
@@ -71,6 +68,26 @@ public final class AbyssPanel extends JPanel {
     private static final Color LOST_FALLBACK = new Color(0xc0, 0x39, 0x2b);
     private static final DateTimeFormatter COPY_TIME = DateTimeFormatter.ofPattern("HH:mm")
             .withZone(ZoneId.systemDefault());
+
+    private static final List<ColumnDef<AbyssStats.Summary>> STATS_COLUMNS = List.of(
+            new ColumnDef<>("group", "Group", String.class, AbyssStats.Summary::label,
+                    "The tier, filament or fleet, as chosen in Group by"),
+            new ColumnDef<>("runs", "Runs", Integer.class, AbyssStats.Summary::runs, "How many runs"),
+            new ColumnDef<>("lost", "Lost", Integer.class, AbyssStats.Summary::deaths, "How many ships were lost"),
+            new ColumnDef<>("loot", "Loot", String.class, summary -> IskFormatter.format(summary.loot()),
+                    "What the loot of all the runs is worth"),
+            new ColumnDef<>("filaments", "Filaments", String.class,
+                    summary -> IskFormatter.format(summary.filamentCost()), "What the filaments cost"),
+            new ColumnDef<>("profit", "Profit", String.class, summary -> IskFormatter.format(summary.profit()),
+                    "The loot less the filaments"),
+            new ColumnDef<>("averageProfit", "Avg Profit", String.class,
+                    summary -> IskFormatter.format(summary.averageProfit()), "The profit of an average run"),
+            new ColumnDef<>("averageTime", "Avg Time", String.class, summary -> summary.averageSeconds() == null ? ""
+                    : AbyssRunsTableModel.formatDuration(Math.round(summary.averageSeconds())),
+                    "How long an average run takes"),
+            new ColumnDef<>("iskPerHour", "ISK/h", String.class,
+                    summary -> summary.iskPerHour() == null ? "" : IskFormatter.format(summary.iskPerHour()),
+                    "The profit per hour of run time"));
 
     private final AppContext appContext;
     private final BiConsumer<String, String> notifier;
@@ -104,7 +121,7 @@ public final class AbyssPanel extends JPanel {
     private final JLabel countLabel = new JLabel("0 runs");
     private final JLabel overallLabel = new JLabel(" ");
     private final JComboBox<String> groupByCombo = new JComboBox<>(new String[]{GROUP_BY_TIER, GROUP_BY_FILAMENT, GROUP_BY_FLEET});
-    private final StatsTableModel statsModel = new StatsTableModel();
+    private final ColumnTableModel<AbyssStats.Summary> statsModel = new ColumnTableModel<>(STATS_COLUMNS);
     private final JTable statsTable = new JTable(statsModel);
     private final Timer clock = new Timer(1000, e -> updateTimer());
     private List<EveCharacter> characters = List.of();
@@ -171,10 +188,16 @@ public final class AbyssPanel extends JPanel {
         clock.start();
     }
 
+    @Override
     public void onShown() {
         support.reload();
     }
 
+    @Override
+    void onDataUpdated(boolean selected) {
+    }
+
+    @Override
     public void refreshCharacterFilter() {
         reloadCharacters();
         support.reload();
@@ -182,20 +205,10 @@ public final class AbyssPanel extends JPanel {
 
     private void reloadCharacters() {
         characters = appContext.characterService.listCharactersMainFirst();
-        Long mainId = appContext.characterService.mainCharacterId().orElse(null);
-        mainCharacterName = characters.stream()
-                .filter(character -> mainId != null && character.characterId() == mainId)
-                .map(EveCharacter::characterName)
-                .findFirst().orElse(null);
-        DefaultComboBoxModel<String> model = new DefaultComboBoxModel<>();
-        characters.forEach(character -> model.addElement(character.characterName()));
-        characterCombo.setModel(model);
-        if (trackerStatus != null && trackerStatus.phase() != AbyssTrackerService.Phase.STOPPED
-                && model.getIndexOf(trackerStatus.characterName()) >= 0) {
-            characterCombo.setSelectedItem(trackerStatus.characterName());
-        } else if (model.getSize() > 0) {
-            characterCombo.setSelectedIndex(0);
-        }
+        mainCharacterName = MainCharacterMarks.mainName(characters,
+                appContext.characterService.mainCharacterId().orElse(null));
+        boolean tracking = trackerStatus != null && trackerStatus.phase() != AbyssTrackerService.Phase.STOPPED;
+        MainCharacterMarks.fill(characterCombo, characters, tracking ? trackerStatus.characterName() : null);
         updateTrackerUi();
     }
 
@@ -575,7 +588,7 @@ public final class AbyssPanel extends JPanel {
                     + (overall.iskPerHour() == null ? "" : "   |   " + compact(overall.iskPerHour()) + " ISK/h"));
         }
         Object groupBy = groupByCombo.getSelectedItem();
-        statsModel.setSummaries(GROUP_BY_FILAMENT.equals(groupBy) ? AbyssStats.byFilament(runs)
+        statsModel.setRows(GROUP_BY_FILAMENT.equals(groupBy) ? AbyssStats.byFilament(runs)
                 : GROUP_BY_FLEET.equals(groupBy) ? AbyssStats.byFleet(runs) : AbyssStats.byTier(runs));
         TableStyler.packColumns(statsTable);
     }
@@ -668,27 +681,7 @@ public final class AbyssPanel extends JPanel {
         runsPanel.add(new JScrollPane(table), BorderLayout.CENTER);
         runsPanel.add(countLabel, BorderLayout.SOUTH);
 
-        JPanel statsHeader = new JPanel(new BorderLayout(12, 0));
-        JLabel statsTitle = new JLabel("Statistics");
-        statsTitle.setFont(statsTitle.getFont().deriveFont(Font.BOLD));
-        JPanel groupBy = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-        groupBy.add(new JLabel("Group by:"));
-        ComboSizing.options(groupByCombo);
-        groupBy.add(groupByCombo);
-        statsHeader.add(statsTitle, BorderLayout.WEST);
-        statsHeader.add(overallLabel, BorderLayout.CENTER);
-        statsHeader.add(groupBy, BorderLayout.EAST);
-        JPanel statsPanel = new JPanel(new BorderLayout(0, 6));
-        statsPanel.setBorder(BorderFactory.createEmptyBorder(4, 8, 8, 8));
-        statsPanel.add(statsHeader, BorderLayout.NORTH);
-        JScrollPane statsScroll = new JScrollPane(statsTable);
-        statsScroll.setPreferredSize(new Dimension(600, 150));
-        statsPanel.add(statsScroll, BorderLayout.CENTER);
-
-        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, runsPanel, statsPanel);
-        split.setResizeWeight(0.7);
-        split.setBorder(BorderFactory.createEmptyBorder());
-        add(split, BorderLayout.CENTER);
+        add(StatisticsPane.below(runsPanel, overallLabel, groupByCombo, statsTable), BorderLayout.CENTER);
     }
 
     private static final class ResultRenderer extends DefaultTableCellRenderer {
@@ -718,65 +711,5 @@ public final class AbyssPanel extends JPanel {
             return red != null ? red : LOST_FALLBACK;
         }
         return table.getForeground();
-    }
-
-    private static final class StatsTableModel extends AbstractTableModel implements ColumnDescriptions {
-
-        private static final String[] COLUMNS = {"Group", "Runs", "Lost", "Loot", "Filaments", "Profit",
-                "Avg Profit", "Avg Time", "ISK/h"};
-        private static final String[] DESCRIPTIONS = {"The tier, filament or fleet, as chosen in Group by",
-                "How many runs", "How many ships were lost", "What the loot of all the runs is worth",
-                "What the filaments cost", "The loot less the filaments", "The profit of an average run",
-                "How long an average run takes", "The profit per hour of run time"};
-
-        private List<AbyssStats.Summary> summaries = List.of();
-
-        void setSummaries(List<AbyssStats.Summary> summaries) {
-            this.summaries = summaries;
-            fireTableDataChanged();
-        }
-
-        @Override
-        public int getRowCount() {
-            return summaries.size();
-        }
-
-        @Override
-        public int getColumnCount() {
-            return COLUMNS.length;
-        }
-
-        @Override
-        public String getColumnName(int column) {
-            return COLUMNS[column];
-        }
-
-        @Override
-        public String columnDescription(int column) {
-            return DESCRIPTIONS[column];
-        }
-
-        @Override
-        public Class<?> getColumnClass(int column) {
-            return column == 1 || column == 2 ? Integer.class : String.class;
-        }
-
-        @Override
-        public Object getValueAt(int row, int column) {
-            AbyssStats.Summary summary = summaries.get(row);
-            return switch (column) {
-                case 0 -> summary.label();
-                case 1 -> summary.runs();
-                case 2 -> summary.deaths();
-                case 3 -> IskFormatter.format(summary.loot());
-                case 4 -> IskFormatter.format(summary.filamentCost());
-                case 5 -> IskFormatter.format(summary.profit());
-                case 6 -> IskFormatter.format(summary.averageProfit());
-                case 7 -> summary.averageSeconds() == null ? ""
-                        : AbyssRunsTableModel.formatDuration(Math.round(summary.averageSeconds()));
-                case 8 -> summary.iskPerHour() == null ? "" : IskFormatter.format(summary.iskPerHour());
-                default -> "";
-            };
-        }
     }
 }

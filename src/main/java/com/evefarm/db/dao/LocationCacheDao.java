@@ -1,6 +1,8 @@
 package com.evefarm.db.dao;
 
 import com.evefarm.db.Database;
+import com.evefarm.db.JdbcUtil;
+import com.evefarm.util.Chunks;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -14,7 +16,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public final class LocationCacheDao {
 
@@ -56,9 +57,8 @@ public final class LocationCacheDao {
         int chunkSize = 500;
         synchronized (database) {
             Connection connection = database.connection();
-            for (int start = 0; start < distinct.size(); start += chunkSize) {
-                List<Long> chunk = distinct.subList(start, Math.min(start + chunkSize, distinct.size()));
-                String placeholders = chunk.stream().map(id -> "?").collect(Collectors.joining(","));
+            for (List<Long> chunk : Chunks.of(distinct, chunkSize)) {
+                String placeholders = JdbcUtil.placeholders(chunk.size());
                 String sql = "SELECT location_id FROM location_cache WHERE location_id IN (" + placeholders + ")"
                         + STILL_VALID;
                 try (PreparedStatement ps = connection.prepareStatement(sql)) {

@@ -11,12 +11,12 @@ import com.evefarm.esi.dto.MarketOrderDto;
 import com.evefarm.esi.dto.SkillQueueDto;
 import com.evefarm.model.EveCharacter;
 import com.evefarm.model.IndustryJobRow;
+import com.evefarm.util.DateUtil;
 import com.evefarm.util.IskFormatter;
 
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -139,7 +139,7 @@ public final class NotificationService {
         if ("ready".equals(job.status())) {
             return true;
         }
-        return "active".equals(job.status()) && parse(job.endDate()).map(end -> !end.isAfter(now)).orElse(false);
+        return "active".equals(job.status()) && DateUtil.parseInstant(job.endDate()).map(end -> !end.isAfter(now)).orElse(false);
     }
 
     private static String jobLine(IndustryJobRow job) {
@@ -236,7 +236,7 @@ public final class NotificationService {
             return Optional.of(Instant.EPOCH);
         }
         return queue.stream()
-                .map(entry -> parse(entry.finishDate()))
+                .map(entry -> DateUtil.parseInstant(entry.finishDate()))
                 .flatMap(Optional::stream)
                 .max(Instant::compareTo);
     }
@@ -259,7 +259,7 @@ public final class NotificationService {
                     if (acceptedRecently(contract, now)) {
                         accepted.put(key, label + " was accepted");
                     }
-                    Optional<Instant> expires = parse(contract.dateExpired());
+                    Optional<Instant> expires = DateUtil.parseInstant(contract.dateExpired());
                     if ("outstanding".equals(contract.status()) && expires.isPresent()
                             && expires.get().isAfter(now) && !expires.get().isAfter(now.plus(SOON))) {
                         expiring.put(key, label + " expires in " + timeLeft(Duration.between(now, expires.get())));
@@ -277,7 +277,7 @@ public final class NotificationService {
         if (!ACCEPTED.contains(contract.status())) {
             return false;
         }
-        Optional<Instant> at = parse(contract.dateAccepted()).or(() -> parse(contract.dateCompleted()));
+        Optional<Instant> at = DateUtil.parseInstant(contract.dateAccepted()).or(() -> DateUtil.parseInstant(contract.dateCompleted()));
         return at.map(time -> !time.isAfter(now) && time.isAfter(now.minus(SOON))).orElse(false);
     }
 
@@ -332,17 +332,6 @@ public final class NotificationService {
             return rest + " min";
         }
         return rest == 0 ? hours + " h" : hours + " h " + rest + " min";
-    }
-
-    private static Optional<Instant> parse(String isoInstant) {
-        if (isoInstant == null || isoInstant.isBlank()) {
-            return Optional.empty();
-        }
-        try {
-            return Optional.of(Instant.parse(isoInstant));
-        } catch (DateTimeParseException e) {
-            return Optional.empty();
-        }
     }
 
     private static void failed(String what, EveCharacter character, RuntimeException e) {

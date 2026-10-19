@@ -13,6 +13,13 @@ class TextTest {
     }
 
     @Test
+    void countsAreGroupedInThousands() {
+        assertEquals("1,234,567", Text.count(1_234_567));
+        assertEquals("0", Text.count(0));
+        assertEquals("-1,500", Text.count(-1_500));
+    }
+
+    @Test
     void identifiersFromEveBecomeTitleCaseWords() {
         assertEquals("Item Exchange", Text.titleCase("item_exchange"));
         assertEquals("Bounty Prizes", Text.titleCase("bounty_prizes"));

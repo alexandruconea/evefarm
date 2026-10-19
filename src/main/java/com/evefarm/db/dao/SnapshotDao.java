@@ -1,6 +1,7 @@
 package com.evefarm.db.dao;
 
 import com.evefarm.db.Database;
+import com.evefarm.db.JdbcUtil;
 import com.evefarm.model.TrackerSnapshot;
 
 import java.sql.Connection;
@@ -12,7 +13,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public final class SnapshotDao {
 
@@ -107,7 +107,7 @@ public final class SnapshotDao {
                 "SELECT * FROM tracker_snapshot WHERE captured_at BETWEEN ? AND ? "
                         + "AND character_id IN (SELECT character_id FROM characters WHERE removed_at IS NULL)");
         if (characterIds != null && !characterIds.isEmpty()) {
-            String placeholders = characterIds.stream().map(id -> "?").collect(Collectors.joining(","));
+            String placeholders = JdbcUtil.placeholders(characterIds.size());
             sql.append(" AND character_id IN (").append(placeholders).append(")");
         }
         sql.append(" ORDER BY captured_at");

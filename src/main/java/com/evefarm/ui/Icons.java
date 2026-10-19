@@ -43,6 +43,10 @@ public final class Icons {
         }
     }
 
+    static Color accent() {
+        return Tone.ACCENT.color();
+    }
+
     public static final Icon ADD = icon(Tone.SUCCESS, g -> {
         g.draw(line(8, 3, 8, 13));
         g.draw(line(3, 8, 13, 8));

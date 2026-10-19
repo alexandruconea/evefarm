@@ -13,8 +13,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 public final class ContractDao {
 
@@ -182,8 +180,8 @@ public final class ContractDao {
         }
     }
 
-    public List<ContractRow> listRows(Set<Long> characterIdFilter) {
-        StringBuilder sql = new StringBuilder("""
+    public List<ContractRow> listRows() {
+        String sql = """
                 SELECT ct.character_id, c.character_name, ct.contract_id, ct.type, ct.status, ct.title,
                        ct.collateral, ct.price, ct.reward, ct.volume,
                        ct.date_issued, ct.date_expired, ct.date_completed,
@@ -206,23 +204,13 @@ public final class ContractDao {
                 LEFT JOIN location_cache sl ON sl.location_id = ct.start_location_id
                 LEFT JOIN location_cache el ON el.location_id = ct.end_location_id
                 WHERE c.removed_at IS NULL
-                """);
-        if (characterIdFilter != null && !characterIdFilter.isEmpty()) {
-            String placeholders = characterIdFilter.stream().map(id -> "?").collect(Collectors.joining(","));
-            sql.append(" AND ct.character_id IN (").append(placeholders).append(")");
-        }
-        sql.append(" ORDER BY ct.date_issued DESC");
+                ORDER BY ct.date_issued DESC
+                """;
 
         synchronized (database) {
             Connection connection = database.connection();
             List<ContractRow> result = new ArrayList<>();
-            try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
-                if (characterIdFilter != null && !characterIdFilter.isEmpty()) {
-                    int index = 1;
-                    for (Long id : characterIdFilter) {
-                        ps.setLong(index++, id);
-                    }
-                }
+            try (PreparedStatement ps = connection.prepareStatement(sql)) {
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
                         result.add(new ContractRow(

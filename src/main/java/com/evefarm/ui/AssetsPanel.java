@@ -3,21 +3,14 @@ package com.evefarm.ui;
 import com.evefarm.AppContext;
 import com.evefarm.db.dao.AssetDao;
 import com.evefarm.model.AssetRow;
-import com.evefarm.ui.column.ColumnCopySupport;
-import com.evefarm.ui.column.ColumnSorting;
-import com.evefarm.ui.column.ColumnVisibilitySupport;
-import com.evefarm.ui.filter.FilterBarPanel;
 import com.evefarm.util.DateUtil;
 import com.evefarm.util.IskFormatter;
 
-import javax.swing.GroupLayout;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
-import javax.swing.LayoutStyle;
-import javax.swing.table.TableRowSorter;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.time.YearMonth;
@@ -27,7 +20,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public final class AssetsPanel extends JPanel {
+public final class AssetsPanel extends TabPanel {
 
     private static final String PANEL_KEY = "assets";
 
@@ -47,8 +40,7 @@ public final class AssetsPanel extends JPanel {
     private final AppContext appContext;
     private final AssetsTableModel tableModel = new AssetsTableModel();
     private final AtomicInteger loadGeneration = new AtomicInteger();
-    private FilterBarPanel filterBarPanel;
-    private TableRowSorter<AssetsTableModel> sorter;
+    private FilteredTable<AssetRow> filteredTable;
 
     public AssetsPanel(AppContext appContext) {
         initComponents();
@@ -57,18 +49,7 @@ public final class AssetsPanel extends JPanel {
     }
 
     private void postInit() {
-        table.setModel(tableModel);
-        sorter = new TableRowSorter<>(tableModel);
-        ColumnSorting.install(sorter, tableModel);
-        table.setRowSorter(sorter);
-        TableStyler.style(table);
-        ColumnVisibilitySupport.install(table, tableModel, PANEL_KEY, appContext.tableColumnStateDao);
-        ColumnCopySupport.install(table, tableModel);
-
-        filterBarPanel = new FilterBarPanel(PANEL_KEY, tableModel.columnNames(), appContext.savedFilterDao);
-        filterBarPanel.setOnFilterChanged(this::applyFilter);
-        filterBarContainer.setLayout(new BorderLayout());
-        filterBarContainer.add(filterBarPanel, BorderLayout.CENTER);
+        filteredTable = new FilteredTable<>(appContext, PANEL_KEY, tableModel, table, filterBarContainer);
 
         snapshotCombo.addItem(CURRENT);
         snapshotCombo.addActionListener(e -> {
@@ -80,10 +61,12 @@ public final class AssetsPanel extends JPanel {
         loadRowsFromDatabase();
     }
 
+    @Override
     public void onShown() {
         loadRowsFromDatabase();
     }
 
+    @Override
     public void refreshCharacterFilter() {
         loadRowsFromDatabase();
     }
@@ -92,14 +75,12 @@ public final class AssetsPanel extends JPanel {
         Snapshot snapshot = (Snapshot) snapshotCombo.getSelectedItem();
         String month = snapshot == null ? null : snapshot.month();
         BackgroundLoader.load(loadGeneration, () -> new Loaded(appContext.assetService.getArchivedMonths(),
-                month == null ? appContext.assetService.getAssetRows(null)
-                        : appContext.assetService.getArchivedAssetRows(month, null)), loaded -> {
+                month == null ? appContext.assetService.getAssetRows()
+                        : appContext.assetService.getArchivedAssetRows(month)), loaded -> {
             showSnapshots(loaded.months(), month);
-            tableModel.setRows(loaded.rows());
+            filteredTable.showRows(loaded.rows());
             totalLabel.setText((month == null ? "Total: " : "Total in " + monthName(month) + ": ")
                     + IskFormatter.format(tableModel.totalValue()));
-            TableStyler.packColumns(table);
-            applyFilter();
         }, "assets", () -> totalLabel.setText("Couldn't load assets - see the log"));
     }
 
@@ -131,11 +112,6 @@ public final class AssetsPanel extends JPanel {
         }
     }
 
-    private void applyFilter() {
-        sorter.setRowFilter(filterBarPanel.buildRowFilter());
-        filterBarPanel.setRowCounts(table.getRowCount(), tableModel.getRowCount());
-    }
-
     private JPanel filterBarContainer;
     private JScrollPane jScrollPane2;
     private JTable table;
@@ -159,43 +135,10 @@ public final class AssetsPanel extends JPanel {
         bottomBar.add(totalLabel, BorderLayout.CENTER);
         bottomBar.add(snapshotPanel, BorderLayout.EAST);
 
-        GroupLayout filterBarContainerLayout = new GroupLayout(filterBarContainer);
-        filterBarContainer.setLayout(filterBarContainerLayout);
-        filterBarContainerLayout.setHorizontalGroup(
-            filterBarContainerLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
-            .addGap(0, 880, Short.MAX_VALUE)
-        );
-        filterBarContainerLayout.setVerticalGroup(
-            filterBarContainerLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
-            .addGap(0, 60, Short.MAX_VALUE)
-        );
-
         jScrollPane2.setViewportView(table);
 
         totalLabel.setText("Total: 0.00 ISK");
 
-        GroupLayout layout = new GroupLayout(this);
-        this.setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                    .addComponent(filterBarContainer, GroupLayout.DEFAULT_SIZE, 880, Short.MAX_VALUE)
-                    .addComponent(jScrollPane2, GroupLayout.DEFAULT_SIZE, 880, Short.MAX_VALUE)
-                    .addComponent(bottomBar, GroupLayout.DEFAULT_SIZE, 880, Short.MAX_VALUE))
-                .addContainerGap())
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(filterBarContainer, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane2, GroupLayout.DEFAULT_SIZE, 380, Short.MAX_VALUE)
-                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(bottomBar, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
-                .addContainerGap())
-        );
+        FilteredTable.layOut(this, filterBarContainer, jScrollPane2, bottomBar);
     }
 }

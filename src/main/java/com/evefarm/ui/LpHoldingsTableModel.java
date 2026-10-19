@@ -4,9 +4,9 @@ import com.evefarm.service.LpPurchaseService.Holding;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
 import com.evefarm.util.IskFormatter;
+import com.evefarm.util.Text;
 
 import java.util.List;
-import java.util.Locale;
 
 public final class LpHoldingsTableModel extends ColumnTableModel<Holding> {
 
@@ -15,9 +15,9 @@ public final class LpHoldingsTableModel extends ColumnTableModel<Holding> {
     private static final List<ColumnDef<Holding>> COLUMNS = List.of(
             new ColumnDef<>("item", "Item", String.class, Holding::typeName,
                     "The item you bought from LP stores. For a blueprint offer, the item it builds"),
-            new ColumnDef<>("remaining", "Left", String.class, r -> count(r.remaining()),
+            new ColumnDef<>("remaining", "Left", String.class, r -> Text.count(r.remaining()),
                     "How many units you still have: what you bought less what you sold and used"),
-            new ColumnDef<>("bought", "Bought", String.class, r -> count(r.bought()),
+            new ColumnDef<>("bought", "Bought", String.class, r -> Text.count(r.bought()),
                     "How many units you bought in all"),
             new ColumnDef<>("averageCost", "Avg Cost", String.class, r -> IskFormatter.format(r.averageCost()),
                     "What one unit cost you in ISK on average: the ISK paid and the other items, without the LP"),
@@ -51,7 +51,4 @@ public final class LpHoldingsTableModel extends ColumnTableModel<Holding> {
         super(COLUMNS);
     }
 
-    static String count(long value) {
-        return String.format(Locale.US, "%,d", value);
-    }
 }

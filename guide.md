@@ -436,7 +436,7 @@ Open **Options > Settings...**.
   - **Fuzzwork (Jita 4-4 sell price)**: prices from the Jita 4-4 market;
   - **Janice (Jita 4-4, requires API key)**: Janice's Jita prices. Janice has no public API, so you need your own key. **How do I get one?** explains how to ask for it on their Discord. The key is stored encrypted.
 - **Default price:** which price is used to value items: Sell Maximum, Sell Average, Sell Median, Sell Percentile, Sell Minimum, Midpoint, Buy Maximum, Buy Average, Buy Median, Buy Percentile or Buy Minimum. It only applies to Fuzzwork and Janice; CCP has a single average price.
-- **Gamelogs folder:** where EVE writes its Gamelogs, used by NPC Kills and the Abyss voice. Usually found by itself, also for EVE run through Steam (Proton), Lutris or Wine on Linux; **Browse...** sets it by hand.
+- **Gamelogs folder:** where EVE writes its Gamelogs, used by NPC Kills and the Abyss voice. Usually found by itself, also for EVE run through Steam (Proton), Lutris, Bottles, Heroic or Wine on Linux. If EVE is in more than one place, the folder EVE used last is picked; **Browse...** sets it by hand.
 - **Extra backup copy folder:** a second folder for the automatic backups, such as a cloud-synced one.
 - **Updates:** **Check for new versions automatically**.
 - **Notifications:** which desktop notifications you get. See [Tray icon and notifications](#tray-icon-and-notifications).
@@ -447,9 +447,9 @@ After changing the price provider or the default price, click **Now** next to **
 
 Copies EVE's in-game settings (window positions, overview, chat channels and so on) from one character to another, so a new character looks like your main straight away. Open it from **File > Characters... > Copy EVE Settings...**. Close EVE before you copy.
 
-1. Check the **EVE settings folder:**. It is the folder ending in `_tranquility` inside `%LOCALAPPDATA%\CCP\EVE` on Windows, or inside `AppData/Local/CCP/EVE` in EVE's Proton or Wine folder on Linux. **Browse...** picks another one and **Rescan** reads it again.
+1. Check the **EVE settings folder:**. It is the folder ending in `_tranquility` inside `%LOCALAPPDATA%\CCP\EVE` on Windows, or inside `AppData/Local/CCP/EVE` in EVE's Proton or Wine folder on Linux. EVE Farm finds it by itself for Steam (also when the launcher was added as a non-Steam game), Lutris, Bottles, Heroic and Wine. If there are several, it picks the one EVE used last. **Browse...** picks another one and **Rescan** reads it again.
 2. Pick the **Source character:** to copy from and the **Target character:** to copy to. If you use several launcher profiles, pick the source and target launcher profile too.
-3. Keyboard shortcuts are saved per account, not per character. Tick **Also copy keyboard shortcuts and other account-wide settings** to copy them too. EVE Farm picks the account files of the chosen characters for you.
+3. Keyboard shortcuts are saved per account, not per character. Tick **Also copy keyboard shortcuts** to copy them too, together with the other account-wide settings. EVE Farm picks the account files of the chosen characters for you.
 4. Click **Copy Settings** and confirm.
 
 Before replacing anything, EVE Farm makes a backup of the target files and checks it. If the copy fails, the files are left unchanged or put back from the backup. The backups stay in a `.evefarm-backups` folder inside EVE's settings folder.

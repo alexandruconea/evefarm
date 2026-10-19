@@ -6,6 +6,7 @@ import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnSorting;
 import com.evefarm.ui.column.ColumnTableModel;
 import com.evefarm.util.DateUtil;
+import com.evefarm.util.Text;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -23,7 +24,6 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Window;
 import java.util.List;
-import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -39,7 +39,7 @@ final class LoyaltyPointHistoryDialog extends JDialog {
                     "The character who holds the LP"),
             new ColumnDef<>("corporation", "Corporation", String.class, LoyaltyPointHistoryRow::corporationName,
                     "The corporation the LP is with"),
-            new ColumnDef<>("lp", "LP", String.class, r -> String.format(Locale.US, "%,d", r.loyaltyPoints()),
+            new ColumnDef<>("lp", "LP", String.class, r -> Text.count(r.loyaltyPoints()),
                     "The LP the character had with the corporation"),
             new ColumnDef<>("change", "Change", String.class, r -> formatChange(r.change()),
                     "How much the LP went up or down since the line before"));
@@ -69,7 +69,7 @@ final class LoyaltyPointHistoryDialog extends JDialog {
         if (change == null) {
             return "";
         }
-        return (change > 0 ? "+" : "") + String.format(Locale.US, "%,d", change);
+        return (change > 0 ? "+" : "") + Text.count(change);
     }
 
     private void buildUi() {

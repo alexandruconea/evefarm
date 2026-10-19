@@ -11,8 +11,10 @@ import com.evefarm.model.AbyssalRun;
 import com.evefarm.model.EveCharacter;
 import com.evefarm.service.AbyssLootService;
 import com.evefarm.service.ItemIconService;
-import com.evefarm.ui.column.ColumnDescriptions;
+import com.evefarm.ui.column.ColumnDef;
+import com.evefarm.ui.column.ColumnTableModel;
 import com.evefarm.util.IskFormatter;
+import com.evefarm.util.Text;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
@@ -37,7 +39,6 @@ import javax.swing.SwingWorker;
 import javax.swing.Timer;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import javax.swing.table.AbstractTableModel;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -94,7 +95,7 @@ final class AbyssRunDialog extends JDialog {
     private final JTextField notesField = new JTextField(40);
     private final JTextArea beforeArea = new JTextArea(8, 30);
     private final JTextArea afterArea = new JTextArea(8, 30);
-    private final LootTableModel lootModel;
+    private final ColumnTableModel<AbyssalLoot> lootModel;
     private final JTable lootTable;
     private final JLabel lootStatus = new JLabel(" ");
     private final JLabel profitLabel = new JLabel(" ");
@@ -114,7 +115,7 @@ final class AbyssRunDialog extends JDialog {
         this.appContext = appContext;
         this.original = run;
         this.onSaved = onSaved;
-        this.lootModel = new LootTableModel(appContext.itemIconService);
+        this.lootModel = lootModel(appContext.itemIconService);
         this.lootTable = new JTable(lootModel);
         this.lootDebounce = new Timer(400, e -> calculateLoot());
         lootDebounce.setRepeats(false);
@@ -519,7 +520,7 @@ final class AbyssRunDialog extends JDialog {
     private void showLoot(List<AbyssalLoot> items, List<String> unknown, int ignoredCount, boolean updateValue) {
         loot = items;
         unknownNames = unknown;
-        lootModel.setItems(items);
+        lootModel.setRows(items);
         TableStyler.packColumns(lootTable);
         for (AbyssalLoot item : items) {
             appContext.itemIconService.loadAsync(item.typeId(), lootTable::repaint);
@@ -671,60 +672,18 @@ final class AbyssRunDialog extends JDialog {
         JOptionPane.showMessageDialog(this, message, getTitle(), JOptionPane.WARNING_MESSAGE);
     }
 
-    private static final class LootTableModel extends AbstractTableModel implements ColumnDescriptions {
-
-        private static final String[] COLUMNS = {"", "Item", "Quantity", "Unit Price", "Total"};
-        private static final String[] DESCRIPTIONS = {"The item's icon", "The item looted", "How many were looted",
-                "The price of one unit, from your price provider", "The unit price times the quantity"};
-
-        private final ItemIconService icons;
-        private List<AbyssalLoot> items = List.of();
-
-        LootTableModel(ItemIconService icons) {
-            this.icons = icons;
-        }
-
-        void setItems(List<AbyssalLoot> items) {
-            this.items = items;
-            fireTableDataChanged();
-        }
-
-        @Override
-        public int getRowCount() {
-            return items.size();
-        }
-
-        @Override
-        public int getColumnCount() {
-            return COLUMNS.length;
-        }
-
-        @Override
-        public String getColumnName(int column) {
-            return COLUMNS[column];
-        }
-
-        @Override
-        public String columnDescription(int column) {
-            return DESCRIPTIONS[column];
-        }
-
-        @Override
-        public Class<?> getColumnClass(int column) {
-            return column == 0 ? ImageIcon.class : String.class;
-        }
-
-        @Override
-        public Object getValueAt(int row, int column) {
-            AbyssalLoot item = items.get(row);
-            return switch (column) {
-                case 0 -> icons.iconOrPlaceholder(item.typeId());
-                case 1 -> item.typeName();
-                case 2 -> String.format(Locale.US, "%,d", item.quantity());
-                case 3 -> item.unitPrice() == null ? "" : IskFormatter.format(item.unitPrice());
-                case 4 -> item.unitPrice() == null ? "" : IskFormatter.format(item.totalValue());
-                default -> "";
-            };
-        }
+    private static ColumnTableModel<AbyssalLoot> lootModel(ItemIconService icons) {
+        return new ColumnTableModel<>(List.of(
+                new ColumnDef<>("icon", "", ImageIcon.class, item -> icons.iconOrPlaceholder(item.typeId()),
+                        "The item's icon"),
+                new ColumnDef<>("item", "Item", String.class, AbyssalLoot::typeName, "The item looted"),
+                new ColumnDef<>("quantity", "Quantity", String.class, item -> Text.count(item.quantity()),
+                        "How many were looted"),
+                new ColumnDef<>("unitPrice", "Unit Price", String.class,
+                        item -> item.unitPrice() == null ? "" : IskFormatter.format(item.unitPrice()),
+                        "The price of one unit, from your price provider"),
+                new ColumnDef<>("total", "Total", String.class,
+                        item -> item.unitPrice() == null ? "" : IskFormatter.format(item.totalValue()),
+                        "The unit price times the quantity")));
     }
 }

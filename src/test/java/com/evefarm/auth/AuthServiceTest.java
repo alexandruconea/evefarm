@@ -92,6 +92,20 @@ class AuthServiceTest {
     }
 
     @Test
+    void aRefreshWithoutANewRefreshTokenKeepsTheOldOne() {
+        long characterId = 42L;
+        TokenDao tokens = mock(TokenDao.class);
+        EveSsoClient sso = mock(EveSsoClient.class);
+        AuthService service = new AuthService(mock(CharacterDao.class), tokens, sso, mock(JwtValidator.class));
+        when(tokens.find(characterId)).thenReturn(Optional.of(new TokenRecord("kept-refresh", "old", Instant.EPOCH)));
+        when(sso.refreshAccessToken(any(), eq("kept-refresh"))).thenReturn(new TokenResponse("new-access", null, 1199));
+
+        assertEquals("new-access", service.getValidAccessToken(characterId));
+
+        verify(tokens).upsert(eq(characterId), eq("kept-refresh"), eq("new-access"), any());
+    }
+
+    @Test
     void tokensNeverShowUpWhenPrinted() {
         String record = new TokenRecord("refresh-secret", "access-secret", Instant.EPOCH).toString();
         String response = new TokenResponse("access-secret", "refresh-secret", 1199).toString();

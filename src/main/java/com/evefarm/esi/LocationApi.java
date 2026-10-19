@@ -14,20 +14,12 @@ public final class LocationApi {
     }
 
     public CharacterLocationDto getLocation(long characterId, String accessToken) {
-        return read(client.get("/characters/" + characterId + "/location/", accessToken, Map.of()),
-                CharacterLocationDto.class);
+        return client.read(client.get("/characters/" + characterId + "/location/", accessToken, Map.of()),
+                CharacterLocationDto.class, "the ESI response");
     }
 
     public CharacterShipDto getShip(long characterId, String accessToken) {
-        return read(client.get("/characters/" + characterId + "/ship/", accessToken, Map.of()),
-                CharacterShipDto.class);
-    }
-
-    private <T> T read(String body, Class<T> type) {
-        try {
-            return client.objectMapper().readValue(body, type);
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to parse the ESI response", e);
-        }
+        return client.read(client.get("/characters/" + characterId + "/ship/", accessToken, Map.of()),
+                CharacterShipDto.class, "the ESI response");
     }
 }

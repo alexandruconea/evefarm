@@ -1,18 +1,11 @@
 package com.evefarm.ui;
 
 import com.evefarm.AppContext;
-import com.evefarm.ui.column.ColumnCopySupport;
-import com.evefarm.ui.column.ColumnSorting;
 import com.evefarm.ui.column.ColumnTableModel;
-import com.evefarm.ui.column.ColumnVisibilitySupport;
-import com.evefarm.ui.filter.FilterBarPanel;
 
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTable;
-import javax.swing.table.TableRowSorter;
-import java.awt.BorderLayout;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
@@ -29,8 +22,7 @@ final class DataTablePanelSupport<R> {
     private final Supplier<List<R>> rowsSupplier;
 
     private final AtomicInteger reloadGeneration = new AtomicInteger();
-    private FilterBarPanel filterBarPanel;
-    private TableRowSorter<ColumnTableModel<R>> sorter;
+    private FilteredTable<R> filteredTable;
     private Runnable onRowsShown = () -> {
     };
 
@@ -48,19 +40,8 @@ final class DataTablePanelSupport<R> {
     }
 
     void init() {
-        table.setModel(tableModel);
-        sorter = new TableRowSorter<>(tableModel);
-        ColumnSorting.install(sorter, tableModel);
-        table.setRowSorter(sorter);
-        TableStyler.style(table);
-        ColumnVisibilitySupport.install(table, tableModel, panelKey, appContext.tableColumnStateDao);
-        ColumnCopySupport.install(table, tableModel);
-
-        filterBarPanel = new FilterBarPanel(panelKey, tableModel.columnNames(), appContext.savedFilterDao);
-        filterBarPanel.setOnFilterChanged(this::applyFilter);
-        filterBarContainer.setLayout(new BorderLayout());
-        filterBarContainer.add(filterBarPanel, BorderLayout.CENTER);
-
+        filteredTable = new FilteredTable<>(appContext, panelKey, tableModel, table, filterBarContainer,
+                () -> onRowsShown.run());
         reload();
     }
 
@@ -69,11 +50,7 @@ final class DataTablePanelSupport<R> {
     }
 
     List<R> visibleRows() {
-        List<R> visible = new ArrayList<>(table.getRowCount());
-        for (int row = 0; row < table.getRowCount(); row++) {
-            visible.add(tableModel.rowAt(table.convertRowIndexToModel(row)));
-        }
-        return visible;
+        return filteredTable.visibleRows();
     }
 
     void reload() {
@@ -82,15 +59,7 @@ final class DataTablePanelSupport<R> {
     }
 
     private void applyRows(List<R> rows) {
-        tableModel.setRows(rows);
         countLabel.setText(rows.size() + " " + countNoun);
-        TableStyler.packColumns(table);
-        applyFilter();
-    }
-
-    private void applyFilter() {
-        sorter.setRowFilter(filterBarPanel.buildRowFilter());
-        filterBarPanel.setRowCounts(table.getRowCount(), tableModel.getRowCount());
-        onRowsShown.run();
+        filteredTable.showRows(rows);
     }
 }

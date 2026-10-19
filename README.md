@@ -16,7 +16,7 @@ EVE Farm is a desktop app for Windows and Linux that keeps all your EVE Online c
 3. EVE Farm keeps the key to your EVE logins in your desktop keyring (GNOME Keyring, KWallet or another Secret Service keyring), so it needs `libsecret`. Most desktops already have it; on Ubuntu, Debian or Mint, `sudo apt install libsecret-1-0 gnome-keyring` adds it.
 4. Optional: `speech-dispatcher` or `espeak-ng` for the aggro voice in the **Abyss** tab, and `notify-send` (package `libnotify-bin` on Ubuntu) for notifications.
 
-EVE run through Steam (Proton), Lutris or Wine is found by itself. If the Gamelogs folder isn't found, set it in **Options → Settings...**.
+EVE run through Steam (Proton), Lutris, Bottles, Heroic or Wine is found by itself. If the Gamelogs folder isn't found, set it in **Options → Settings...**.
 
 Then open **File → Characters... → Add Character...** and log in with your EVE account in the browser window that opens.
 
@@ -57,7 +57,7 @@ The aggro voice in the **Abyss** tab reads your characters' Gamelogs on this com
 1. Close EVE Farm.
 2. Delete the folder you unzipped it into. EVE Farm doesn't install anything else and doesn't change system settings.
 3. To remove your data too, delete `%USERPROFILE%\.evefarm` (`~/.evefarm` on Linux). This also deletes the automatic backups, so copy any you want to keep first. On Linux, also delete **EVE Farm login key** from your keyring (for example in Passwords and Keys or KWallet Manager).
-4. If you used **Copy EVE Settings...**, the EVE files it replaced are kept in a `.evefarm-backups` folder inside EVE's settings folder (`%LOCALAPPDATA%\CCP\EVE\..._tranquility` on Windows). Delete it when you no longer need them.
+4. If you used **Copy EVE Settings...**, the EVE files it replaced are kept in a `.evefarm-backups` folder inside EVE's settings folder (`%LOCALAPPDATA%\CCP\EVE\..._tranquility` on Windows, `drive_c/users/<user>/AppData/Local/CCP/EVE/..._tranquility` in EVE's Proton or Wine folder on Linux, where it is a hidden folder). Delete it when you no longer need them.
 
 ## Building from source
 

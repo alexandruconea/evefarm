@@ -51,7 +51,7 @@ class AssetDaoTest {
                 new AssetEntry(2, 34, 1, 60003760L, "Hangar", true, false, null, null, 5.0, 5.0)));
 
         assertEquals(List.of("Type #34", "Type #34 (Blueprint Copy)"),
-                assets.listRows(null).stream().map(AssetRow::typeName).toList());
+                assets.listRows().stream().map(AssetRow::typeName).toList());
     }
 
     @Test
@@ -62,7 +62,7 @@ class AssetDaoTest {
 
         assertEquals(List.of(month), assets.listArchivedMonths().stream().map(AssetDao.ArchivedMonth::month).toList());
         assertEquals(List.of(250L, 10L),
-                assets.listArchivedRows(month, null).stream().map(AssetRow::quantity).toList());
+                assets.listArchivedRows(month).stream().map(AssetRow::quantity).toList());
     }
 
     @Test
@@ -97,7 +97,7 @@ class AssetDaoTest {
         assets.replaceForCharacter(PILOT, List.of(asset(1, 7)));
 
         assertEquals(2, assets.listArchivedMonths().size());
-        assertEquals(List.of(100L), assets.listArchivedRows("2024-05", null).stream().map(AssetRow::quantity).toList());
-        assertEquals(List.of(7L), assets.listRows(null).stream().map(AssetRow::quantity).toList());
+        assertEquals(List.of(100L), assets.listArchivedRows("2024-05").stream().map(AssetRow::quantity).toList());
+        assertEquals(List.of(7L), assets.listRows().stream().map(AssetRow::quantity).toList());
     }
 }

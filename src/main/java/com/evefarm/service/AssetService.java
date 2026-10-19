@@ -8,6 +8,7 @@ import com.evefarm.esi.dto.AssetDto;
 import com.evefarm.esi.dto.AssetNameDto;
 import com.evefarm.model.AssetEntry;
 import com.evefarm.model.AssetRow;
+import com.evefarm.util.Chunks;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -87,8 +88,8 @@ public final class AssetService {
         return total;
     }
 
-    public List<AssetRow> getAssetRows(Set<Long> characterIdFilter) {
-        return assetDao.listRows(characterIdFilter);
+    public List<AssetRow> getAssetRows() {
+        return assetDao.listRows();
     }
 
     public Map<Integer, Long> usableStock(Long solarSystemId) {
@@ -99,8 +100,8 @@ public final class AssetService {
         return assetDao.listArchivedMonths();
     }
 
-    public List<AssetRow> getArchivedAssetRows(String month, Set<Long> characterIdFilter) {
-        return assetDao.listArchivedRows(month, characterIdFilter);
+    public List<AssetRow> getArchivedAssetRows(String month) {
+        return assetDao.listArchivedRows(month);
     }
 
     private long resolveTopLevelLocationId(AssetDto asset, Map<Long, AssetDto> byItemId) {
@@ -143,8 +144,7 @@ public final class AssetService {
         }
         try {
             Map<Long, String> names = new HashMap<>();
-            for (int start = 0; start < singletonIds.size(); start += 1000) {
-                List<Long> batch = singletonIds.subList(start, Math.min(start + 1000, singletonIds.size()));
+            for (List<Long> batch : Chunks.of(singletonIds, 1000)) {
                 for (AssetNameDto dto : IdLookup.skippingInvalidIds(batch,
                         ids -> assetsApi.resolveNames(characterId, accessToken, ids))) {
                     names.put(dto.itemId(), dto.name());

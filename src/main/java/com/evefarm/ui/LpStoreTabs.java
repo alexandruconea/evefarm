@@ -2,11 +2,10 @@ package com.evefarm.ui;
 
 import com.evefarm.AppContext;
 
-import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import java.awt.BorderLayout;
 
-public final class LpStoreTabs extends JPanel {
+public final class LpStoreTabs extends TabPanel {
 
     private final LpStorePanel offersPanel;
     private final LpProductionPanel productionPanel;
@@ -27,6 +26,7 @@ public final class LpStoreTabs extends JPanel {
         add(tabs, BorderLayout.CENTER);
     }
 
+    @Override
     public void onShown() {
         offersPanel.onShown();
         if (tabs.getSelectedComponent() == productionPanel) {
@@ -34,6 +34,7 @@ public final class LpStoreTabs extends JPanel {
         }
     }
 
+    @Override
     public void refreshCharacterFilter() {
         offersPanel.refreshCharacterFilter();
         if (tabs.getSelectedComponent() == productionPanel) {

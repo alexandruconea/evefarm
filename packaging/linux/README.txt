@@ -39,7 +39,8 @@ Everything you track (wallet snapshots, settings, cached prices, etc.) is
 stored locally on your own machine, in ~/.evefarm/ (readable only by your
 user).
 
-EVE running through Steam (Proton), Lutris or Wine is found automatically.
+EVE running through Steam (Proton), Lutris, Bottles, Heroic or Wine is found
+automatically.
 If your Gamelogs folder isn't found, set it in Options > Settings.
 
 Requirements

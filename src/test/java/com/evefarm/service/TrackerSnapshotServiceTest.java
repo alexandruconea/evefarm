@@ -11,9 +11,9 @@ import com.evefarm.esi.IndustryApi;
 import com.evefarm.esi.MarketsApi;
 import com.evefarm.esi.SkillsApi;
 import com.evefarm.esi.WalletApi;
+import com.evefarm.esi.dto.CharacterSkillsDto;
 import com.evefarm.esi.dto.ContractDto;
 import com.evefarm.esi.dto.IndustryJobDto;
-import com.evefarm.esi.dto.SkillsDto;
 import com.evefarm.model.IndustryActivity;
 import com.evefarm.model.LoyaltyPointRow;
 import com.evefarm.model.SkillPointFilter;
@@ -166,7 +166,7 @@ class TrackerSnapshotServiceTest {
         when(clones.listImplants(42L, "token")).thenReturn(List.of());
         when(markets.listCharacterOrders(42L, "token")).thenReturn(List.of());
         when(contracts.listContracts(42L, "token")).thenReturn(List.of());
-        when(skills.getSkills(42L, "token")).thenReturn(new SkillsDto(0));
+        when(skills.getSkills(42L, "token")).thenReturn(new CharacterSkillsDto(0, null, List.of()));
         when(filters.find(42L)).thenReturn(new SkillPointFilter(false, 0));
         return new TrackerSnapshotService(auth, wallet, clones, markets, contracts, industry, skills, loyalty, prices,
                 assets, snapshots, filters, settings, catalog);

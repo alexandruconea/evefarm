@@ -4,6 +4,7 @@ import com.evefarm.db.dao.SettingsDao;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -16,42 +17,36 @@ final class TabVisibility {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     static Set<String> readHidden(SettingsDao settingsDao) {
-        String json = settingsDao.getOrDefault(SettingsDao.HIDDEN_TABS, "");
-        if (json.isBlank()) {
-            return new LinkedHashSet<>();
-        }
-        try {
-            String[] keys = MAPPER.readValue(json, String[].class);
-            return new LinkedHashSet<>(List.of(keys));
-        } catch (Exception e) {
-            return new LinkedHashSet<>();
-        }
+        return new LinkedHashSet<>(read(settingsDao, SettingsDao.HIDDEN_TABS));
     }
 
     static void writeHidden(SettingsDao settingsDao, Set<String> hiddenKeys) {
-        try {
-            settingsDao.set(SettingsDao.HIDDEN_TABS, MAPPER.writeValueAsString(hiddenKeys));
-        } catch (Exception e) {
-            LOG.log(Level.WARNING, "Couldn't save the tab layout", e);
-        }
+        write(settingsDao, SettingsDao.HIDDEN_TABS, hiddenKeys);
     }
 
     static List<String> readOrder(SettingsDao settingsDao) {
-        String json = settingsDao.getOrDefault(SettingsDao.TAB_ORDER, "");
-        if (json.isBlank()) {
-            return new ArrayList<>();
-        }
-        try {
-            String[] keys = MAPPER.readValue(json, String[].class);
-            return new ArrayList<>(List.of(keys));
-        } catch (Exception e) {
-            return new ArrayList<>();
-        }
+        return new ArrayList<>(read(settingsDao, SettingsDao.TAB_ORDER));
     }
 
     static void writeOrder(SettingsDao settingsDao, List<String> orderedKeys) {
+        write(settingsDao, SettingsDao.TAB_ORDER, orderedKeys);
+    }
+
+    private static List<String> read(SettingsDao settingsDao, String key) {
+        String json = settingsDao.getOrDefault(key, "");
+        if (json.isBlank()) {
+            return List.of();
+        }
         try {
-            settingsDao.set(SettingsDao.TAB_ORDER, MAPPER.writeValueAsString(orderedKeys));
+            return List.of(MAPPER.readValue(json, String[].class));
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    private static void write(SettingsDao settingsDao, String key, Collection<String> keys) {
+        try {
+            settingsDao.set(key, MAPPER.writeValueAsString(keys));
         } catch (Exception e) {
             LOG.log(Level.WARNING, "Couldn't save the tab layout", e);
         }

@@ -16,7 +16,6 @@ public final class UnderlineTabbedPaneUI extends BasicTabbedPaneUI {
 
     static final String TRAILING_SPACE = "EveFarm.tabTrailingSpace";
     private static final int UNDERLINE_HEIGHT = 3;
-    private static final Color FALLBACK_ACCENT = new Color(0x2D6FD6);
 
     public static ComponentUI createUI(JComponent c) {
         return new UnderlineTabbedPaneUI();
@@ -46,11 +45,6 @@ public final class UnderlineTabbedPaneUI extends BasicTabbedPaneUI {
         return insets;
     }
 
-    private static Color accent() {
-        Color color = UIManager.getColor("Component.accentColor");
-        return color == null ? FALLBACK_ACCENT : color;
-    }
-
     private Color separator() {
         Color shadow = UIManager.getColor("controlShadow");
         return shadow == null ? new Color(0xD0D0D0) : shadow;
@@ -61,7 +55,7 @@ public final class UnderlineTabbedPaneUI extends BasicTabbedPaneUI {
                                       boolean isSelected) {
         Color fill = null;
         if (isSelected) {
-            Color accent = accent();
+            Color accent = Icons.accent();
             fill = new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 22);
         } else if (tabIndex == getRolloverTab() && tabPane.isEnabledAt(tabIndex)) {
             fill = new Color(0, 0, 0, 14);
@@ -81,7 +75,7 @@ public final class UnderlineTabbedPaneUI extends BasicTabbedPaneUI {
         Graphics2D g2 = (Graphics2D) g.create();
         try {
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setColor(accent());
+            g2.setColor(Icons.accent());
             g2.fillRoundRect(x + 2, y + h - UNDERLINE_HEIGHT, w - 4, UNDERLINE_HEIGHT, UNDERLINE_HEIGHT,
                     UNDERLINE_HEIGHT);
         } finally {

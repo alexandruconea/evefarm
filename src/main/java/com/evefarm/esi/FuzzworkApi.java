@@ -2,9 +2,11 @@ package com.evefarm.esi;
 
 import com.evefarm.esi.dto.FuzzworkAggregateDto;
 import com.evefarm.esi.dto.FuzzworkBlueprintDto;
+import com.evefarm.util.Chunks;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -35,8 +37,7 @@ public final class FuzzworkApi {
 
     public Map<Integer, FuzzworkAggregateDto> fetchAggregates(List<Integer> typeIds) {
         Map<Integer, FuzzworkAggregateDto> result = new HashMap<>();
-        for (int start = 0; start < typeIds.size(); start += BATCH_SIZE) {
-            List<Integer> batch = typeIds.subList(start, Math.min(start + BATCH_SIZE, typeIds.size()));
+        for (List<Integer> batch : Chunks.of(typeIds, BATCH_SIZE)) {
             result.putAll(fetchBatch(batch));
         }
         return result;
@@ -46,14 +47,8 @@ public final class FuzzworkApi {
         String typesParam = typeIds.stream().map(String::valueOf).collect(Collectors.joining(","));
         String url = BASE_URL + "?station=" + JITA_4_4_STATION_ID + "&types=" + typesParam;
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .timeout(Duration.ofSeconds(20))
-                .header("User-Agent", EsiConfig.USER_AGENT)
-                .GET()
-                .build();
         try {
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            HttpResponse<String> response = get(url, Duration.ofSeconds(20));
             if (response.statusCode() / 100 != 2) {
                 throw new IllegalStateException("Fuzzwork request failed: HTTP " + response.statusCode());
             }
@@ -79,15 +74,8 @@ public final class FuzzworkApi {
     }
 
     public Optional<FuzzworkBlueprintDto> fetchBlueprintMaterials(int blueprintTypeId) {
-        String url = BLUEPRINT_URL + "?typeid=" + blueprintTypeId;
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .timeout(Duration.ofSeconds(20))
-                .header("User-Agent", EsiConfig.USER_AGENT)
-                .GET()
-                .build();
         try {
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            HttpResponse<String> response = get(BLUEPRINT_URL + "?typeid=" + blueprintTypeId, Duration.ofSeconds(20));
             if (response.statusCode() / 100 != 2) {
                 return Optional.empty();
             }
@@ -102,14 +90,8 @@ public final class FuzzworkApi {
     }
 
     public String fetchStaticDataCsv(String fileName) {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(STATIC_DATA_CSV_URL + fileName))
-                .timeout(Duration.ofSeconds(60))
-                .header("User-Agent", EsiConfig.USER_AGENT)
-                .GET()
-                .build();
         try {
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            HttpResponse<String> response = get(STATIC_DATA_CSV_URL + fileName, Duration.ofSeconds(60));
             if (response.statusCode() / 100 != 2) {
                 throw new IllegalStateException("Fuzzwork static data request failed: HTTP " + response.statusCode());
             }
@@ -122,5 +104,15 @@ public final class FuzzworkApi {
             }
             throw new IllegalStateException("Failed to reach Fuzzwork static data dump for " + fileName, e);
         }
+    }
+
+    private HttpResponse<String> get(String url, Duration timeout) throws IOException, InterruptedException {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .timeout(timeout)
+                .header("User-Agent", EsiConfig.USER_AGENT)
+                .GET()
+                .build();
+        return httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
     }
 }

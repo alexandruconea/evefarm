@@ -3,12 +3,6 @@ package com.evefarm.ui;
 import com.evefarm.AppContext;
 import com.evefarm.model.ContractRow;
 
-import javax.swing.GroupLayout;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTable;
-import javax.swing.LayoutStyle;
 import javax.swing.SwingUtilities;
 import javax.swing.table.TableColumn;
 import java.awt.Cursor;
@@ -16,24 +10,19 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 
-public final class ContractsPanel extends JPanel {
-
-    private static final String PANEL_KEY = "contracts";
+public final class ContractsPanel extends DataTablePanel<ContractRow> {
 
     private final AppContext appContext;
-    private final ContractsTableModel tableModel = new ContractsTableModel();
-    private DataTablePanelSupport<ContractRow> support;
+    private final ContractsTableModel tableModel;
 
     public ContractsPanel(AppContext appContext) {
-        initComponents();
-        this.appContext = appContext;
-        postInit();
+        this(appContext, new ContractsTableModel());
     }
 
-    private void postInit() {
-        support = new DataTablePanelSupport<>(appContext, PANEL_KEY, tableModel, table, filterBarContainer,
-                contractCountLabel, "contracts", () -> appContext.contractService.getContractRows(null));
-        support.init();
+    private ContractsPanel(AppContext appContext, ContractsTableModel tableModel) {
+        super(appContext, "contracts", tableModel, "contracts", appContext.contractService::getContractRows);
+        this.appContext = appContext;
+        this.tableModel = tableModel;
         showInfoColumn();
         table.addMouseListener(new MouseAdapter() {
             @Override
@@ -90,65 +79,5 @@ public final class ContractsPanel extends JPanel {
     private void openContract(int viewRow) {
         ContractRow contract = tableModel.rowAt(table.convertRowIndexToModel(viewRow));
         new ContractContentsDialog(SwingUtilities.getWindowAncestor(this), appContext, contract).setVisible(true);
-    }
-
-    public void onShown() {
-        support.reload();
-    }
-
-    public void refreshCharacterFilter() {
-        support.reload();
-    }
-
-    private JLabel contractCountLabel;
-    private JPanel filterBarContainer;
-    private JScrollPane jScrollPane2;
-    private JTable table;
-
-    private void initComponents() {
-
-        filterBarContainer = new JPanel();
-        jScrollPane2 = new JScrollPane();
-        table = new JTable();
-        contractCountLabel = new JLabel();
-
-        GroupLayout filterBarContainerLayout = new GroupLayout(filterBarContainer);
-        filterBarContainer.setLayout(filterBarContainerLayout);
-        filterBarContainerLayout.setHorizontalGroup(
-            filterBarContainerLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
-            .addGap(0, 880, Short.MAX_VALUE)
-        );
-        filterBarContainerLayout.setVerticalGroup(
-            filterBarContainerLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
-            .addGap(0, 60, Short.MAX_VALUE)
-        );
-
-        jScrollPane2.setViewportView(table);
-
-        contractCountLabel.setText("0 contracts");
-
-        GroupLayout layout = new GroupLayout(this);
-        this.setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                    .addComponent(filterBarContainer, GroupLayout.DEFAULT_SIZE, 880, Short.MAX_VALUE)
-                    .addComponent(jScrollPane2, GroupLayout.DEFAULT_SIZE, 880, Short.MAX_VALUE)
-                    .addComponent(contractCountLabel))
-                .addContainerGap())
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(filterBarContainer, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane2, GroupLayout.DEFAULT_SIZE, 380, Short.MAX_VALUE)
-                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(contractCountLabel)
-                .addContainerGap())
-        );
     }
 }

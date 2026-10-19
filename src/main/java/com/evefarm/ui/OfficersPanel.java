@@ -8,6 +8,7 @@ import com.evefarm.model.SpawnMember;
 import com.evefarm.service.NpcCatalog;
 import com.evefarm.util.DateUtil;
 import com.evefarm.util.IskFormatter;
+import com.evefarm.util.Text;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -36,7 +37,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -421,7 +421,7 @@ public final class OfficersPanel extends JPanel {
             first = false;
             text.append(entry.getKey()).append(" (")
                     .append(bounty.get(entry.getKey()) ? "got the bounty, " : "")
-                    .append(String.format(Locale.US, "%,d", entry.getValue())).append(" damage)");
+                    .append(Text.count(entry.getValue())).append(" damage)");
         }
         return text.append('.').toString();
     }

@@ -52,7 +52,7 @@ public final class SkillService {
     public void refreshSkillsForCharacter(long characterId) {
         skillCatalogService.refreshIfStale();
         String accessToken = authService.getValidAccessToken(characterId);
-        CharacterSkillsDto skills = skillsApi.getCharacterSkills(characterId, accessToken);
+        CharacterSkillsDto skills = skillsApi.getSkills(characterId, accessToken);
         CharacterAttributesDto attributes = skillsApi.getAttributes(characterId, accessToken);
         List<Integer> implants = clonesApi.listImplants(characterId, accessToken);
         List<OwnedSkill> owned = skills.skills() == null ? List.of() : skills.skills().stream()

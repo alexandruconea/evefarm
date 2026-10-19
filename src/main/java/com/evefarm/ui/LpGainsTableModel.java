@@ -4,9 +4,9 @@ import com.evefarm.model.LpGain;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
 import com.evefarm.util.DateUtil;
+import com.evefarm.util.Text;
 
 import java.util.List;
-import java.util.Locale;
 
 public final class LpGainsTableModel extends ColumnTableModel<LpGain> {
 
@@ -17,7 +17,7 @@ public final class LpGainsTableModel extends ColumnTableModel<LpGain> {
                     "The character who earned the LP"),
             new ColumnDef<>("corporation", "Corporation", String.class, LpGain::corporationName,
                     "The corporation the LP is with"),
-            new ColumnDef<>("lp", "LP Earned", String.class, r -> String.format(Locale.US, "%,d", r.points()),
+            new ColumnDef<>("lp", "LP Earned", String.class, r -> Text.count(r.points()),
                     "How much the LP went up since EVE Farm read it before"),
             new ColumnDef<>("since", "Since", String.class, r -> DateUtil.format(r.since()),
                     "When EVE Farm read the LP before: it was earned between this time and Seen At. Empty when "

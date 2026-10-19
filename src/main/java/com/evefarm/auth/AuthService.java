@@ -102,7 +102,9 @@ public final class AuthService {
                         + " again (File > Characters... > Add Character...) - EVE no longer accepts its login.");
             }
             Instant expiresAt = Instant.now().plusSeconds(refreshed.expiresIn());
-            tokenDao.upsert(characterId, refreshed.refreshToken(), refreshed.accessToken(), expiresAt);
+            String refreshToken = refreshed.refreshToken() == null || refreshed.refreshToken().isBlank()
+                    ? record.refreshToken() : refreshed.refreshToken();
+            tokenDao.upsert(characterId, refreshToken, refreshed.accessToken(), expiresAt);
             return refreshed.accessToken();
         }
     }

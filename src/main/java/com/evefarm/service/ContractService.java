@@ -126,7 +126,7 @@ public final class ContractService {
         return items;
     }
 
-    public List<ContractRow> getContractRows(Set<Long> characterIdFilter) {
-        return contractDao.listRows(characterIdFilter);
+    public List<ContractRow> getContractRows() {
+        return contractDao.listRows();
     }
 }

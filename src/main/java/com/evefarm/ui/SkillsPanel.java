@@ -24,7 +24,6 @@ import com.evefarm.util.IskFormatter;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
-import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -62,7 +61,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-public final class SkillsPanel extends JPanel {
+public final class SkillsPanel extends TabPanel {
 
     private static final Logger LOG = Logger.getLogger(SkillsPanel.class.getName());
     private static final String TABLE_KEY = "skillPlan";
@@ -160,32 +159,24 @@ public final class SkillsPanel extends JPanel {
         reloadCharacters(true);
     }
 
+    @Override
     public void onShown() {
         reloadCharacters(false);
     }
 
+    @Override
     public void refreshCharacterFilter() {
         reloadCharacters(true);
     }
 
     private void reloadCharacters(boolean selectMain) {
         characters = appContext.characterService.listCharactersMainFirst();
-        Long mainId = appContext.characterService.mainCharacterId().orElse(null);
-        mainCharacterName = characters.stream()
-                .filter(character -> mainId != null && character.characterId() == mainId)
-                .map(EveCharacter::characterName)
-                .findFirst().orElse(null);
-        String previous = (String) characterCombo.getSelectedItem();
-        DefaultComboBoxModel<String> model = new DefaultComboBoxModel<>();
-        characters.forEach(character -> model.addElement(character.characterName()));
+        mainCharacterName = MainCharacterMarks.mainName(characters,
+                appContext.characterService.mainCharacterId().orElse(null));
+        String previous = selectMain ? null : (String) characterCombo.getSelectedItem();
         updatingCharacters = true;
         try {
-            characterCombo.setModel(model);
-            if (!selectMain && previous != null && model.getIndexOf(previous) >= 0) {
-                characterCombo.setSelectedItem(previous);
-            } else if (model.getSize() > 0) {
-                characterCombo.setSelectedIndex(0);
-            }
+            MainCharacterMarks.fill(characterCombo, characters, previous);
         } finally {
             updatingCharacters = false;
         }

@@ -170,30 +170,34 @@ public final class OfficerService {
         List<EncounterSummary> sorted = new ArrayList<>(encounters);
         sorted.sort(Comparator.comparing(EncounterSummary::startedAt).thenComparing(EncounterSummary::encounterId));
         List<List<EncounterSummary>> fights = new ArrayList<>();
+        List<List<EncounterSummary>> open = new ArrayList<>();
         for (EncounterSummary encounter : sorted) {
+            open.removeIf(fight -> over(fight, encounter));
             List<EncounterSummary> target = null;
-            for (int i = fights.size() - 1; i >= 0 && target == null; i--) {
-                if (sameFight(encounter, fights.get(i))) {
-                    target = fights.get(i);
+            for (int i = open.size() - 1; i >= 0 && target == null; i--) {
+                if (sameFight(encounter, open.get(i))) {
+                    target = open.get(i);
                 }
             }
             if (target == null) {
                 target = new ArrayList<>();
                 fights.add(target);
+                open.add(target);
             }
             target.add(encounter);
         }
         return fights;
     }
 
+    private static boolean over(List<EncounterSummary> fight, EncounterSummary encounter) {
+        Instant fightEnd = fight.stream().map(EncounterSummary::endedAt).max(Comparator.naturalOrder())
+                .orElse(fight.get(0).endedAt());
+        return encounter.startedAt().isAfter(fightEnd.plus(GameLogKillParser.ENCOUNTER_GAP));
+    }
+
     private static boolean sameFight(EncounterSummary encounter, List<EncounterSummary> fight) {
         EncounterSummary first = fight.get(0);
         if (encounter.solarSystem() == null || !encounter.solarSystem().equals(first.solarSystem())) {
-            return false;
-        }
-        Instant fightEnd = fight.stream().map(EncounterSummary::endedAt).max(Comparator.naturalOrder())
-                .orElse(first.endedAt());
-        if (encounter.startedAt().isAfter(fightEnd.plus(GameLogKillParser.ENCOUNTER_GAP))) {
             return false;
         }
         Set<String> fightNpcs = new HashSet<>();

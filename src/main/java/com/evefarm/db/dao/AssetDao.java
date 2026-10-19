@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public final class AssetDao {
 
@@ -173,12 +172,12 @@ public final class AssetDao {
         }
     }
 
-    public List<AssetRow> listRows(Set<Long> characterIdFilter) {
-        return queryRows("asset_current", null, characterIdFilter, null, false);
+    public List<AssetRow> listRows() {
+        return queryRows("asset_current", null, null, null, false);
     }
 
-    public List<AssetRow> listArchivedRows(String month, Set<Long> characterIdFilter) {
-        return queryRows("asset_archive", month, characterIdFilter, null, false);
+    public List<AssetRow> listArchivedRows(String month) {
+        return queryRows("asset_archive", month, null, null, false);
     }
 
     public Optional<AssetRow> mostValuable(Set<Long> characterIdFilter, String categoryName) {
@@ -207,7 +206,7 @@ public final class AssetDao {
             sql.append(" AND a.month = ?");
         }
         if (characterIdFilter != null && !characterIdFilter.isEmpty()) {
-            String placeholders = characterIdFilter.stream().map(id -> "?").collect(Collectors.joining(","));
+            String placeholders = JdbcUtil.placeholders(characterIdFilter.size());
             sql.append(" AND a.character_id IN (").append(placeholders).append(")");
         }
         if (categoryName != null) {

@@ -1,7 +1,9 @@
 package com.evefarm.db.dao;
 
 import com.evefarm.db.Database;
+import com.evefarm.db.JdbcUtil;
 import com.evefarm.model.TypeInfo;
+import com.evefarm.util.Chunks;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -15,7 +17,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public final class TypeCacheDao {
 
@@ -55,9 +56,8 @@ public final class TypeCacheDao {
         int chunkSize = 500;
         synchronized (database) {
             Connection connection = database.connection();
-            for (int start = 0; start < distinct.size(); start += chunkSize) {
-                List<Integer> chunk = distinct.subList(start, Math.min(start + chunkSize, distinct.size()));
-                String placeholders = chunk.stream().map(id -> "?").collect(Collectors.joining(","));
+            for (List<Integer> chunk : Chunks.of(distinct, chunkSize)) {
+                String placeholders = JdbcUtil.placeholders(chunk.size());
                 String sql = "SELECT type_id FROM type_cache WHERE type_id IN (" + placeholders + ")";
                 try (PreparedStatement ps = connection.prepareStatement(sql)) {
                     int index = 1;

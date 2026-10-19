@@ -22,32 +22,19 @@ public final class LoyaltyApi {
     public LoyaltyPoints readLoyaltyPoints(long characterId, String accessToken) {
         EsiHttpClient.Cached response = client.getCached("/characters/" + characterId + "/loyalty/points/",
                 accessToken, Map.of());
-        try {
-            return new LoyaltyPoints(client.objectMapper().readValue(response.body(),
-                    new TypeReference<List<LoyaltyPointDto>>() {
-                    }), response.age(), response.freshFor());
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to parse loyalty points", e);
-        }
+        return new LoyaltyPoints(client.read(response.body(), new TypeReference<List<LoyaltyPointDto>>() {
+        }, "loyalty points"), response.age(), response.freshFor());
     }
 
     public List<LoyaltyOfferDto> listStoreOffers(long corporationId) {
         String body = client.get("/loyalty/stores/" + corporationId + "/offers/", null, Map.of());
-        try {
-            return client.objectMapper().readValue(body, new TypeReference<List<LoyaltyOfferDto>>() {
-            });
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to parse loyalty store offers", e);
-        }
+        return client.read(body, new TypeReference<List<LoyaltyOfferDto>>() {
+        }, "loyalty store offers");
     }
 
     public List<Long> listNpcCorporationIds() {
         String body = client.get("/corporations/npccorps/", null, Map.of());
-        try {
-            return client.objectMapper().readValue(body, new TypeReference<List<Long>>() {
-            });
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to parse NPC corporation list", e);
-        }
+        return client.read(body, new TypeReference<List<Long>>() {
+        }, "NPC corporation list");
     }
 }

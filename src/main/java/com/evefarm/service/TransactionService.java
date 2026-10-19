@@ -60,7 +60,7 @@ public final class TransactionService {
         walletTransactionDao.saveForCharacter(characterId, entries);
     }
 
-    public List<TransactionRow> getTransactionRows(Set<Long> characterIdFilter) {
-        return walletTransactionDao.listRows(characterIdFilter);
+    public List<TransactionRow> getTransactionRows() {
+        return walletTransactionDao.listRows();
     }
 }

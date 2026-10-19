@@ -1,5 +1,7 @@
 package com.evefarm.esi;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -51,8 +53,36 @@ public final class EsiHttpClient {
         this.sleeper = sleeper;
     }
 
-    public ObjectMapper objectMapper() {
-        return objectMapper;
+    public <T> T read(String json, Class<T> type, String what) {
+        try {
+            return objectMapper.readValue(json, type);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to parse " + what, e);
+        }
+    }
+
+    public <T> T read(String json, TypeReference<T> type, String what) {
+        try {
+            return objectMapper.readValue(json, type);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to parse " + what, e);
+        }
+    }
+
+    public <T> List<T> readPages(List<String> pages, TypeReference<List<T>> type, String what) {
+        List<T> result = new ArrayList<>();
+        for (String page : pages) {
+            result.addAll(read(page, type, what));
+        }
+        return result;
+    }
+
+    public JsonNode readTree(String json, String what) {
+        try {
+            return objectMapper.readTree(json);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to parse " + what, e);
+        }
     }
 
     public String get(String path, String accessTokenOrNull, Map<String, String> query) {

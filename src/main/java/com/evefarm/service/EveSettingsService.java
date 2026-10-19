@@ -5,7 +5,9 @@ import com.evefarm.util.AppPaths;
 import com.evefarm.util.Platform;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
@@ -28,6 +30,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -49,20 +52,25 @@ public final class EveSettingsService {
 
     private final SettingsDao settingsDao;
     private final BooleanSupplier eveRunning;
-    private final Path launcherLogsDirectory;
+    private final Supplier<List<Path>> launcherLogsDirectories;
 
     public EveSettingsService(SettingsDao settingsDao) {
-        this(settingsDao, EveSettingsService::detectRunningClient, defaultLauncherLogsDirectory());
+        this(settingsDao, EveSettingsService::detectRunningClient, EveSettingsService::defaultLauncherLogsDirectories);
     }
 
     EveSettingsService(SettingsDao settingsDao, BooleanSupplier eveRunning) {
-        this(settingsDao, eveRunning, defaultLauncherLogsDirectory());
+        this(settingsDao, eveRunning, EveSettingsService::defaultLauncherLogsDirectories);
     }
 
-    EveSettingsService(SettingsDao settingsDao, BooleanSupplier eveRunning, Path launcherLogsDirectory) {
+    EveSettingsService(SettingsDao settingsDao, BooleanSupplier eveRunning, Path... launcherLogsDirectories) {
+        this(settingsDao, eveRunning, () -> List.of(launcherLogsDirectories));
+    }
+
+    private EveSettingsService(SettingsDao settingsDao, BooleanSupplier eveRunning,
+                               Supplier<List<Path>> launcherLogsDirectories) {
         this.settingsDao = settingsDao;
         this.eveRunning = eveRunning;
-        this.launcherLogsDirectory = launcherLogsDirectory;
+        this.launcherLogsDirectories = launcherLogsDirectories;
     }
 
     public boolean isEveRunning() {
@@ -158,28 +166,29 @@ public final class EveSettingsService {
     }
 
     public Map<Long, List<Long>> findAccountCharacters() {
-        if (launcherLogsDirectory == null || !Files.isDirectory(launcherLogsDirectory, LinkOption.NOFOLLOW_LINKS)) {
-            return Map.of();
-        }
-        Map<Long, Long> characterAccounts = new LinkedHashMap<>();
-        try (Stream<Path> files = Files.list(launcherLogsDirectory)) {
-            List<Path> logs = files
-                    .filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS))
-                    .filter(path -> !Files.isSymbolicLink(path))
-                    .filter(path -> path.getFileName().toString().matches("eve-online-launcher-[\\d.-]+\\.log"))
-                    .sorted(Comparator.comparingLong(EveSettingsService::lastModified))
-                    .toList();
-            int first = Math.max(0, logs.size() - 200);
-            for (Path log : logs.subList(first, logs.size())) {
-                try {
-                    if (Files.size(log) <= 10_000_000) {
-                        readAccountAssociations(Files.readString(log), characterAccounts);
-                    }
-                } catch (IOException ignored) {
-                }
+        List<Path> logs = new ArrayList<>();
+        for (Path directory : new LinkedHashSet<>(launcherLogsDirectories.get())) {
+            if (!Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS)) {
+                continue;
             }
-        } catch (IOException | SecurityException e) {
-            return Map.of();
+            try (Stream<Path> files = Files.list(directory)) {
+                files.filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS))
+                        .filter(path -> !Files.isSymbolicLink(path))
+                        .filter(path -> path.getFileName().toString().matches("eve-online-launcher-[\\d.-]+\\.log"))
+                        .forEach(logs::add);
+            } catch (IOException | SecurityException ignored) {
+            }
+        }
+        logs.sort(Comparator.comparingLong(EveSettingsService::lastModified));
+        Map<Long, Long> characterAccounts = new LinkedHashMap<>();
+        int first = Math.max(0, logs.size() - 200);
+        for (Path log : logs.subList(first, logs.size())) {
+            try {
+                if (Files.size(log) <= 10_000_000) {
+                    readAccountAssociations(Files.readString(log), characterAccounts);
+                }
+            } catch (IOException | SecurityException ignored) {
+            }
         }
         Map<Long, LinkedHashSet<Long>> grouped = new LinkedHashMap<>();
         characterAccounts.forEach((characterId, accountId) ->
@@ -419,18 +428,17 @@ public final class EveSettingsService {
         }
     }
 
-    private static Path defaultLauncherLogsDirectory() {
+    private static List<Path> defaultLauncherLogsDirectories() {
         String home = System.getProperty("user.home", "");
         if (home.isBlank()) {
-            return null;
+            return List.of();
         }
         if (Platform.current() == Platform.MAC) {
-            return Path.of(home).resolve("Library/Logs/EVE Online");
+            return List.of(Path.of(home).resolve("Library/Logs/EVE Online"));
         }
-        List<Path> candidates = AppPaths.eveUserDirectories().stream()
+        return AppPaths.eveUserDirectories().stream()
                 .map(userDirectory -> userDirectory.resolve("AppData/Roaming/EVE Online/logs"))
                 .toList();
-        return candidates.stream().filter(Files::isDirectory).findFirst().orElse(candidates.getFirst());
     }
 
     private static Path createBackupDirectory(Path root) throws IOException {
@@ -511,14 +519,42 @@ public final class EveSettingsService {
         try (Stream<ProcessHandle> processes = ProcessHandle.allProcesses()) {
             return processes.anyMatch(process -> {
                 ProcessHandle.Info info = process.info();
-                String command = info.command().orElse("").replace('\\', '/').toLowerCase(Locale.ROOT);
-                String commandLine = info.commandLine().orElse("").replace('\\', '/').toLowerCase(Locale.ROOT);
-                return command.endsWith("/exefile.exe") || command.endsWith("/exefile")
-                        || commandLine.contains("/exefile.exe");
+                List<String> processNames = Platform.isLinux()
+                        ? linuxProcessNames(Path.of("/proc", Long.toString(process.pid()))) : List.of();
+                return isClient(info.command().orElse(""), info.commandLine().orElse(""), processNames);
             });
         } catch (SecurityException e) {
             return false;
         }
+    }
+
+    static boolean isClient(String command, String commandLine, List<String> processNames) {
+        String executable = command.replace('\\', '/').toLowerCase(Locale.ROOT);
+        if (executable.endsWith("/exefile.exe") || executable.endsWith("/exefile")
+                || commandLine.replace('\\', '/').toLowerCase(Locale.ROOT).contains("/exefile.exe")) {
+            return true;
+        }
+        return processNames.stream()
+                .map(name -> name.replace('\\', '/').toLowerCase(Locale.ROOT))
+                .anyMatch(name -> name.equals("exefile.exe") || name.endsWith("/exefile.exe"));
+    }
+
+    static List<String> linuxProcessNames(Path process) {
+        List<String> names = new ArrayList<>();
+        try {
+            names.add(Files.readString(process.resolve("comm")).strip());
+        } catch (IOException | SecurityException ignored) {
+        }
+        try (InputStream input = Files.newInputStream(process.resolve("cmdline"))) {
+            byte[] start = input.readNBytes(4096);
+            int end = 0;
+            while (end < start.length && start[end] != 0) {
+                end++;
+            }
+            names.add(new String(start, 0, end, StandardCharsets.UTF_8));
+        } catch (IOException | SecurityException ignored) {
+        }
+        return names;
     }
 
     private record FileCopy(Path source, Path target) {

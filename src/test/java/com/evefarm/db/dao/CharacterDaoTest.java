@@ -64,8 +64,8 @@ class CharacterDaoTest {
         assertEquals(1, count("wallet_transaction"), "trading history is kept");
         assertEquals(1, count("combat_encounter"), "officer fights are kept");
 
-        assertEquals(List.of(), journal.listRows(null), "but none of it shows while removed");
-        assertEquals(List.of(), transactions.listRows(null));
+        assertEquals(List.of(), journal.listRows(), "but none of it shows while removed");
+        assertEquals(List.of(), transactions.listRows());
         assertEquals(List.of(), encounters.listOfficerSightings(OFFICERS));
         assertEquals(Optional.empty(), characters.findOwnerHash(CHARACTER_ID),
                 "a removed character may come back under a new owner without tripping the transfer check");
@@ -85,8 +85,8 @@ class CharacterDaoTest {
         assertEquals(1, count("market_order_current"));
         assertEquals(1, count("character_contract"));
         assertEquals(1, count("industry_job"));
-        assertEquals(List.of(), new MarketOrderDao(database).listRows(null, true));
-        assertEquals(List.of(), new ContractDao(database).listRows(null));
+        assertEquals(List.of(), new MarketOrderDao(database).listRows(true));
+        assertEquals(List.of(), new ContractDao(database).listRows());
         assertEquals(List.of(), new IndustryJobDao(database).listRows(null));
     }
 
@@ -96,8 +96,8 @@ class CharacterDaoTest {
         characters.upsert(CHARACTER_ID, "Malpais Legate", List.of(), "new-owner");
 
         assertEquals(1, characters.listAll().size());
-        assertEquals(1, journal.listRows(null).size());
-        assertEquals(1, transactions.listRows(null).size());
+        assertEquals(1, journal.listRows().size());
+        assertEquals(1, transactions.listRows().size());
         assertEquals(1, encounters.listOfficerSightings(OFFICERS).size());
         assertEquals(Optional.of("new-owner"), characters.findOwnerHash(CHARACTER_ID));
     }
@@ -107,7 +107,7 @@ class CharacterDaoTest {
         transactions.saveForCharacter(CHARACTER_ID, List.of(new TransactionEntry(11, "2026-10-30T12:00:00Z", 35,
                 10, 7.0, null, 60003760L, true, true, 100)));
 
-        assertEquals(2, transactions.listRows(null).size());
+        assertEquals(2, transactions.listRows().size());
     }
 
     private void execute(String sql) throws SQLException {

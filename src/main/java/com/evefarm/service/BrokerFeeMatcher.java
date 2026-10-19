@@ -2,6 +2,7 @@ package com.evefarm.service;
 
 import com.evefarm.db.dao.WalletJournalDao;
 import com.evefarm.model.MarketOrderRow;
+import com.evefarm.util.DateUtil;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -29,7 +30,7 @@ final class BrokerFeeMatcher {
         List<Fee> fees = new ArrayList<>();
         Map<Long, List<Fee>> feesBySecond = new HashMap<>();
         for (WalletJournalDao.DatedAmount entry : walletJournalDao.findByRefType(characterId, BROKERS_FEE_REF_TYPE)) {
-            Instant paidAt = parseInstant(entry.date());
+            Instant paidAt = DateUtil.parseInstant(entry.date()).orElse(null);
             if (paidAt != null) {
                 Fee fee = new Fee(fees.size(), paidAt, Math.abs(entry.amount()));
                 fees.add(fee);
@@ -39,7 +40,7 @@ final class BrokerFeeMatcher {
 
         List<Pairing> pairings = new ArrayList<>();
         for (MarketOrderRow order : ordersForCharacter) {
-            Instant issued = parseInstant(order.issued());
+            Instant issued = DateUtil.parseInstant(order.issued()).orElse(null);
             if (issued == null) {
                 continue;
             }
@@ -65,14 +66,6 @@ final class BrokerFeeMatcher {
             }
         }
         return result;
-    }
-
-    private static Instant parseInstant(String isoDate) {
-        try {
-            return isoDate == null ? null : Instant.parse(isoDate);
-        } catch (Exception e) {
-            return null;
-        }
     }
 
     private record Fee(int index, Instant paidAt, double amount) {

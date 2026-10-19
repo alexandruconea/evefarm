@@ -97,7 +97,7 @@ class ContractServiceTest {
 
         when(api.listContracts(7L, "token")).thenReturn(List.of());
         service.refreshContractsForCharacter(7L);
-        assertEquals(List.of(101L, 100L, 99L), contracts.listRows(null).stream().map(ContractRow::contractId).toList(),
+        assertEquals(List.of(101L, 100L, 99L), contracts.listRows().stream().map(ContractRow::contractId).toList(),
                 "contracts EVE no longer lists are kept");
         assertEquals(List.of("Tritanium"), service.listContractItems(7L, 99L).stream().map(ContractItem::name).toList());
         verify(api, times(1)).listContractItems(7L, 99L, "token");

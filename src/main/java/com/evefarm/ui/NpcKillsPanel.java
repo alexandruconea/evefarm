@@ -2,12 +2,11 @@ package com.evefarm.ui;
 
 import com.evefarm.AppContext;
 
-import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
 import java.awt.BorderLayout;
 
-public final class NpcKillsPanel extends JPanel {
+public final class NpcKillsPanel extends TabPanel {
 
     private final OfficersPanel officersPanel;
     private final SpawnsPanel spawnsPanel;
@@ -43,12 +42,14 @@ public final class NpcKillsPanel extends JPanel {
         }
     }
 
+    @Override
     public void onShown() {
         officersPanel.onShown();
         spawnsPanel.onShown();
         killsPanel.onShown();
     }
 
+    @Override
     public void refreshCharacterFilter() {
         killsPanel.refreshCharacterFilter();
         officersPanel.onShown();

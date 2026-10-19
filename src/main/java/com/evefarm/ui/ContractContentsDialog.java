@@ -5,7 +5,8 @@ import com.evefarm.esi.EsiException;
 import com.evefarm.model.ContractItem;
 import com.evefarm.model.ContractRow;
 import com.evefarm.service.ItemIconService;
-import com.evefarm.ui.column.ColumnDescriptions;
+import com.evefarm.ui.column.ColumnDef;
+import com.evefarm.ui.column.ColumnTableModel;
 import com.evefarm.util.DateUtil;
 import com.evefarm.util.IskFormatter;
 import com.evefarm.util.Text;
@@ -21,7 +22,6 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.SwingWorker;
-import javax.swing.table.AbstractTableModel;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -43,8 +43,8 @@ final class ContractContentsDialog extends JDialog {
 
     private final AppContext appContext;
     private final ContractRow contract;
-    private final ItemsTableModel includedModel;
-    private final ItemsTableModel askedModel;
+    private final ColumnTableModel<ContractItem> includedModel;
+    private final ColumnTableModel<ContractItem> askedModel;
     private final JTable includedTable;
     private final JTable askedTable;
     private final JLabel includedTotal = new JLabel(" ");
@@ -56,8 +56,8 @@ final class ContractContentsDialog extends JDialog {
         super(owner, "Contract - " + describe(contract), ModalityType.MODELESS);
         this.appContext = appContext;
         this.contract = contract;
-        this.includedModel = new ItemsTableModel(appContext.itemIconService);
-        this.askedModel = new ItemsTableModel(appContext.itemIconService);
+        this.includedModel = itemsModel(appContext.itemIconService);
+        this.askedModel = itemsModel(appContext.itemIconService);
         this.includedTable = new JTable(includedModel);
         this.askedTable = new JTable(askedModel);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -213,8 +213,8 @@ final class ContractContentsDialog extends JDialog {
     private void showItems(List<ContractItem> items) {
         List<ContractItem> included = items.stream().filter(ContractItem::included).toList();
         List<ContractItem> asked = items.stream().filter(item -> !item.included()).toList();
-        includedModel.setItems(included);
-        askedModel.setItems(asked);
+        includedModel.setRows(included);
+        askedModel.setRows(asked);
         includedTotal.setText(total(included));
         askedTotal.setText(total(asked));
         askedSection.setVisible(!asked.isEmpty());
@@ -241,62 +241,21 @@ final class ContractContentsDialog extends JDialog {
                 + (unpriced == 0 ? "" : "  (" + unpriced + " without a market price)");
     }
 
-    private static final class ItemsTableModel extends AbstractTableModel implements ColumnDescriptions {
-
-        private static final String[] COLUMNS = {"", "Item", "Group", "Quantity", "Unit Price", "Total"};
-        private static final String[] DESCRIPTIONS = {"The item's icon", "The item's name",
-                "The item's group, such as Frigate or Mineral", "How many units",
-                "The price of one unit, from your price provider", "The unit price times the quantity"};
-
-        private final ItemIconService icons;
-        private List<ContractItem> items = List.of();
-
-        ItemsTableModel(ItemIconService icons) {
-            this.icons = icons;
-        }
-
-        void setItems(List<ContractItem> items) {
-            this.items = items;
-            fireTableDataChanged();
-        }
-
-        @Override
-        public int getRowCount() {
-            return items.size();
-        }
-
-        @Override
-        public int getColumnCount() {
-            return COLUMNS.length;
-        }
-
-        @Override
-        public String getColumnName(int column) {
-            return COLUMNS[column];
-        }
-
-        @Override
-        public String columnDescription(int column) {
-            return DESCRIPTIONS[column];
-        }
-
-        @Override
-        public Class<?> getColumnClass(int column) {
-            return column == 0 ? ImageIcon.class : String.class;
-        }
-
-        @Override
-        public Object getValueAt(int row, int column) {
-            ContractItem item = items.get(row);
-            return switch (column) {
-                case 0 -> icons.iconOrPlaceholder(item.typeId());
-                case 1 -> item.name();
-                case 2 -> item.groupName() == null ? "" : item.groupName();
-                case 3 -> String.format(Locale.US, "%,d", item.quantity());
-                case 4 -> item.unitPrice() == null ? "" : IskFormatter.format(item.unitPrice());
-                case 5 -> item.totalValue() == null ? "" : IskFormatter.format(item.totalValue());
-                default -> "";
-            };
-        }
+    private static ColumnTableModel<ContractItem> itemsModel(ItemIconService icons) {
+        return new ColumnTableModel<>(List.of(
+                new ColumnDef<>("icon", "", ImageIcon.class, item -> icons.iconOrPlaceholder(item.typeId()),
+                        "The item's icon"),
+                new ColumnDef<>("item", "Item", String.class, ContractItem::name, "The item's name"),
+                new ColumnDef<>("group", "Group", String.class,
+                        item -> item.groupName() == null ? "" : item.groupName(),
+                        "The item's group, such as Frigate or Mineral"),
+                new ColumnDef<>("quantity", "Quantity", String.class, item -> Text.count(item.quantity()),
+                        "How many units"),
+                new ColumnDef<>("unitPrice", "Unit Price", String.class,
+                        item -> item.unitPrice() == null ? "" : IskFormatter.format(item.unitPrice()),
+                        "The price of one unit, from your price provider"),
+                new ColumnDef<>("total", "Total", String.class,
+                        item -> item.totalValue() == null ? "" : IskFormatter.format(item.totalValue()),
+                        "The unit price times the quantity")));
     }
 }

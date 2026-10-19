@@ -180,8 +180,55 @@ class EveSettingsServiceTest {
         assertEquals(List.of(2122680043L), result.get(30491279L));
     }
 
+    @Test
+    void readsTheLauncherLogsOfEveryEveFolder(@TempDir Path directory) throws Exception {
+        Path proton = Files.createDirectories(directory.resolve("proton/logs"));
+        Path wine = Files.createDirectories(directory.resolve("wine/logs"));
+        Files.writeString(proton.resolve("eve-online-launcher-2026.10.19-11.17.19.log"), """
+                [esi] Fetching details for 1 character(s)    { characterIds: [ 2124165849 ] }
+                [esi] Fetched 1 character details    { userId: 30089031 }
+                """);
+        Files.writeString(wine.resolve("eve-online-launcher-2026.09.25-10.17.01.log"), """
+                [esi] Fetching details for 1 character(s)    { characterIds: [ 2122680043 ] }
+                [esi] Fetched 1 character details    { userId: 30491279 }
+                """);
+
+        Map<Long, List<Long>> result = new EveSettingsService(settings, () -> false, proton,
+                directory.resolve("missing"), wine).findAccountCharacters();
+
+        assertEquals(Map.of(30089031L, List.of(2124165849L), 30491279L, List.of(2122680043L)), result);
+    }
+
+    @Test
+    void recognisesTheClientRunThroughProtonOrWine(@TempDir Path directory) throws Exception {
+        String preloader = "/usr/share/steam/compatibilitytools.d/proton/files/lib/wine/i386-unix/wine64-preloader";
+        Path client = process(directory, "8324", "exefile.exe\n",
+                "C:\\CCP\\EVE\\tq\\bin64\\exefile.exe\0/noconsole\0/settingsprofile=Default\0");
+        Path renamedThread = process(directory, "8325", "MainThread\n",
+                "Z:\\home\\alex\\Games\\eve\\drive_c\\EVE\\tq\\bin64\\exefile.exe\0/noconsole\0");
+        Path launcher = process(directory, "6653", "CrBrowserMain\n",
+                "S:\\steamapps\\common\\Eve Online\\app-1.17.2\\eve-online.exe\0--type=renderer\0");
+
+        assertTrue(EveSettingsService.isClient(preloader, preloader + " /noconsole",
+                EveSettingsService.linuxProcessNames(client)));
+        assertTrue(EveSettingsService.isClient(preloader, preloader + " /noconsole",
+                EveSettingsService.linuxProcessNames(renamedThread)));
+        assertFalse(EveSettingsService.isClient(preloader, preloader + " --type=renderer",
+                EveSettingsService.linuxProcessNames(launcher)));
+        assertFalse(EveSettingsService.isClient(preloader, preloader,
+                EveSettingsService.linuxProcessNames(directory.resolve("ended"))));
+        assertTrue(EveSettingsService.isClient("C:\\EVE\\tq\\bin64\\exefile.exe", "", List.of()));
+    }
+
     private EveSettingsService service(boolean running) {
         return new EveSettingsService(settings, () -> running);
+    }
+
+    private static Path process(Path directory, String pid, String name, String commandLine) throws IOException {
+        Path process = Files.createDirectories(directory.resolve(pid));
+        Files.writeString(process.resolve("comm"), name);
+        Files.writeString(process.resolve("cmdline"), commandLine);
+        return process;
     }
 
     private static Path tranquility(Path directory) throws IOException {

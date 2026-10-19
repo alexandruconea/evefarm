@@ -1,6 +1,7 @@
 package com.evefarm.db.dao;
 
 import com.evefarm.db.Database;
+import com.evefarm.db.JdbcUtil;
 import com.evefarm.model.EncounterSummary;
 import com.evefarm.model.JournalPayout;
 import com.evefarm.model.OfficerSighting;
@@ -17,7 +18,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public final class EncounterDao {
 
@@ -80,7 +80,7 @@ public final class EncounterDao {
         if (officerNames.isEmpty()) {
             return List.of();
         }
-        String placeholders = officerNames.stream().map(n -> "?").collect(Collectors.joining(","));
+        String placeholders = JdbcUtil.placeholders(officerNames.size());
         String sql = """
                 SELECT e.id, e.character_id, c.character_name, e.started_at, e.ended_at, e.solar_system,
                        n.npc_name, n.first_seen_at, n.bounty, n.last_kill_at, n.damage_dealt,
@@ -170,17 +170,8 @@ public final class EncounterDao {
                                 rs.getString("solar_system"), new ArrayList<>());
                         byId.put(id, summary);
                     }
-                    String npcName = rs.getString("npc_name");
-                    if (npcName != null) {
-                        summary.npcs().add(new ParsedEncounter.Npc(
-                                npcName,
-                                Instant.parse(rs.getString("first_seen_at")),
-                                Instant.parse(rs.getString("last_seen_at")),
-                                rs.getInt("kills"),
-                                rs.getDouble("bounty"),
-                                parseInstant(rs.getString("last_kill_at")),
-                                rs.getLong("damage_dealt"),
-                                rs.getLong("damage_taken")));
+                    if (rs.getString("npc_name") != null) {
+                        summary.npcs().add(npc(rs));
                     }
                 }
             } catch (SQLException e) {
@@ -202,15 +193,7 @@ public final class EncounterDao {
                 ps.setLong(1, encounterId);
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
-                        result.add(new ParsedEncounter.Npc(
-                                rs.getString("npc_name"),
-                                Instant.parse(rs.getString("first_seen_at")),
-                                Instant.parse(rs.getString("last_seen_at")),
-                                rs.getInt("kills"),
-                                rs.getDouble("bounty"),
-                                parseInstant(rs.getString("last_kill_at")),
-                                rs.getLong("damage_dealt"),
-                                rs.getLong("damage_taken")));
+                        result.add(npc(rs));
                     }
                 }
             } catch (SQLException e) {
@@ -218,6 +201,18 @@ public final class EncounterDao {
             }
             return result;
         }
+    }
+
+    private static ParsedEncounter.Npc npc(ResultSet rs) throws SQLException {
+        return new ParsedEncounter.Npc(
+                rs.getString("npc_name"),
+                Instant.parse(rs.getString("first_seen_at")),
+                Instant.parse(rs.getString("last_seen_at")),
+                rs.getInt("kills"),
+                rs.getDouble("bounty"),
+                parseInstant(rs.getString("last_kill_at")),
+                rs.getLong("damage_dealt"),
+                rs.getLong("damage_taken"));
     }
 
     private static Instant parseInstant(String value) {
