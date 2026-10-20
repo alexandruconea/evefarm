@@ -2,6 +2,7 @@ package com.evefarm.service;
 
 import com.evefarm.esi.EsiException;
 import com.evefarm.esi.MarketsApi;
+import com.evefarm.esi.UniverseApi;
 import com.evefarm.esi.dto.MarketOrderDto;
 import com.evefarm.model.LpOfferRow;
 import com.evefarm.model.LpRequiredItem;
@@ -14,12 +15,16 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalInt;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -29,8 +34,10 @@ class LpOfferDepthServiceTest {
     private static final long JITA_4_4 = LpOfferDepthService.JITA_4_4;
     private static final long JITA = LpOfferDepthService.JITA;
     private static final long JITA_OTHER_STATION = 60_003_466L;
-    private static final long PERIMETER_STATION = 60_000_361L;
+    private static final long PERIMETER_STATION = 60_000_358L;
     private static final long PERIMETER = 30_000_144L;
+    private static final long URLEN_STATION = 60_000_367L;
+    private static final long URLEN = 30_000_139L;
     private static final int HEAT_SINK_BLUEPRINT = 17_627;
     private static final int HEAT_SINK = 15_810;
     private static final int TAG = 17_202;
@@ -147,12 +154,31 @@ class LpOfferDepthServiceTest {
 
     @Test
     void onlyBuyOrdersThatReachJita44Count() {
-        assertTrue(LpOfferDepthService.reachesJita44(buy(1, 1, 1, JITA_4_4, "station", 1L)));
-        assertTrue(LpOfferDepthService.reachesJita44(buy(2, 1, 1, PERIMETER_STATION, "region", 1L)));
-        assertTrue(LpOfferDepthService.reachesJita44(buy(3, 1, 1, JITA_OTHER_STATION, "solarsystem", 1L)));
-        assertTrue(LpOfferDepthService.reachesJita44(buy(4, 1, 1, JITA_OTHER_STATION, "5", 1L)));
-        assertFalse(LpOfferDepthService.reachesJita44(buy(5, 1, 1, JITA_OTHER_STATION, "station", 1L)));
-        assertFalse(LpOfferDepthService.reachesJita44(buy(6, 1, 1, PERIMETER_STATION, "solarsystem", 1L)));
+        Map<Long, Integer> jumps = Map.of(PERIMETER, 1, URLEN, 2);
+
+        assertTrue(LpOfferDepthService.reachesJita44(buy(1, 1, 1, JITA_4_4, "station", 1L), jumps));
+        assertTrue(LpOfferDepthService.reachesJita44(buy(2, 1, 1, PERIMETER_STATION, "region", 1L), jumps));
+        assertTrue(LpOfferDepthService.reachesJita44(buy(3, 1, 1, JITA_OTHER_STATION, "solarsystem", 1L), jumps));
+        assertTrue(LpOfferDepthService.reachesJita44(buy(4, 1, 1, JITA_OTHER_STATION, "5", 1L), jumps));
+        assertTrue(LpOfferDepthService.reachesJita44(buy(5, 1, 1, PERIMETER_STATION, "1", 1L), jumps));
+        assertTrue(LpOfferDepthService.reachesJita44(buy(6, 1, 1, URLEN_STATION, "2", 1L), jumps));
+        assertFalse(LpOfferDepthService.reachesJita44(buy(7, 1, 1, URLEN_STATION, "1", 1L), jumps));
+        assertFalse(LpOfferDepthService.reachesJita44(buy(8, 1, 1, JITA_OTHER_STATION, "station", 1L), jumps));
+        assertFalse(LpOfferDepthService.reachesJita44(buy(9, 1, 1, PERIMETER_STATION, "solarsystem", 1L), jumps));
+        assertFalse(LpOfferDepthService.reachesJita44(buy(10, 1, 1, PERIMETER_STATION, "5", 1L), Map.of()));
+    }
+
+    @Test
+    void aBuyOrderInANearbySystemWhoseRangeReachesJitaIsSoldToFirstWhenItPaysMore() {
+        JitaOrders orders = new JitaOrders(Map.of(HEAT_SINK, List.of(sell(1, 40_000_000, 10, JITA_4_4),
+                buy(2, 30_000_000, 10, JITA_4_4, "station", 1L),
+                buy(3, 31_000_000, 2, PERIMETER_STATION, "1", 1L),
+                buy(4, 32_000_000, 2, URLEN_STATION, "1", 1L))), Map.of(PERIMETER, 1, URLEN, 2),
+                Instant.EPOCH);
+
+        Result result = LpOfferDepthService.price(offer(List.of(), List.of()), 5, orders, FEES);
+
+        assertEquals((2 * 31_000_000.0 + 3 * 30_000_000) / 5, result.buyOrders().unitPrice(), 1e-9);
     }
 
     @Test
@@ -160,7 +186,7 @@ class LpOfferDepthServiceTest {
         List<MarketOrderDto> best = LpOfferDepthService.buyOrders(List.of(
                 buy(1, 30_000_000, 100, JITA_4_4, "station", 10L),
                 buy(2, 29_000_000, 100, JITA_4_4, "station", 1L),
-                buy(3, 35_000_000, 4, JITA_4_4, "station", 10L)));
+                buy(3, 35_000_000, 4, JITA_4_4, "station", 10L)), Map.of());
 
         LpOfferDepthService.Fill fill = LpOfferDepthService.fill(best, 5);
 
@@ -171,17 +197,39 @@ class LpOfferDepthServiceTest {
     @Test
     void readingAsksForSellOrdersOfTheItemsAndAllOrdersOfWhatTheOfferGives() {
         MarketsApi markets = mock(MarketsApi.class);
+        UniverseApi universe = mock(UniverseApi.class);
         when(markets.listRegionOrders(FORGE, TAG, "sell")).thenThrow(new EsiException(404, "Type not found"));
         when(markets.listRegionOrders(FORGE, TRITANIUM, "sell")).thenReturn(List.of(sell(1, 4, 10, JITA_4_4)));
         when(markets.listRegionOrders(FORGE, HEAT_SINK, "all")).thenReturn(List.of(sell(2, 40, 1, JITA_4_4)));
 
-        JitaOrders orders = new LpOfferDepthService(markets).read(
+        JitaOrders orders = new LpOfferDepthService(markets, universe).read(
                 offer(List.of(tag(10)), List.of(new LpRequiredItem(TRITANIUM, "Tritanium", 1_000))));
 
         verify(markets).listRegionOrders(FORGE, HEAT_SINK, "all");
+        verify(universe, never()).jumps(anyLong(), anyLong());
         assertEquals(List.of(), orders.byType().get(TAG));
         assertEquals(1, orders.byType().get(TRITANIUM).size());
         assertEquals(1, orders.byType().get(HEAT_SINK).size());
+    }
+
+    @Test
+    void theJumpsToJitaAreReadOnceForBuyOrdersWithAJumpRangeInOtherSystems() {
+        MarketsApi markets = mock(MarketsApi.class);
+        UniverseApi universe = mock(UniverseApi.class);
+        when(markets.listRegionOrders(FORGE, HEAT_SINK, "all")).thenReturn(List.of(
+                buy(1, 30, 1, PERIMETER_STATION, "5", 1L), buy(2, 29, 1, PERIMETER_STATION, "10", 1L),
+                buy(3, 28, 1, URLEN_STATION, "station", 1L), buy(4, 27, 1, URLEN_STATION, "region", 1L),
+                buy(5, 26, 1, JITA_OTHER_STATION, "5", 1L), sell(6, 40, 1, PERIMETER_STATION)));
+        when(universe.jumps(PERIMETER, JITA)).thenReturn(OptionalInt.of(1));
+        LpOfferDepthService service = new LpOfferDepthService(markets, universe);
+
+        JitaOrders first = service.read(offer(List.of(), List.of()));
+        JitaOrders second = service.read(offer(List.of(), List.of()));
+
+        assertEquals(Map.of(PERIMETER, 1), first.jumpsToJita());
+        assertEquals(Map.of(PERIMETER, 1), second.jumpsToJita());
+        verify(universe, times(1)).jumps(PERIMETER, JITA);
+        verify(universe, times(1)).jumps(anyLong(), anyLong());
     }
 
     private static LpRequiredItem tag(long quantity) {
@@ -195,17 +243,24 @@ class LpOfferDepthServiceTest {
     }
 
     private static JitaOrders orders(Map<Integer, List<MarketOrderDto>> byType) {
-        return new JitaOrders(byType, Instant.EPOCH);
+        return new JitaOrders(byType, Map.of(), Instant.EPOCH);
     }
 
     private static MarketOrderDto sell(long orderId, double price, long units, long location) {
         return new MarketOrderDto(orderId, 0, units, units, price, false, null, null, location, null, 90, "region",
-                null, FORGE, location == JITA_4_4 ? JITA : PERIMETER);
+                null, FORGE, system(location));
     }
 
     private static MarketOrderDto buy(long orderId, double price, long units, long location, String range,
                                       Long minVolume) {
         return new MarketOrderDto(orderId, 0, units, units, price, true, null, null, location, null, 90, range,
-                minVolume, FORGE, location == PERIMETER_STATION ? PERIMETER : JITA);
+                minVolume, FORGE, system(location));
+    }
+
+    private static long system(long location) {
+        if (location == PERIMETER_STATION) {
+            return PERIMETER;
+        }
+        return location == URLEN_STATION ? URLEN : JITA;
     }
 }

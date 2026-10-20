@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 
 public final class UniverseApi {
 
@@ -49,6 +50,13 @@ public final class UniverseApi {
     public StructureDto getStructure(long structureId, String accessToken) {
         String body = client.get("/universe/structures/" + structureId + "/", accessToken, Map.of());
         return client.read(body, StructureDto.class, RESPONSE);
+    }
+
+    public OptionalInt jumps(long fromSystemId, long toSystemId) {
+        String body = client.postJson("/route/" + fromSystemId + "/" + toSystemId, null,
+                Map.of("preference", "Shorter"));
+        int systems = client.readTree(body, RESPONSE).path("route").size();
+        return systems == 0 ? OptionalInt.empty() : OptionalInt.of(systems - 1);
     }
 
     public Optional<Long> resolveSolarSystemId(String systemName) {

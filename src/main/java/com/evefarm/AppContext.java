@@ -244,7 +244,7 @@ public final class AppContext {
                 new IndustryCatalogDao(database), settingsDao);
         this.lpOfferPricingService = new LpOfferPricingService(loyaltyApi, fuzzworkApi, industryCatalogService,
                 typeNameCacheService, priceService, marketHistoryService);
-        this.lpOfferDepthService = new LpOfferDepthService(marketsApi);
+        this.lpOfferDepthService = new LpOfferDepthService(marketsApi, universeApi);
         this.itemIconService = new ItemIconService();
         this.trackerSnapshotService = new TrackerSnapshotService(authService, walletApi, clonesApi, marketsApi,
                 contractsApi, industryApi, skillsApi, loyaltyPointService, priceService, assetDao,

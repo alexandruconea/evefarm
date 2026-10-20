@@ -2,6 +2,7 @@ package com.evefarm.service;
 
 import com.evefarm.esi.EsiException;
 import com.evefarm.esi.MarketsApi;
+import com.evefarm.esi.UniverseApi;
 import com.evefarm.esi.dto.MarketOrderDto;
 import com.evefarm.model.LpOfferRow;
 import com.evefarm.model.LpRequiredItem;
@@ -14,17 +15,24 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 public final class LpOfferDepthService {
 
     public static final long JITA_4_4 = 60_003_760L;
     static final long JITA = 30_000_142L;
     private static final int PARALLEL_REQUESTS = 8;
+    private static final int NO_ROUTE = Integer.MAX_VALUE;
+    private static final Logger LOG = Logger.getLogger(LpOfferDepthService.class.getName());
 
-    public record JitaOrders(Map<Integer, List<MarketOrderDto>> byType, Instant readAt) {
+    public record JitaOrders(Map<Integer, List<MarketOrderDto>> byType, Map<Long, Integer> jumpsToJita,
+                             Instant readAt) {
     }
 
     record Fill(long units, double isk) {
@@ -59,9 +67,12 @@ public final class LpOfferDepthService {
     }
 
     private final MarketsApi marketsApi;
+    private final UniverseApi universeApi;
+    private final Map<Long, Integer> jumpsToJita = new ConcurrentHashMap<>();
 
-    public LpOfferDepthService(MarketsApi marketsApi) {
+    public LpOfferDepthService(MarketsApi marketsApi, UniverseApi universeApi) {
         this.marketsApi = marketsApi;
+        this.universeApi = universeApi;
     }
 
     public JitaOrders read(LpOfferRow offer) {
@@ -82,7 +93,31 @@ public final class LpOfferDepthService {
             }
             byType.put(typeId, future.resultNow());
         });
-        return new JitaOrders(byType, Instant.now());
+        return new JitaOrders(byType, jumpsToJita(byType.getOrDefault(offer.outputTypeId(), List.of())),
+                Instant.now());
+    }
+
+    private Map<Long, Integer> jumpsToJita(List<MarketOrderDto> output) {
+        Set<Long> systems = output.stream()
+                .filter(order -> order.isBuyOrder() && order.systemId() != null && order.systemId() != JITA
+                        && jumpRange(order.range()) != null && jumpRange(order.range()) > 0)
+                .map(MarketOrderDto::systemId)
+                .collect(Collectors.toSet());
+        try (ExecutorService executor = Executors.newFixedThreadPool(PARALLEL_REQUESTS)) {
+            systems.stream().filter(system -> !jumpsToJita.containsKey(system))
+                    .forEach(system -> executor.submit(() -> readJumps(system)));
+        }
+        return systems.stream().filter(jumpsToJita::containsKey)
+                .collect(Collectors.toMap(system -> system, jumpsToJita::get));
+    }
+
+    private void readJumps(long systemId) {
+        try {
+            jumpsToJita.put(systemId, universeApi.jumps(systemId, JITA).orElse(NO_ROUTE));
+        } catch (RuntimeException e) {
+            LOG.warning("Couldn't read how many jumps system " + systemId + " is from Jita, so its buy orders "
+                    + "are left out: " + e.getMessage());
+        }
     }
 
     private List<MarketOrderDto> fetch(int typeId, String orderType) {
@@ -111,7 +146,7 @@ public final class LpOfferDepthService {
         List<MarketOrderDto> sellOrders = sellOrders(output);
         Double lowestSell = sellOrders.isEmpty() ? null : sellOrders.getFirst().price();
         Sale sellOrder = sale(units, units, lowestSell, lp, isk, otherCost, fees.salesTax(), fees.brokerFee());
-        Fill bought = fill(buyOrders(output), units);
+        Fill bought = fill(buyOrders(output, orders.jumpsToJita()), units);
         Sale buyOrders = sale(units, bought.units(), bought.units() > 0 ? bought.isk() / bought.units() : null, lp,
                 isk, otherCost, fees.salesTax(), 0);
         return new Result(times, lp, isk, purchases, otherCost, sellOrder, buyOrders);
@@ -157,16 +192,32 @@ public final class LpOfferDepthService {
                 .toList();
     }
 
-    static List<MarketOrderDto> buyOrders(List<MarketOrderDto> orders) {
+    static List<MarketOrderDto> buyOrders(List<MarketOrderDto> orders, Map<Long, Integer> jumpsToJita) {
         return orders.stream()
-                .filter(order -> order.isBuyOrder() && reachesJita44(order))
+                .filter(order -> order.isBuyOrder() && reachesJita44(order, jumpsToJita))
                 .sorted(Comparator.comparingDouble(MarketOrderDto::price).reversed())
                 .toList();
     }
 
-    static boolean reachesJita44(MarketOrderDto buyOrder) {
-        return buyOrder.locationId() == JITA_4_4 || "region".equals(buyOrder.range())
-                || (buyOrder.systemId() != null && buyOrder.systemId() == JITA && !"station".equals(buyOrder.range()));
+    static boolean reachesJita44(MarketOrderDto buyOrder, Map<Long, Integer> jumpsToJita) {
+        if (buyOrder.locationId() == JITA_4_4 || "region".equals(buyOrder.range())) {
+            return true;
+        }
+        Integer reach = jumpRange(buyOrder.range());
+        Integer jumps = buyOrder.systemId() == null ? null
+                : buyOrder.systemId() == JITA ? Integer.valueOf(0) : jumpsToJita.get(buyOrder.systemId());
+        return reach != null && jumps != null && jumps <= reach;
+    }
+
+    static Integer jumpRange(String range) {
+        if ("solarsystem".equals(range)) {
+            return 0;
+        }
+        try {
+            return Integer.valueOf(range);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     static Fill fill(List<MarketOrderDto> bestFirst, long units) {
