@@ -192,6 +192,11 @@ For each offer you see the item, quantity, LP cost, ISK cost, the other items it
 - **Set ISK/LP Target...** sets the ISK per LP you aim for. ISK/LP cells at or above it turn green, those below it turn red. **Estimated Value** at the bottom is your LP times that target, and the Tracker's **LP Value** uses it too.
 - **Favorite** remembers the corporation. It opens first next time, and the Tracker uses it for **LP Value**.
 - Right-click an **Other Requirements** or **Build Materials** cell and choose **Copy** to copy the items of the selected offers as a list you can paste into EVE's multibuy window.
+- Right-click an offer and choose **Buy Several Times...** to see what it costs and makes when you buy it more than once. The table counts every item at the lowest sell price, but the cheapest sell order may not have enough, and the next ones cost more. This window reads the orders in Jita 4-4 for that offer only, and buys each item from the cheapest sell order up, for all the offers together. Set **Times**:
+  - **What you buy in Jita 4-4** lists the other requirements and build materials: how many you need, how many are for sale, the **Average Price** you really pay, and how much more than at the lowest price that is (**Above Lowest**).
+  - **What you get** shows the **Profit** and **ISK/LP** of all the offers, before and after the fees of the **Net** columns, when you list everything at the lowest sell price (**Sell order**) or sell it right away to the buy orders (**Buy orders**). The buy orders are taken best price first: those in Jita 4-4, those elsewhere in the Jita system that reach it, and those with region range in The Forge.
+  - A red line tells you when Jita 4-4 hasn't enough of an item or the buy orders don't take everything. Profit is then left empty.
+  - **Your LP is enough for** says how many times the character's LP buys the offer. **Refresh** reads the orders again.
 - **LP History...** shows every change in your LP that EVE Farm has seen, per character and corporation.
 - **Record Purchase...** saves what you bought from the selected offer, so the **LP Purchases** tab can tell you when selling it pays.
 

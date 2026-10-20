@@ -17,11 +17,20 @@ public final class ColumnCopySupport {
         String copy(String columnKey, List<T> selectedRows);
     }
 
+    public interface RowActions<T> {
+        void addTo(JPopupMenu menu, List<T> selectedRows);
+    }
+
     public static <T> void install(JTable table, ColumnTableModel<T> model) {
         install(table, model, null);
     }
 
     public static <T> void install(JTable table, ColumnTableModel<T> model, CustomCopy<T> customCopy) {
+        install(table, model, customCopy, null);
+    }
+
+    public static <T> void install(JTable table, ColumnTableModel<T> model, CustomCopy<T> customCopy,
+                                   RowActions<T> rowActions) {
         table.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
@@ -52,6 +61,9 @@ public final class ColumnCopySupport {
                 JMenuItem copyItem = new JMenuItem("Copy " + column.label());
                 copyItem.addActionListener(a -> copy(table, model, column.key(), modelColumn, customCopy));
                 menu.add(copyItem);
+                if (rowActions != null) {
+                    rowActions.addTo(menu, selectedRows(table, model));
+                }
                 menu.show(e.getComponent(), e.getX(), e.getY());
             }
         });
@@ -63,10 +75,7 @@ public final class ColumnCopySupport {
         if (selectedRows.length == 0) {
             return;
         }
-        List<T> rows = new ArrayList<>(selectedRows.length);
-        for (int viewRow : selectedRows) {
-            rows.add(model.rowAt(table.convertRowIndexToModel(viewRow)));
-        }
+        List<T> rows = selectedRows(table, model);
 
         String text = customCopy == null ? null : customCopy.copy(columnKey, rows);
         if (text == null) {
@@ -84,6 +93,15 @@ public final class ColumnCopySupport {
             return;
         }
         Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(text), null);
+    }
+
+    private static <T> List<T> selectedRows(JTable table, ColumnTableModel<T> model) {
+        int[] selectedRows = table.getSelectedRows();
+        List<T> rows = new ArrayList<>(selectedRows.length);
+        for (int viewRow : selectedRows) {
+            rows.add(model.rowAt(table.convertRowIndexToModel(viewRow)));
+        }
+        return rows;
     }
 
     private ColumnCopySupport() {

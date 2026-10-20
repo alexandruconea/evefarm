@@ -160,7 +160,7 @@ public final class LpOfferPricingService {
         for (LoyaltyOfferDto.RequiredItemDto required : offer.requiredItems()) {
             TypeInfo requiredType = typeNameCacheService.resolveType(required.typeId());
             summaryParts.add(required.quantity() + "x " + requiredType.name());
-            requiredItems.add(new LpRequiredItem(requiredType.name(), required.quantity()));
+            requiredItems.add(new LpRequiredItem(required.typeId(), requiredType.name(), required.quantity()));
             Double requiredPrice = toNullable(priceService.getUnitPrice(required.typeId(), PriceMode.SELL_MIN));
             if (requiredPrice == null) {
                 allRequiredPriced = false;
@@ -196,7 +196,7 @@ public final class LpOfferPricingService {
         for (Material material : blueprint.materials()) {
             long quantityAtMe = applyMaterialEfficiency(material.quantity(), totalRuns, MATERIAL_EFFICIENCY_LEVEL);
             summaryParts.add(quantityAtMe + "x " + material.name());
-            materialItems.add(new LpRequiredItem(material.name(), quantityAtMe));
+            materialItems.add(new LpRequiredItem(material.typeId(), material.name(), quantityAtMe));
             Double price = toNullable(priceService.getUnitPrice(material.typeId(), PriceMode.SELL_MIN));
             if (price == null) {
                 allPriced = false;

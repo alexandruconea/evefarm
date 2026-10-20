@@ -30,8 +30,12 @@ public final class MarketsApi {
     }
 
     public List<MarketOrderDto> listRegionOrders(long regionId, int typeId) {
+        return listRegionOrders(regionId, typeId, "all");
+    }
+
+    public List<MarketOrderDto> listRegionOrders(long regionId, int typeId, String orderType) {
         List<String> pages = client.getAllPages("/markets/" + regionId + "/orders/", null,
-                Map.of("order_type", "all", "type_id", String.valueOf(typeId)));
+                Map.of("order_type", orderType, "type_id", String.valueOf(typeId)));
         return client.readPages(pages, new TypeReference<List<MarketOrderDto>>() {
         }, "the market orders of type " + typeId);
     }

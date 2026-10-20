@@ -29,7 +29,8 @@ public final class LpStoreTableModel extends ColumnTableModel<LpOfferRow> {
             new ColumnDef<>("otherRequirements", "Other Requirements", String.class, r -> nullToEmpty(r.requiredItemsSummary()),
                     "Other items the offer asks for. Right-click a cell and choose Copy to paste them into Multibuy"),
             new ColumnDef<>("otherCost", "Other Cost", String.class, r -> formatIsk(r.requiredItemsCost()),
-                    "What the other items cost at the lowest sell price"),
+                    "What the other items cost at the lowest sell price. Right-click an offer and choose Buy "
+                            + "Several Times... to price them against all the orders in Jita 4-4"),
             new ColumnDef<>("buildMaterials", "Build Materials", String.class, r -> nullToEmpty(r.buildMaterialsSummary()),
                     "For a blueprint: the materials to build what it makes. Right-click a cell and choose Copy to "
                             + "paste them into Multibuy"),
@@ -81,7 +82,7 @@ public final class LpStoreTableModel extends ColumnTableModel<LpOfferRow> {
         super(columns(iconService));
     }
 
-    private static String formatIskPerLp(Double value) {
+    static String formatIskPerLp(Double value) {
         return value == null ? "" : String.format(Locale.US, "%,.2f", value);
     }
 

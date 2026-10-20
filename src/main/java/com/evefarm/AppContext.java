@@ -78,6 +78,7 @@ import com.evefarm.service.KillService;
 import com.evefarm.service.KillsReportService;
 import com.evefarm.service.LocationNameCacheService;
 import com.evefarm.service.LoyaltyPointService;
+import com.evefarm.service.LpOfferDepthService;
 import com.evefarm.service.LpOfferPricingService;
 import com.evefarm.service.LpPurchaseService;
 import com.evefarm.service.MarketHistoryService;
@@ -159,6 +160,7 @@ public final class AppContext {
     public final AggroWatchService aggroWatchService;
     public final VoiceService voiceService;
     public final LpOfferPricingService lpOfferPricingService;
+    public final LpOfferDepthService lpOfferDepthService;
     public final MarketHistoryService marketHistoryService;
     public final LpPurchaseService lpPurchaseService;
     public final ItemIconService itemIconService;
@@ -242,6 +244,7 @@ public final class AppContext {
                 new IndustryCatalogDao(database), settingsDao);
         this.lpOfferPricingService = new LpOfferPricingService(loyaltyApi, fuzzworkApi, industryCatalogService,
                 typeNameCacheService, priceService, marketHistoryService);
+        this.lpOfferDepthService = new LpOfferDepthService(marketsApi);
         this.itemIconService = new ItemIconService();
         this.trackerSnapshotService = new TrackerSnapshotService(authService, walletApi, clonesApi, marketsApi,
                 contractsApi, industryApi, skillsApi, loyaltyPointService, priceService, assetDao,

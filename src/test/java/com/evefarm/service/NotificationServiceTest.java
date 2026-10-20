@@ -85,7 +85,7 @@ class NotificationServiceTest {
 
     private static MarketOrderDto order(long orderId, boolean buy, double price, long location) {
         return new MarketOrderDto(orderId, TRITANIUM, 100, 100, price, buy, null, null, location, null, 90, "station",
-                1L, FORGE);
+                1L, FORGE, null);
     }
 
     private static ContractDto contract(long contractId, String type, String status, int issuer, Instant expires,

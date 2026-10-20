@@ -26,7 +26,9 @@ import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.LayoutStyle;
@@ -96,7 +98,7 @@ public final class LpStorePanel extends JPanel {
         refreshOffersButton.setIcon(Icons.REFRESH);
         setTargetButton.setIcon(Icons.TARGET);
         yourLpLabel.setFont(yourLpLabel.getFont().deriveFont(Font.BOLD));
-        ColumnCopySupport.install(table, tableModel, this::copyLpColumn);
+        ColumnCopySupport.install(table, tableModel, this::copyLpColumn, this::addOfferActions);
 
         characterCombo.addActionListener(e -> updateYourLpLabel());
         appContext.loyaltyPointService.addChangeListener(() -> SwingUtilities.invokeLater(this::updateYourLpLabel));
@@ -383,6 +385,18 @@ public final class LpStorePanel extends JPanel {
             offerCountLabel.setText("Recorded " + purchase.offers() + " x " + offer.itemName()
                     + " - see the LP Purchases tab");
         }).setVisible(true);
+    }
+
+    private void addOfferActions(JPopupMenu menu, List<LpOfferRow> selectedRows) {
+        JMenuItem severalTimes = new JMenuItem("Buy Several Times...", Icons.CALCULATOR);
+        severalTimes.setToolTipText("What the offer really costs and makes when you buy it several times, from the "
+                + "orders in Jita 4-4");
+        severalTimes.setEnabled(selectedRows.size() == 1);
+        severalTimes.addActionListener(e -> LpSeveralTimesDialog.open(SwingUtilities.getWindowAncestor(this),
+                appContext, selectedRows.getFirst(),
+                sellingFees != null ? sellingFees : appContext.sellingFeesService.mainCharacterFees(), yourLp));
+        menu.addSeparator();
+        menu.add(severalTimes);
     }
 
     private void updateWealthLabel() {
