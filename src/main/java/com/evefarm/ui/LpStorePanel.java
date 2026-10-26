@@ -27,6 +27,7 @@ import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
@@ -378,8 +379,14 @@ public final class LpStorePanel extends JPanel {
             return;
         }
         LpOfferRow offer = tableModel.rowAt(table.convertRowIndexToModel(viewRow));
-        LpPurchase base = appContext.lpPurchaseService.purchaseFrom(offer, 1, character.characterId(),
-                selectedCorporationId, (String) corporationCombo.getSelectedItem(), Instant.now(), null);
+        LpPurchase base;
+        try {
+            base = appContext.lpPurchaseService.purchaseFrom(offer, 1, character.characterId(),
+                    selectedCorporationId, (String) corporationCombo.getSelectedItem(), Instant.now(), null);
+        } catch (IllegalStateException e) {
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Record Purchase", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         new LpPurchaseDialog(SwingUtilities.getWindowAncestor(this), "Record Purchase", base, purchase -> {
             appContext.lpPurchaseService.record(purchase);
             offerCountLabel.setText("Recorded " + purchase.offers() + " x " + offer.itemName()

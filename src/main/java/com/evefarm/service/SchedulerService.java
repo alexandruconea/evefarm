@@ -1,6 +1,7 @@
 package com.evefarm.service;
 
 import com.evefarm.auth.AuthService;
+import com.evefarm.auth.LoginExpiredException;
 import com.evefarm.db.dao.UpdateCooldownDao;
 import com.evefarm.model.EveCharacter;
 
@@ -224,6 +225,10 @@ public final class SchedulerService {
         for (EveCharacter character : characters) {
             try {
                 work.apply(character.characterId());
+            } catch (LoginExpiredException e) {
+                allSucceeded = false;
+                LOG.warning("Couldn't " + action + " for character " + character.characterId() + ": "
+                        + e.getMessage());
             } catch (Exception e) {
                 allSucceeded = false;
                 LOG.log(Level.WARNING, "Failed to " + action + " for character " + character.characterId(), e);

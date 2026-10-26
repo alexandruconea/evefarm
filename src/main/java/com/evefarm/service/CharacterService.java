@@ -29,6 +29,7 @@ public final class CharacterService {
 
     public void removeCharacter(long characterId) {
         characterDao.remove(characterId);
+        authService.forget(characterId);
         if (mainCharacterId().filter(main -> main == characterId).isPresent()) {
             settingsDao.set(SettingsDao.MAIN_CHARACTER_ID, "");
         }

@@ -21,6 +21,7 @@ import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -72,7 +73,8 @@ class MigrationRunnerTest {
             Map.entry(43, "ed772023965c4a36b3e3c5a46b162df869ee4d6ebfa56222fb2511c02bc4e16b"),
             Map.entry(44, "ac483f84d8cf6a2e053ddfb988b4dd82ff85adf84d93b2fddb0a69b2618b6fd8"),
             Map.entry(45, "454327e666d08adfeb41d3ad27fb847da81e92a40a6b27becd81d9e391e54c82"),
-            Map.entry(46, "ce0f49be825f4442601eca1e164f463e70d6be3cbcdfe7f3548d4f2343b9133d"));
+            Map.entry(46, "ce0f49be825f4442601eca1e164f463e70d6be3cbcdfe7f3548d4f2343b9133d"),
+            Map.entry(47, "54c735f48ef5afa733aca4db10e7f7b4d2f5c747796c775621e149f9ae366ea2"));
 
     @Test
     void semicolonInsideQuotedStringDoesNotSplit() {
@@ -188,6 +190,22 @@ class MigrationRunnerTest {
 
         assertTrue(records.stream().anyMatch(record -> record.getLevel() == Level.SEVERE
                 && record.getMessage().contains("checksum mismatch")));
+    }
+
+    @Test
+    void aDatabaseFromANewerVersionIsRefused() throws SQLException {
+        Database database = new Database(":memory:");
+        MigrationRunner.run(database);
+        int newer = MigrationRunner.latestVersion() + 1;
+        try (Statement statement = database.connection().createStatement()) {
+            statement.executeUpdate("INSERT INTO schema_version(version, applied_at, checksum) VALUES ("
+                    + newer + ", '2026-10-26T00:00:00Z', 'future')");
+        }
+
+        IllegalStateException error = assertThrows(IllegalStateException.class, () -> MigrationRunner.run(database));
+
+        assertTrue(error.getMessage().contains("newer version of EVE Farm"), error.getMessage());
+        assertTrue(error.getMessage().contains("V" + newer), error.getMessage());
     }
 
     private static String resource(String path) throws IOException {

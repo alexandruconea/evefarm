@@ -76,4 +76,22 @@ class PriceCacheDaoTest {
         assertEquals(5.0, dao.findUnitPrice(34, PriceMode.BUY_AVG).orElseThrow(), 1e-9);
         assertEquals(Map.of(), dao.findAllSellVolumes());
     }
+
+    @Test
+    void anItemNobodyTradesHasNoPriceInsteadOfZero() {
+        Database database = new Database(":memory:");
+        MigrationRunner.run(database);
+        PriceCacheDao dao = new PriceCacheDao(database);
+        dao.replaceAllDetailed(Map.of(
+                47_000, new PriceBreakdown(null, null, null, null, null, null, null, null, null, null, null, null),
+                47_001, new PriceBreakdown(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)));
+
+        for (PriceMode mode : PriceMode.values()) {
+            assertTrue(dao.findUnitPrice(47_000, mode).isEmpty(), mode.name());
+            assertTrue(dao.findUnitPrice(47_001, mode).isEmpty(), mode.name());
+        }
+        assertEquals(Map.of(), dao.findAllUnitPrices(PriceMode.SELL_AVG));
+        assertEquals(Set.of(), dao.findStaleTypeIds(List.of(47_000, 47_001), Instant.now().minus(Duration.ofHours(1))),
+                "an item checked a moment ago isn't asked for again");
+    }
 }

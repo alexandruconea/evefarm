@@ -10,6 +10,7 @@ import com.evefarm.model.TypeInfo;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,8 +39,14 @@ public final class TypeNameCacheService {
         this.typeCacheDao = typeCacheDao;
     }
 
+    // For display: an item EVE can't name right now is shown as "Type #123".
     public TypeInfo resolveType(int typeId) {
-        return typeCacheDao.find(typeId).orElseGet(() -> fetchAndCache(typeId));
+        return findType(typeId).orElseGet(() -> new TypeInfo(typeId, "Type #" + typeId, null, null, 0));
+    }
+
+    // For saving: empty when EVE couldn't be asked, so the "Type #123" placeholder is never stored as a name.
+    public Optional<TypeInfo> findType(int typeId) {
+        return typeCacheDao.find(typeId).or(() -> fetchAndCache(typeId));
     }
 
     public void resolveTypes(Collection<Integer> typeIds) {
@@ -57,7 +64,7 @@ public final class TypeNameCacheService {
         CompletableFuture.allOf(futures.toArray(new CompletableFuture<?>[0])).join();
     }
 
-    private TypeInfo fetchAndCache(int typeId) {
+    private Optional<TypeInfo> fetchAndCache(int typeId) {
         try {
             UniverseTypeDto type = universeApi.getType(typeId);
             UniverseGroupDto group = groupCache.computeIfAbsent(type.groupId(), universeApi::getGroup);
@@ -67,10 +74,10 @@ public final class TypeNameCacheService {
                     type.typeId(), type.name(), group.name(), category.name(),
                     type.volume() == null ? 0 : type.volume());
             typeCacheDao.upsert(info, group.groupId(), category.categoryId());
-            return info;
+            return Optional.of(info);
         } catch (Exception e) {
             LOG.log(Level.WARNING, "Failed to resolve type " + typeId, e);
-            return new TypeInfo(typeId, "Type #" + typeId, null, null, 0);
+            return Optional.empty();
         }
     }
 }

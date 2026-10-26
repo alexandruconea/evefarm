@@ -1,20 +1,18 @@
 package com.evefarm.model;
 
-import java.time.Instant;
+// A rejected login keeps no usable refresh token: EVE refused it, so the character has to be added again.
+public record TokenRecord(String refreshToken, boolean loginRejected) {
 
-public record TokenRecord(
-        String refreshToken,
-        String accessToken,
-        Instant accessTokenExpiresAt
-) {
-    public boolean isAccessTokenValid() {
-        return accessToken != null
-                && accessTokenExpiresAt != null
-                && accessTokenExpiresAt.isAfter(Instant.now().plusSeconds(60));
+    public static TokenRecord active(String refreshToken) {
+        return new TokenRecord(refreshToken, false);
+    }
+
+    public static TokenRecord rejected() {
+        return new TokenRecord(null, true);
     }
 
     @Override
     public String toString() {
-        return "TokenRecord[accessTokenExpiresAt=" + accessTokenExpiresAt + "]";
+        return "TokenRecord[loginRejected=" + loginRejected + "]";
     }
 }

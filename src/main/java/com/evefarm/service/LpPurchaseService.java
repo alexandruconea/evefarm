@@ -13,6 +13,7 @@ import com.evefarm.model.LpOfferRow;
 import com.evefarm.model.LpPurchase;
 import com.evefarm.model.NpcCorporationRow;
 import com.evefarm.model.PriceMode;
+import com.evefarm.model.TypeInfo;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -174,7 +175,9 @@ public final class LpPurchaseService {
                                    String corporationName, Instant purchasedAt, Long journalEntryId) {
         double otherPerOffer = orZero(offer.requiredItemsCost()) + orZero(offer.buildMaterialsCost());
         String name = offer.outputTypeId() == offer.typeId() ? offer.itemName()
-                : typeNameCacheService.resolveType(offer.outputTypeId()).name();
+                : typeNameCacheService.findType(offer.outputTypeId()).map(TypeInfo::name)
+                .orElseThrow(() -> new IllegalStateException("EVE didn't send the name of the item "
+                        + offer.itemName() + " makes, so the purchase can't be recorded yet. Try again in a minute."));
         Double target = offer.iskPerLpSell() != null && offer.iskPerLpSell() > 0 ? offer.iskPerLpSell()
                 : defaultTarget();
         String characterName = characterService.listCharacters().stream()

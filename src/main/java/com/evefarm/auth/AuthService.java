@@ -24,6 +24,19 @@ public final class AuthService {
     private final EveSsoClient ssoClient;
     private final JwtValidator jwtValidator;
     private final Map<Long, Object> refreshLocks = new ConcurrentHashMap<>();
+    private final Map<Long, AccessToken> accessTokens = new ConcurrentHashMap<>();
+
+    // Access tokens live only in memory: they last 20 minutes, so after a restart each character refreshes once.
+    private record AccessToken(String token, Instant expiresAt) {
+        boolean usable() {
+            return expiresAt.isAfter(Instant.now().plusSeconds(60));
+        }
+
+        @Override
+        public String toString() {
+            return "AccessToken[expiresAt=" + expiresAt + "]";
+        }
+    }
 
     public AuthService(CharacterDao characterDao, TokenDao tokenDao) {
         this(characterDao, tokenDao, new EveSsoClient(), new JwtValidator());
@@ -55,8 +68,8 @@ public final class AuthService {
 
             characterDao.upsert(identity.characterId(), identity.characterName(), identity.scopes(),
                     identity.ownerHash());
-            Instant expiresAt = Instant.now().plusSeconds(tokenResponse.expiresIn());
-            tokenDao.upsert(identity.characterId(), tokenResponse.refreshToken(), tokenResponse.accessToken(), expiresAt);
+            tokenDao.saveLogin(identity.characterId(), tokenResponse.refreshToken());
+            remember(identity.characterId(), tokenResponse);
 
             return identity;
         }
@@ -78,19 +91,20 @@ public final class AuthService {
     }
 
     public String getValidAccessToken(long characterId) {
-        TokenRecord record = tokenDao.find(characterId)
-                .orElseThrow(() -> new IllegalStateException("No stored token for character " + characterId));
-
-        if (record.isAccessTokenValid()) {
-            return record.accessToken();
+        AccessToken cached = accessTokens.get(characterId);
+        if (cached != null && cached.usable()) {
+            return cached.token();
         }
 
         Object refreshLock = refreshLocks.computeIfAbsent(characterId, ignored -> new Object());
         synchronized (refreshLock) {
-            record = tokenDao.find(characterId)
-                    .orElseThrow(() -> new IllegalStateException("No stored token for character " + characterId));
-            if (record.isAccessTokenValid()) {
-                return record.accessToken();
+            cached = accessTokens.get(characterId);
+            if (cached != null && cached.usable()) {
+                return cached.token();
+            }
+            TokenRecord record = tokenDao.find(characterId).orElseThrow(() -> noLogin(characterId));
+            if (record.loginRejected()) {
+                throw new LoginExpiredException(characterName(characterId));
             }
 
             LOG.info("Refreshing access token for character " + characterId);
@@ -98,15 +112,30 @@ public final class AuthService {
             try {
                 refreshed = ssoClient.refreshAccessToken(OAuthConfig.DEFAULT, record.refreshToken());
             } catch (LoginRejectedException e) {
-                throw new IllegalStateException("Add " + characterName(characterId)
-                        + " again (File > Characters... > Add Character...) - EVE no longer accepts its login.");
+                tokenDao.markLoginRejected(characterId);
+                throw new LoginExpiredException(characterName(characterId));
             }
-            Instant expiresAt = Instant.now().plusSeconds(refreshed.expiresIn());
             String refreshToken = refreshed.refreshToken() == null || refreshed.refreshToken().isBlank()
                     ? record.refreshToken() : refreshed.refreshToken();
-            tokenDao.upsert(characterId, refreshToken, refreshed.accessToken(), expiresAt);
+            if (!tokenDao.saveRefreshedLogin(characterId, refreshToken)) {
+                throw noLogin(characterId);
+            }
+            remember(characterId, refreshed);
             return refreshed.accessToken();
         }
+    }
+
+    public void forget(long characterId) {
+        accessTokens.remove(characterId);
+    }
+
+    private void remember(long characterId, TokenResponse response) {
+        accessTokens.put(characterId,
+                new AccessToken(response.accessToken(), Instant.now().plusSeconds(response.expiresIn())));
+    }
+
+    private static IllegalStateException noLogin(long characterId) {
+        return new IllegalStateException("No stored token for character " + characterId);
     }
 
     private String characterName(long characterId) {

@@ -11,6 +11,7 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
@@ -197,9 +198,15 @@ final class LpPaymentsDialog extends JDialog {
         if (payment == null || candidate == null) {
             return;
         }
-        LpPurchase base = appContext.lpPurchaseService.purchaseFrom(candidate.offer(), candidate.times(),
-                payment.payment().characterId(), payment.payment().corporationId(), payment.corporationName(),
-                payment.payment().date(), payment.payment().entryId());
+        LpPurchase base;
+        try {
+            base = appContext.lpPurchaseService.purchaseFrom(candidate.offer(), candidate.times(),
+                    payment.payment().characterId(), payment.payment().corporationId(), payment.corporationName(),
+                    payment.payment().date(), payment.payment().entryId());
+        } catch (IllegalStateException e) {
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Record Purchase", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         new LpPurchaseDialog(this, "Record Purchase", base, purchase -> {
             appContext.lpPurchaseService.record(purchase);
             done(payment);

@@ -9,16 +9,20 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Logger;
 
+// Encryption runs outside the database lock: on Linux the first decrypt can wait for the user to unlock the
+// keyring, and other database work (including reads on the Swing thread) must not wait with it.
 public final class TokenDao {
 
     private static final Logger LOG = Logger.getLogger(TokenDao.class.getName());
+    private static final String ACTIVE = "active";
+    private static final String LOGIN_REJECTED = "needs_reauth";
 
     private final Database database;
 
@@ -26,33 +30,70 @@ public final class TokenDao {
         this.database = database;
     }
 
-    public void upsert(long characterId, String refreshToken, String accessToken, Instant accessTokenExpiresAt) {
+    public void saveLogin(long characterId, String refreshToken) {
         String sql = """
-                INSERT INTO tokens(character_id, refresh_token, access_token, access_token_expires_at, updated_at)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO tokens(character_id, refresh_token, status, updated_at)
+                VALUES (?, ?, ?, ?)
                 ON CONFLICT(character_id) DO UPDATE SET
                   refresh_token = excluded.refresh_token,
-                  access_token = excluded.access_token,
-                  access_token_expires_at = excluded.access_token_expires_at,
+                  access_token = NULL,
+                  access_token_expires_at = NULL,
+                  status = excluded.status,
                   updated_at = excluded.updated_at
                 """;
+        String sealed = TokenCipher.encrypt(refreshToken);
         synchronized (database) {
             Connection connection = database.connection();
             try (PreparedStatement ps = connection.prepareStatement(sql)) {
                 ps.setLong(1, characterId);
-                ps.setString(2, TokenCipher.encrypt(refreshToken));
-                ps.setString(3, TokenCipher.encrypt(accessToken));
-                ps.setString(4, accessTokenExpiresAt == null ? null : accessTokenExpiresAt.toString());
-                ps.setString(5, Instant.now().toString());
+                ps.setString(2, sealed);
+                ps.setString(3, ACTIVE);
+                ps.setString(4, Instant.now().toString());
                 ps.executeUpdate();
             } catch (SQLException e) {
-                throw new IllegalStateException("Failed to upsert token for character " + characterId, e);
+                throw new IllegalStateException("Failed to save the login of character " + characterId, e);
+            }
+        }
+    }
+
+    // Only updates a login that is still there, so a character removed while its token was being refreshed
+    // doesn't get its login back. Returns false when there was nothing to update.
+    public boolean saveRefreshedLogin(long characterId, String refreshToken) {
+        String sql = "UPDATE tokens SET refresh_token = ?, updated_at = ? WHERE character_id = ? AND status = ?";
+        String sealed = TokenCipher.encrypt(refreshToken);
+        synchronized (database) {
+            Connection connection = database.connection();
+            try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                ps.setString(1, sealed);
+                ps.setString(2, Instant.now().toString());
+                ps.setLong(3, characterId);
+                ps.setString(4, ACTIVE);
+                return ps.executeUpdate() > 0;
+            } catch (SQLException e) {
+                throw new IllegalStateException("Failed to save the refreshed login of character " + characterId, e);
+            }
+        }
+    }
+
+    public void markLoginRejected(long characterId) {
+        String sql = "UPDATE tokens SET status = ?, updated_at = ? WHERE character_id = ?";
+        synchronized (database) {
+            Connection connection = database.connection();
+            try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                ps.setString(1, LOGIN_REJECTED);
+                ps.setString(2, Instant.now().toString());
+                ps.setLong(3, characterId);
+                ps.executeUpdate();
+            } catch (SQLException e) {
+                throw new IllegalStateException("Failed to flag the login of character " + characterId, e);
             }
         }
     }
 
     public Optional<TokenRecord> find(long characterId) {
-        String sql = "SELECT * FROM tokens WHERE character_id = ?";
+        String sql = "SELECT refresh_token, status FROM tokens WHERE character_id = ?";
+        String sealed;
+        boolean rejected;
         synchronized (database) {
             Connection connection = database.connection();
             try (PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -61,17 +102,14 @@ public final class TokenDao {
                     if (!rs.next()) {
                         return Optional.empty();
                     }
-                    String expiresAtRaw = rs.getString("access_token_expires_at");
-                    return Optional.of(new TokenRecord(
-                            TokenCipher.decrypt(rs.getString("refresh_token")),
-                            TokenCipher.decrypt(rs.getString("access_token")),
-                            expiresAtRaw == null ? null : Instant.parse(expiresAtRaw)
-                    ));
+                    sealed = rs.getString("refresh_token");
+                    rejected = LOGIN_REJECTED.equals(rs.getString("status"));
                 }
             } catch (SQLException e) {
                 throw new IllegalStateException("Failed to read token for character " + characterId, e);
             }
         }
+        return Optional.of(rejected ? TokenRecord.rejected() : TokenRecord.active(TokenCipher.decrypt(sealed)));
     }
 
     public boolean hasTokens() {
@@ -109,34 +147,41 @@ public final class TokenDao {
             LOG.warning("Secret storage is unavailable; legacy plaintext tokens will not be loaded or migrated");
             return;
         }
-        String selectSql = "SELECT character_id, refresh_token, access_token, access_token_expires_at FROM tokens";
-        record LegacyRow(long characterId, String refreshToken, String accessToken, String expiresAt) {
-        }
-        List<LegacyRow> legacyRows = new ArrayList<>();
+        Map<Long, String> plaintext = new HashMap<>();
         synchronized (database) {
             Connection connection = database.connection();
-            try (PreparedStatement ps = connection.prepareStatement(selectSql);
+            try (PreparedStatement ps = connection.prepareStatement("SELECT character_id, refresh_token FROM tokens");
                  ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     String refreshToken = rs.getString("refresh_token");
-                    String accessToken = rs.getString("access_token");
                     if (!TokenCipher.isEncrypted(refreshToken)) {
-                        legacyRows.add(new LegacyRow(
-                                rs.getLong("character_id"), refreshToken, accessToken,
-                                rs.getString("access_token_expires_at")));
+                        plaintext.put(rs.getLong("character_id"), refreshToken);
                     }
                 }
             } catch (SQLException e) {
                 throw new IllegalStateException("Failed to scan tokens for legacy plaintext rows", e);
             }
         }
+        if (plaintext.isEmpty()) {
+            return;
+        }
 
-        for (LegacyRow row : legacyRows) {
-            Instant expiresAt = row.expiresAt() == null ? null : Instant.parse(row.expiresAt());
-            upsert(row.characterId(), row.refreshToken(), row.accessToken(), expiresAt);
-        }
-        if (!legacyRows.isEmpty()) {
-            LOG.info("Encrypted " + legacyRows.size() + " legacy plaintext token row(s)");
-        }
+        Map<Long, String> sealed = new HashMap<>();
+        plaintext.forEach((characterId, refreshToken) -> sealed.put(characterId, TokenCipher.encrypt(refreshToken)));
+        String sql = """
+                UPDATE tokens SET refresh_token = ?, access_token = NULL, access_token_expires_at = NULL
+                WHERE character_id = ?
+                """;
+        database.transaction("Failed to encrypt legacy plaintext tokens", connection -> {
+            try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                for (Map.Entry<Long, String> entry : sealed.entrySet()) {
+                    ps.setString(1, entry.getValue());
+                    ps.setLong(2, entry.getKey());
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+        });
+        LOG.info("Encrypted " + sealed.size() + " legacy plaintext token row(s)");
     }
 }

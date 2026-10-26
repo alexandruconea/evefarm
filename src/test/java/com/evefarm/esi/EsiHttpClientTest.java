@@ -120,6 +120,23 @@ class EsiHttpClientTest {
     }
 
     @Test
+    void anErrorLimitWithoutAResetTimeStillWaitsBeforeRetrying() {
+        replies.add(new Reply(420, Map.of("X-Esi-Error-Limit-Remain", "0", "X-Esi-Error-Limit-Reset", "0"), ""));
+        replies.add(new Reply(200, Map.of(), "[]"));
+
+        assertEquals("[]", client.get("/markets/prices/", null, Map.of()));
+        assertEquals(List.of(1), waits);
+    }
+
+    @Test
+    void unreadableNumberHeadersAreIgnored() {
+        replies.add(new Reply(200, Map.of("X-Pages", "lots", "X-Esi-Error-Limit-Remain", "?"), "[1]"));
+
+        assertEquals(List.of("[1]"), client.getAllPages("/markets/10000002/orders/", null, Map.of()));
+        assertEquals(1, seen.size());
+    }
+
+    @Test
     void anErrorAnswerIsReportedWithItsStatus() {
         replies.add(new Reply(404, Map.of(), "{\"error\":\"Type not found\"}"));
 

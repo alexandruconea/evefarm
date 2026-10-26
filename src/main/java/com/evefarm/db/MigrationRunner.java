@@ -68,7 +68,8 @@ public final class MigrationRunner {
             "db/migrations/V43__loyalty_point_next_read.sql",
             "db/migrations/V44__tracker_lp_value_at_target.sql",
             "db/migrations/V45__lp_store_net_columns.sql",
-            "db/migrations/V46__asset_blueprint_copies.sql"
+            "db/migrations/V46__asset_blueprint_copies.sql",
+            "db/migrations/V47__token_status.sql"
     );
 
     public static void run(Database database) {
@@ -87,6 +88,7 @@ public final class MigrationRunner {
 
         ensureChecksumColumn(connection);
         validateMigrationList();
+        refuseNewerDatabase(connection);
 
         for (String resourcePath : MIGRATIONS) {
             int version = parseVersion(resourcePath);
@@ -108,6 +110,21 @@ public final class MigrationRunner {
     }
 
     private record AppliedMigration(boolean exists, String checksum) {
+    }
+
+    private static void refuseNewerDatabase(Connection connection) {
+        int newest;
+        try (Statement statement = connection.createStatement();
+             ResultSet rs = statement.executeQuery("SELECT COALESCE(MAX(version), 0) FROM schema_version")) {
+            newest = rs.next() ? rs.getInt(1) : 0;
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to check schema_version", e);
+        }
+        if (newest > latestVersion()) {
+            throw new IllegalStateException("Your EVE Farm data was saved by a newer version of EVE Farm (database V"
+                    + newest + ", this version knows up to V" + latestVersion() + "). Install the latest EVE Farm "
+                    + "to open it.");
+        }
     }
 
     private static AppliedMigration findApplied(Connection connection, int version) {

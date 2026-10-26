@@ -135,7 +135,7 @@ public final class EsiHttpClient {
             Optional<String> snapshot = first.headers().firstValue("Last-Modified");
             boolean sameSnapshot = true;
 
-            int totalPages = first.headers().firstValue("X-Pages").map(Integer::parseInt).orElse(1);
+            int totalPages = intHeader(first, "X-Pages").orElse(1);
             for (int page = 2; page <= totalPages; page++) {
                 pageQuery.put("page", String.valueOf(page));
                 HttpResponse<String> response = sendRaw(buildRequest("GET", path, accessTokenOrNull, pageQuery, null));
@@ -185,8 +185,9 @@ public final class EsiHttpClient {
         HttpResponse<String> response = sendOnce(request);
 
         if (response.statusCode() == 420) {
-            LOG.warning("ESI error limit hit (420); backing off for " + errorLimitResetSeconds.get() + "s");
-            sleeper.accept(errorLimitResetSeconds.get());
+            int waitSeconds = Math.max(1, errorLimitResetSeconds.get());
+            LOG.warning("ESI error limit hit (420); backing off for " + waitSeconds + "s");
+            sleeper.accept(waitSeconds);
             response = sendOnce(request);
         } else if (response.statusCode() == 429) {
             int waitSeconds = retryAfterSeconds(response.headers().firstValue("Retry-After"));
@@ -226,10 +227,17 @@ public final class EsiHttpClient {
     }
 
     private void trackErrorBudget(HttpResponse<String> response) {
-        response.headers().firstValue("X-Esi-Error-Limit-Remain")
-                .map(Integer::parseInt).ifPresent(errorLimitRemain::set);
-        response.headers().firstValue("X-Esi-Error-Limit-Reset")
-                .map(Integer::parseInt).ifPresent(errorLimitResetSeconds::set);
+        intHeader(response, "X-Esi-Error-Limit-Remain").ifPresent(errorLimitRemain::set);
+        intHeader(response, "X-Esi-Error-Limit-Reset").ifPresent(errorLimitResetSeconds::set);
+    }
+
+    private static Optional<Integer> intHeader(HttpResponse<String> response, String name) {
+        try {
+            return response.headers().firstValue(name).map(String::trim).map(Integer::valueOf);
+        } catch (NumberFormatException e) {
+            LOG.fine("Ignoring the unreadable ESI header " + name);
+            return Optional.empty();
+        }
     }
 
     private void backoffIfBudgetLow() {

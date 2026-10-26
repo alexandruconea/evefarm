@@ -120,7 +120,7 @@ public final class PriceCacheDao {
             return average;
         }
         double adjusted = rs.getDouble("adjusted_price");
-        return rs.wasNull() ? null : adjusted;
+        return !rs.wasNull() && adjusted > 0 ? adjusted : null;
     }
 
     private static boolean hasMarketSides(ResultSet rs) throws SQLException {
@@ -207,11 +207,11 @@ public final class PriceCacheDao {
             try (PreparedStatement ps = connection.prepareStatement(sql)) {
                 for (Map.Entry<Integer, PriceBreakdown> entry : breakdown.entrySet()) {
                     PriceBreakdown b = entry.getValue();
-                    double bestSell = firstNonNull(b.sellAvg(), b.sellMin(), b.sellMax(), b.sellMedian(), b.sellPercentile());
-                    double bestBuy = firstNonNull(b.buyAvg(), b.buyMax(), b.buyMin(), b.buyMedian(), b.buyPercentile());
+                    Double bestSell = firstPositive(b.sellAvg(), b.sellMin(), b.sellMax(), b.sellMedian(), b.sellPercentile());
+                    Double bestBuy = firstPositive(b.buyAvg(), b.buyMax(), b.buyMin(), b.buyMedian(), b.buyPercentile());
                     ps.setInt(1, entry.getKey());
-                    ps.setDouble(2, bestSell);
-                    ps.setDouble(3, bestBuy);
+                    JdbcUtil.setNullable(ps, 2, bestSell);
+                    JdbcUtil.setNullable(ps, 3, bestBuy);
                     JdbcUtil.setNullable(ps, 4, b.sellMax());
                     JdbcUtil.setNullable(ps, 5, b.sellAvg());
                     JdbcUtil.setNullable(ps, 6, b.sellMedian());
@@ -232,13 +232,13 @@ public final class PriceCacheDao {
         });
     }
 
-    private double firstNonNull(Double... values) {
+    private static Double firstPositive(Double... values) {
         for (Double value : values) {
             if (value != null && value > 0) {
                 return value;
             }
         }
-        return 0;
+        return null;
     }
 
     public Map<Integer, Double> findAllSellVolumes() {

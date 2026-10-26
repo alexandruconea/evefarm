@@ -39,6 +39,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -322,7 +323,7 @@ class LpPurchaseServiceTest {
                 "Caldari Navy Stasis Webifier", 30, 30, 45_000, 30_000_000, 1_500_000, 1_480.0, boughtOn, 99L, 0,
                 null), webifiers);
 
-        when(types.resolveType(GOLEM)).thenReturn(new TypeInfo(GOLEM, "Golem", "Marauder", "Ship", 0));
+        when(types.findType(GOLEM)).thenReturn(Optional.of(new TypeInfo(GOLEM, "Golem", "Marauder", "Ship", 0)));
         settings.set(SettingsDao.LP_STORE_TARGET_ISK_PER_LP, "1200");
         LpPurchase golems = service.purchaseFrom(offer(8, GOLEM_BLUEPRINT, "Golem Blueprint", 300_000, 50_000_000,
                 null, null, GOLEM, 1), 2, PILOT, CALDARI_NAVY, "Caldari Navy", boughtOn, null);
@@ -331,6 +332,17 @@ class LpPurchaseServiceTest {
         assertEquals("Golem", golems.typeName(), "a blueprint offer is tracked as the item it builds");
         assertEquals(1_200.0, golems.targetIskPerLp(), "without an ISK/LP the LP Store target is used");
         assertEquals(0, golems.otherCost(), 1e-9);
+    }
+
+    @Test
+    void aPurchaseIsNotRecordedUnderAPlaceholderName() {
+        when(types.findType(GOLEM)).thenReturn(Optional.empty());
+
+        IllegalStateException error = assertThrows(IllegalStateException.class, () -> service.purchaseFrom(
+                offer(8, GOLEM_BLUEPRINT, "Golem Blueprint", 300_000, 50_000_000, null, null, GOLEM, 1), 2, PILOT,
+                CALDARI_NAVY, "Caldari Navy", Instant.parse("2026-10-09T14:30:00Z"), null));
+
+        assertTrue(error.getMessage().contains("Golem Blueprint"), error.getMessage());
     }
 
     @Test
