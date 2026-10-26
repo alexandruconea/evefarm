@@ -59,7 +59,7 @@ Open **File > Characters...** to manage your characters.
 
 If a character changes owner (it was sold or transferred to another account), EVE Farm refuses to log it in again under the new owner. Remove it and add it again to keep tracking it. Its history so far is kept.
 
-If EVE no longer accepts a character's login, for example after you revoked EVE Farm's access to the account, its updates fail with a message that asks you to add it again. Click **Add Character...** and log in with that character. Its history is kept.
+If EVE no longer accepts a character's login, for example after you revoked EVE Farm's access to the account, its updates fail with a message that asks you to add it again, and EVE Farm stops sending that login to EVE until you do. Click **Add Character...** and log in with that character. Its history is kept.
 
 When a new version of EVE Farm needs a new permission from EVE, the release notes say so, and characters added before that version must be added again.
 
@@ -477,6 +477,8 @@ A backup restored on another computer, user account or system keeps all the hist
 - An update is only downloaded from EVE Farm's GitHub releases and only installed when its signature matches the release key built into the app. Your data is backed up first.
 - To stop the automatic check, clear **Check for new versions automatically** in **Options > Settings...**.
 
+If you go back to an older version, it won't open data a newer version has already saved; install the newest version again.
+
 **Help > About EVE Farm** shows the version you have.
 
 ## Tray icon and notifications
@@ -500,7 +502,7 @@ Everything stays on your computer, in `%USERPROFILE%\.evefarm` on Windows and `~
 - `backups` holds the automatic backups;
 - `logs` holds the log files.
 
-EVE Farm logs in through EVE's official login (EVE SSO), so it never sees your password. Logins and the Janice key are encrypted: on Windows with Windows' own protection, so only your Windows account can read them; on Linux with a key kept in your desktop keyring.
+EVE Farm logs in through EVE's official login (EVE SSO), so it never sees your password. Logins and the Janice key are encrypted: on Windows with Windows' own protection, so only your Windows account can read them; on Linux with a key kept in your desktop keyring. The short-lived access EVE hands out for a login lasts 20 minutes and is only kept in memory, never saved.
 
 EVE Farm has no telemetry and sends nothing to its developer. It only connects to:
 
