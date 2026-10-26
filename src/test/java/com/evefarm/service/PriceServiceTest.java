@@ -90,6 +90,28 @@ class PriceServiceTest {
     }
 
     @Test
+    void aProviderThatIsDownIsNotAskedAgainByEveryScreenButAManualUpdateStillTries() {
+        SettingsDao settings = mock(SettingsDao.class);
+        TypeCacheDao types = mock(TypeCacheDao.class);
+        FuzzworkApi fuzzwork = mock(FuzzworkApi.class);
+        PriceCacheDao prices = mock(PriceCacheDao.class);
+        when(settings.getOrDefault(SettingsDao.PRICE_PROVIDER, PriceService.PROVIDER_CCP))
+                .thenReturn(PriceService.PROVIDER_FUZZWORK);
+        when(types.listAllTypeIds()).thenReturn(List.of(34, 35));
+        when(prices.findStaleTypeIds(any(), any())).thenReturn(Set.of(35));
+        when(fuzzwork.fetchAggregates(any())).thenThrow(new IllegalStateException("network down"));
+        PriceService service = new PriceService(mock(MarketsApi.class), fuzzwork, mock(JaniceApi.class),
+                prices, types, settings);
+
+        service.ensureFreshPrices(List.of(34, 35));
+        service.ensureFreshPrices(List.of(34, 35));
+        assertThrows(IllegalStateException.class, service::refreshPrices);
+
+        verify(fuzzwork, times(1)).fetchAggregates(List.of(35));
+        verify(fuzzwork, times(1)).fetchAggregates(List.of(34, 35));
+    }
+
+    @Test
     void anItemTheProviderHasNoPriceForIsNotAskedForAgainWithinAnHour() {
         SettingsDao settings = mock(SettingsDao.class);
         FuzzworkApi fuzzwork = mock(FuzzworkApi.class);

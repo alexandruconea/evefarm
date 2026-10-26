@@ -8,6 +8,9 @@ import com.evefarm.service.UpdateCategories;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.Timer;
+import java.net.ConnectException;
+import java.net.UnknownHostException;
+import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -65,8 +68,7 @@ final class DataUpdater {
         this.appContext = appContext;
         this.categories = List.of(
                 new Category(UpdateCategories.MARKET_PRICES, "Market Prices", Duration.ofHours(1), false,
-                        (characters, failures) -> attempt(failures, "Market Prices",
-                                appContext.priceService::refreshPrices)),
+                        (characters, failures) -> appContext.priceService.refreshPrices()),
                 new Category(UpdateCategories.ASSETS, "Assets", Duration.ofHours(1), true,
                         perCharacter(appContext.assetService::refreshAssetsForCharacter)),
                 new Category(UpdateCategories.MARKET_ORDERS, "Market Orders", Duration.ofMinutes(20), true,
@@ -322,9 +324,27 @@ final class DataUpdater {
             return "EVE's servers didn't answer (HTTP " + esi.statusCode() + "). Around 11:00 EVE time that's the "
                     + "daily downtime - try again in a few minutes.";
         }
-        String message = deepest.getMessage() != null ? deepest.getMessage() : deepest.getClass().getSimpleName();
+        String problem = connectionProblem(error);
+        String message = problem != null ? problem
+                : deepest.getMessage() != null ? deepest.getMessage() : deepest.getClass().getSimpleName();
         String top = error.getMessage();
         String text = top != null && !top.equals(message) && deepest != error ? top + " (" + message + ")" : message;
         return text.length() > 300 ? text.substring(0, 300) + "..." : text;
+    }
+
+    private static String connectionProblem(Throwable error) {
+        for (Throwable cause = error; cause != null; cause = cause.getCause() == cause ? null : cause.getCause()) {
+            if (cause instanceof HttpTimeoutException) {
+                return "the server didn't answer in time - try again later";
+            }
+            if (cause instanceof ConnectException) {
+                return "couldn't connect to the server - it may be down, or the internet connection is off; "
+                        + "try again later";
+            }
+            if (cause instanceof UnknownHostException) {
+                return "the server's address couldn't be found - check the internet connection";
+            }
+        }
+        return null;
     }
 }

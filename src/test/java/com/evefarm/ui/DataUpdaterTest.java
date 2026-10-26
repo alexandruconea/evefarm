@@ -4,6 +4,10 @@ import com.evefarm.esi.EsiException;
 import com.evefarm.ui.DataUpdater.Category;
 import org.junit.jupiter.api.Test;
 
+import java.net.ConnectException;
+import java.net.UnknownHostException;
+import java.net.http.HttpConnectTimeoutException;
+import java.nio.channels.ClosedChannelException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -42,6 +46,27 @@ class DataUpdaterTest {
 
         assertEquals("EVE's servers didn't answer (HTTP 504). Around 11:00 EVE time that's the daily downtime - "
                 + "try again in a few minutes.", description);
+    }
+
+    @Test
+    void aServerRefusingTheConnectionIsSaidPlainly() {
+        ConnectException refused = new ConnectException();
+        refused.initCause(new ClosedChannelException());
+
+        assertEquals("Failed to reach Fuzzwork Market Data (couldn't connect to the server - it may be down, or the "
+                        + "internet connection is off; try again later)",
+                DataUpdater.describe(new IllegalStateException("Failed to reach Fuzzwork Market Data", refused)));
+    }
+
+    @Test
+    void aServerThatDoesNotAnswerOrCannotBeFoundIsSaidPlainly() {
+        HttpConnectTimeoutException timeout = new HttpConnectTimeoutException("HTTP connect timed out");
+        timeout.initCause(new ConnectException("HTTP connect timed out"));
+
+        assertEquals("Failed to refresh assets (the server didn't answer in time - try again later)",
+                DataUpdater.describe(new IllegalStateException("Failed to refresh assets", timeout)));
+        assertEquals("the server's address couldn't be found - check the internet connection",
+                DataUpdater.describe(new UnknownHostException("esi.evetech.net")));
     }
 
     @Test

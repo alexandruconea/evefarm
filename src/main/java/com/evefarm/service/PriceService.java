@@ -29,6 +29,7 @@ public final class PriceService {
 
     private static final Logger LOG = Logger.getLogger(PriceService.class.getName());
     private static final Duration MAX_AGE = Duration.ofHours(1);
+    private static final Duration PROVIDER_DOWN_PAUSE = Duration.ofMinutes(5);
 
     public static final String PROVIDER_CCP = "ccp";
     public static final String PROVIDER_FUZZWORK = "fuzzwork";
@@ -41,6 +42,7 @@ public final class PriceService {
     private final TypeCacheDao typeCacheDao;
     private final SettingsDao settingsDao;
     private final Map<String, Instant> unpriced = new ConcurrentHashMap<>();
+    private final Map<String, Instant> providerDownUntil = new ConcurrentHashMap<>();
 
     public PriceService(MarketsApi marketsApi, FuzzworkApi fuzzworkApi, JaniceApi janiceApi,
                          PriceCacheDao priceCacheDao, TypeCacheDao typeCacheDao, SettingsDao settingsDao) {
@@ -61,6 +63,7 @@ public final class PriceService {
         } else {
             refreshCcpPrices();
         }
+        providerDownUntil.remove(provider);
     }
 
     private void refreshCcpPrices() {
@@ -187,6 +190,9 @@ public final class PriceService {
         if (!PROVIDER_FUZZWORK.equals(provider) && !PROVIDER_JANICE.equals(provider)) {
             return;
         }
+        if (Instant.now().isBefore(providerDownUntil.getOrDefault(provider, Instant.EPOCH))) {
+            return;
+        }
         Instant freshSince = Instant.now().minus(MAX_AGE);
         List<Integer> stale = priceCacheDao.findStaleTypeIds(typeIds, freshSince).stream()
                 .filter(typeId -> !unpricedSince(provider, typeId, freshSince))
@@ -202,8 +208,10 @@ public final class PriceService {
                     .filter(typeId -> !priced.contains(typeId))
                     .forEach(typeId -> unpriced.put(provider + ":" + typeId, now));
         } catch (RuntimeException e) {
-            LOG.log(Level.WARNING, "Couldn't fetch prices for " + stale.size()
-                    + " item types; continuing with the prices already saved", e);
+            providerDownUntil.put(provider, Instant.now().plus(PROVIDER_DOWN_PAUSE));
+            LOG.log(Level.WARNING, "Couldn't fetch prices for " + stale.size() + " item types; continuing with the "
+                    + "prices already saved and not asking " + provider + " again for "
+                    + PROVIDER_DOWN_PAUSE.toMinutes() + " minutes", e);
         }
     }
 
