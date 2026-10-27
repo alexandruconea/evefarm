@@ -1,5 +1,7 @@
 package com.evefarm.model;
 
+import java.util.List;
+
 public record MiningRow(
         long characterId,
         String characterName,
@@ -10,7 +12,9 @@ public record MiningRow(
         String kind,
         long quantity,
         double volume,
-        Double unitValue
+        Double unitValue,
+        int iconTypeId,
+        List<RefinedMaterial> materials
 ) {
     public Double value() {
         return unitValue == null ? null : unitValue * quantity;

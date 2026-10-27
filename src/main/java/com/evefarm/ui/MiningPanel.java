@@ -8,9 +8,11 @@ import com.evefarm.service.MiningService;
 import com.evefarm.service.MiningStats;
 import com.evefarm.ui.column.ColumnDescriptions;
 import com.evefarm.util.IskFormatter;
+import com.evefarm.util.Text;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -21,6 +23,7 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.table.AbstractTableModel;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
+import java.awt.event.MouseEvent;
 import java.util.List;
 import java.util.Locale;
 
@@ -31,7 +34,17 @@ public final class MiningPanel extends TabPanel {
 
     private final AppContext appContext;
     private final MiningTableModel tableModel;
-    private final JTable table = new JTable();
+    private final JTable table = new JTable() {
+        @Override
+        public String getToolTipText(MouseEvent event) {
+            int row = rowAtPoint(event.getPoint());
+            int column = columnAtPoint(event.getPoint());
+            if (row < 0 || column < 0 || !"refinedInto".equals(getColumnModel().getColumn(column).getIdentifier())) {
+                return super.getToolTipText(event);
+            }
+            return MiningTableModel.refinedIntoToolTip(tableModel.rowAt(convertRowIndexToModel(row)).materials());
+        }
+    };
     private final JPanel filterBarContainer = new JPanel();
     private final JLabel countLabel = new JLabel("0 entries");
     private final JComboBox<MiningService.Period> periodCombo = new JComboBox<>(MiningService.Period.values());
@@ -65,7 +78,7 @@ public final class MiningPanel extends TabPanel {
                 .ifPresent(groupByCombo::setSelectedItem);
         rateSpinner.setValue(savedRefineRate());
         readChoices();
-        updateRateEnabled();
+        updateRefinedControls();
 
         periodCombo.addActionListener(e -> choiceChanged(SettingsDao.MINING_PERIOD, selectedPeriod().name()));
         valuationCombo.addActionListener(e -> choiceChanged(SettingsDao.MINING_VALUATION, selectedValuation().name()));
@@ -108,7 +121,7 @@ public final class MiningPanel extends TabPanel {
     private void choiceChanged(String key, String value) {
         appContext.settingsDao.set(key, value);
         readChoices();
-        updateRateEnabled();
+        updateRefinedControls();
         support.reload();
     }
 
@@ -118,10 +131,20 @@ public final class MiningPanel extends TabPanel {
         refineRate = ((Number) rateSpinner.getValue()).doubleValue();
     }
 
-    private void updateRateEnabled() {
+    private void updateRefinedControls() {
         boolean refined = selectedValuation() == MiningService.Valuation.REFINED;
         rateLabel.setEnabled(refined);
         rateSpinner.setEnabled(refined);
+        boolean materialListed = ((DefaultComboBoxModel<?>) groupByCombo.getModel())
+                .getIndexOf(MiningStats.GroupBy.MATERIAL) >= 0;
+        if (refined && !materialListed) {
+            groupByCombo.addItem(MiningStats.GroupBy.MATERIAL);
+        } else if (!refined && materialListed) {
+            if (selectedGroupBy() == MiningStats.GroupBy.MATERIAL) {
+                groupByCombo.setSelectedItem(MiningStats.GroupBy.ORE);
+            }
+            groupByCombo.removeItem(MiningStats.GroupBy.MATERIAL);
+        }
     }
 
     private MiningService.Period selectedPeriod() {
@@ -140,7 +163,7 @@ public final class MiningPanel extends TabPanel {
     }
 
     private void loadIcons() {
-        support.visibleRows().stream().map(MiningRow::typeId).distinct()
+        support.visibleRows().stream().map(MiningRow::iconTypeId).distinct()
                 .forEach(typeId -> appContext.itemIconService.loadAsync(typeId, table::repaint));
     }
 
@@ -195,10 +218,14 @@ public final class MiningPanel extends TabPanel {
 
     private static final class StatsTableModel extends AbstractTableModel implements ColumnDescriptions {
 
-        private static final String[] COLUMNS = {"Group", "Volume", "Value", "Days", "Value per Day", "Share"};
-        private static final String[] DESCRIPTIONS = {"The day, character, ore, kind or system, as chosen in Group by",
-                "The volume mined, in m3", "What the ore mined is worth", "On how many days there was mining",
-                "The value divided by the days", "The group's share of the total value"};
+        private static final String[] COLUMNS = {"Group", "Quantity", "Volume", "Value", "Days", "Value per Day",
+                "Share"};
+        private static final String[] DESCRIPTIONS = {
+                "The day, character, ore, kind, system or refined material, as chosen in Group by",
+                "How many units, when grouped by ore or material",
+                "The volume mined, in m3 - for a material, the volume of the refined material",
+                "What the ore mined is worth", "On how many days there was mining", "The value divided by the days",
+                "The group's share of the total value"};
 
         private List<MiningStats.Summary> summaries = List.of();
         private double total;
@@ -231,7 +258,7 @@ public final class MiningPanel extends TabPanel {
 
         @Override
         public Class<?> getColumnClass(int column) {
-            return column == 3 ? Integer.class : String.class;
+            return column == 4 ? Integer.class : String.class;
         }
 
         @Override
@@ -239,10 +266,11 @@ public final class MiningPanel extends TabPanel {
             MiningStats.Summary summary = summaries.get(row);
             return switch (column) {
                 case 0 -> summary.label();
-                case 1 -> MiningTableModel.formatVolume(summary.volume());
-                case 2 -> IskFormatter.format(summary.value());
-                case 3 -> summary.days();
-                case 4 -> IskFormatter.format(summary.valuePerDay());
+                case 1 -> summary.quantity() == null ? "" : Text.count(Math.round(summary.quantity()));
+                case 2 -> MiningTableModel.formatVolume(summary.volume());
+                case 3 -> IskFormatter.format(summary.value());
+                case 4 -> summary.days();
+                case 5 -> IskFormatter.format(summary.valuePerDay());
                 default -> total <= 0 ? "" : String.format(Locale.US, "%.1f%%", summary.value() * 100 / total);
             };
         }

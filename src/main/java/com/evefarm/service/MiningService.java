@@ -10,14 +10,18 @@ import com.evefarm.model.MiningEntry;
 import com.evefarm.model.MiningLedgerRow;
 import com.evefarm.model.MiningRow;
 import com.evefarm.model.Ore;
+import com.evefarm.model.RefinedMaterial;
+import com.evefarm.model.TypeInfo;
 
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 public final class MiningService {
 
@@ -115,14 +119,24 @@ public final class MiningService {
     public List<MiningRow> getRows(Period period, Valuation valuation, double refineRate) {
         Map<Integer, Ore> ores = oreCatalogService.ores();
         Map<Integer, Double> prices = priceService.getUnitPrices();
+        Map<Integer, TypeInfo> materialTypes = new HashMap<>();
+        Function<Integer, TypeInfo> types = typeId ->
+                materialTypes.computeIfAbsent(typeId, typeNameCacheService::resolveType);
         return miningLedgerDao.listRows(period.fromDate(LocalDate.now(ZoneOffset.UTC))).stream()
-                .map(row -> toRow(row, unitValue(valuation, row.typeId(), ores.get(row.typeId()), prices, refineRate)))
+                .map(row -> toRow(row, valuation, ores.get(row.typeId()), prices, refineRate, types))
                 .toList();
     }
 
-    private static MiningRow toRow(MiningLedgerRow row, Double unitValue) {
+    private static MiningRow toRow(MiningLedgerRow row, Valuation valuation, Ore ore, Map<Integer, Double> prices,
+                                   double refineRate, Function<Integer, TypeInfo> types) {
+        Integer compressed = compressedType(valuation, ore, prices);
+        List<RefinedMaterial> materials = refines(valuation, ore, prices)
+                ? refinedMaterials(row.quantity(), ore, prices, refineRate, types)
+                : List.of();
         return new MiningRow(row.characterId(), row.characterName(), row.date(), row.systemName(), row.typeId(),
-                row.oreName(), kind(row.groupName()), row.quantity(), row.quantity() * row.unitVolume(), unitValue);
+                row.oreName(), kind(row.groupName()), row.quantity(), row.quantity() * row.unitVolume(),
+                unitValue(valuation, row.typeId(), ore, prices, refineRate),
+                compressed == null ? row.typeId() : compressed, materials);
     }
 
     static Set<Integer> pricedTypes(Set<Integer> minedTypes, Map<Integer, Ore> ores) {
@@ -140,27 +154,48 @@ public final class MiningService {
     }
 
     static Double unitValue(Valuation valuation, int typeId, Ore ore, Map<Integer, Double> prices, double refineRate) {
-        Double raw = prices.get(typeId);
-        if (ore == null) {
-            return raw;
+        Integer compressed = compressedType(valuation, ore, prices);
+        if (compressed != null) {
+            return prices.get(compressed);
         }
-        if (valuation == Valuation.COMPRESSED && ore.compressedTypeId() != null) {
-            Double compressed = prices.get(ore.compressedTypeId());
-            return compressed == null ? raw : compressed;
-        }
-        if (valuation == Valuation.REFINED && !ore.materials().isEmpty()) {
+        if (refines(valuation, ore, prices)) {
             double total = 0;
-            boolean priced = false;
             for (Map.Entry<Integer, Long> material : ore.materials().entrySet()) {
                 Double price = prices.get(material.getKey());
                 if (price != null) {
                     total += price * material.getValue();
-                    priced = true;
                 }
             }
-            return priced ? total * refineRate / ore.portionSize() : raw;
+            return total * refineRate / ore.portionSize();
         }
-        return raw;
+        return prices.get(typeId);
+    }
+
+    // The compressed ore is used only when it has a price - otherwise the ore is valued as mined.
+    static Integer compressedType(Valuation valuation, Ore ore, Map<Integer, Double> prices) {
+        return valuation == Valuation.COMPRESSED && ore != null && ore.compressedTypeId() != null
+                && prices.get(ore.compressedTypeId()) != null ? ore.compressedTypeId() : null;
+    }
+
+    // Likewise the minerals are used only when at least one of them has a price.
+    static boolean refines(Valuation valuation, Ore ore, Map<Integer, Double> prices) {
+        return valuation == Valuation.REFINED && ore != null
+                && ore.materials().keySet().stream().anyMatch(materialId -> prices.get(materialId) != null);
+    }
+
+    static List<RefinedMaterial> refinedMaterials(long quantity, Ore ore, Map<Integer, Double> prices,
+                                                  double refineRate, Function<Integer, TypeInfo> types) {
+        double portions = (double) quantity / ore.portionSize();
+        return ore.materials().entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(material -> {
+                    TypeInfo type = types.apply(material.getKey());
+                    double amount = material.getValue() * portions * refineRate;
+                    Double price = prices.get(material.getKey());
+                    return new RefinedMaterial(material.getKey(), type.name(), amount, amount * type.volume(),
+                            price == null ? null : price * amount);
+                })
+                .toList();
     }
 
     static String kind(String groupName) {

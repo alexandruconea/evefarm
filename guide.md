@@ -298,10 +298,10 @@ It reads your characters' Gamelogs and speaks with Windows' own voice. On Linux 
 
 Everything your characters mined, kept for as long as you keep the app (EVE only shows 30 days). Run **Update > Mining Ledger** to fill it.
 
-- Each row shows the ore's icon, the date, character, system, ore, kind, quantity, volume, unit value and value.
+- Each row shows the ore's icon, the date, character, system, ore, kind, quantity, volume, unit value and value. Valued at the compressed ore price, the icon is the compressed ore's.
 - **Show:** picks the period: Today, Last 7 days, Last 30 days, This month or All time.
-- **Value:** chooses how the ore is valued: at the ore price, at the compressed ore price, or as the refined minerals. For refined minerals, set your **Refining yield (%)**.
-- **Statistics** shows the totals for what's in the table: volume, value, days mined and ISK per day. **Group by:** splits them by day, character, ore, kind or system, with each group's share of the total.
+- **Value:** chooses how the ore is valued: at the ore price, at the compressed ore price, or as the refined minerals. For refined minerals, set your **Refining yield (%)**; **Refined Into** then shows the minerals each row gives, and hovering it shows what each one is worth.
+- **Statistics** shows the totals for what's in the table: volume, value, days mined and ISK per day. **Group by:** splits them by day, character, ore, kind or system, with each group's share of the total, and grouped by ore also shows the quantity. Valued as refined minerals, **Group by: Material** shows how much of each mineral your mining gives; what can't be refined, like gas or mission ore, is listed as it is.
 
 A character added before EVE Farm 1.0.14 must be added again (**File > Characters... > Add Character...**) so EVE Farm may read its mining ledger.
 

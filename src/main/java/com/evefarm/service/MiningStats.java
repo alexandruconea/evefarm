@@ -13,18 +13,21 @@ import java.util.function.Function;
 public final class MiningStats {
 
     public enum GroupBy {
-        DAY("Day", MiningRow::date),
-        CHARACTER("Character", MiningRow::characterName),
-        ORE("Ore", MiningRow::oreName),
-        KIND("Kind", MiningRow::kind),
-        SYSTEM("System", MiningRow::systemName);
+        DAY("Day", false, row -> whole(row, row.date())),
+        CHARACTER("Character", false, row -> whole(row, row.characterName())),
+        ORE("Ore", true, row -> whole(row, row.oreName())),
+        KIND("Kind", false, row -> whole(row, row.kind())),
+        SYSTEM("System", false, row -> whole(row, row.systemName())),
+        MATERIAL("Material", true, MiningStats::refined);
 
         private final String label;
-        private final Function<MiningRow, String> key;
+        private final boolean countsUnits;
+        private final Function<MiningRow, List<Part>> parts;
 
-        GroupBy(String label, Function<MiningRow, String> key) {
+        GroupBy(String label, boolean countsUnits, Function<MiningRow, List<Part>> parts) {
             this.label = label;
-            this.key = key;
+            this.countsUnits = countsUnits;
+            this.parts = parts;
         }
 
         @Override
@@ -33,27 +36,33 @@ public final class MiningStats {
         }
     }
 
-    public record Summary(String label, double volume, double value, int days) {
+    // The quantity is null where a group adds up units of different items.
+    public record Summary(String label, Double quantity, double volume, double value, int days) {
         public double valuePerDay() {
             return days == 0 ? 0 : value / days;
         }
+    }
+
+    private record Part(String label, double quantity, double volume, Double value, String date) {
     }
 
     private MiningStats() {
     }
 
     public static Summary overall(Collection<MiningRow> rows) {
-        return summarize("All mining", rows);
+        return summarize("All mining", rows.stream().flatMap(row -> whole(row, null).stream()).toList(), false);
     }
 
     public static List<Summary> grouped(Collection<MiningRow> rows, GroupBy groupBy) {
-        Map<String, List<MiningRow>> groups = new LinkedHashMap<>();
+        Map<String, List<Part>> groups = new LinkedHashMap<>();
         for (MiningRow row : rows) {
-            String key = groupBy.key.apply(row);
-            groups.computeIfAbsent(key == null ? "Unknown" : key, ignored -> new ArrayList<>()).add(row);
+            for (Part part : groupBy.parts.apply(row)) {
+                String key = part.label() == null ? "Unknown" : part.label();
+                groups.computeIfAbsent(key, ignored -> new ArrayList<>()).add(part);
+            }
         }
         List<Summary> summaries = new ArrayList<>();
-        groups.forEach((label, group) -> summaries.add(summarize(label, group)));
+        groups.forEach((label, group) -> summaries.add(summarize(label, group, groupBy.countsUnits)));
         Comparator<Summary> order = groupBy == GroupBy.DAY
                 ? Comparator.comparing(Summary::label).reversed()
                 : Comparator.comparingDouble(Summary::value).reversed().thenComparing(Summary::label);
@@ -61,14 +70,31 @@ public final class MiningStats {
         return summaries;
     }
 
-    static Summary summarize(String label, Collection<MiningRow> rows) {
+    private static List<Part> whole(MiningRow row, String label) {
+        return List.of(new Part(label, row.quantity(), row.volume(), row.value(), row.date()));
+    }
+
+    // What isn't refined (gas, or an ore whose minerals have no price) stays itself, so the groups still add up.
+    private static List<Part> refined(MiningRow row) {
+        if (row.materials().isEmpty()) {
+            return whole(row, row.oreName());
+        }
+        return row.materials().stream()
+                .map(material -> new Part(material.name(), material.quantity(), material.volume(), material.value(),
+                        row.date()))
+                .toList();
+    }
+
+    private static Summary summarize(String label, Collection<Part> parts, boolean countsUnits) {
+        double quantity = 0;
         double volume = 0;
         double value = 0;
-        for (MiningRow row : rows) {
-            volume += row.volume();
-            value += row.value() == null ? 0 : row.value();
+        for (Part part : parts) {
+            quantity += part.quantity();
+            volume += part.volume();
+            value += part.value() == null ? 0 : part.value();
         }
-        int days = (int) rows.stream().map(MiningRow::date).distinct().count();
-        return new Summary(label, volume, value, days);
+        int days = (int) parts.stream().map(Part::date).distinct().count();
+        return new Summary(label, countsUnits ? quantity : null, volume, value, days);
     }
 }
