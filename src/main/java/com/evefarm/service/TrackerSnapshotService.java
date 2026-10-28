@@ -11,6 +11,7 @@ import com.evefarm.esi.IndustryApi;
 import com.evefarm.esi.MarketsApi;
 import com.evefarm.esi.SkillsApi;
 import com.evefarm.esi.WalletApi;
+import com.evefarm.esi.dto.CharacterClonesDto;
 import com.evefarm.esi.dto.ContractDto;
 import com.evefarm.esi.dto.IndustryJobDto;
 import com.evefarm.esi.dto.MarketOrderDto;
@@ -21,6 +22,7 @@ import com.evefarm.model.TrackerSnapshot;
 import com.evefarm.model.TypeQuantity;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 public final class TrackerSnapshotService {
@@ -198,7 +200,10 @@ public final class TrackerSnapshotService {
     }
 
     private double implantsValue(long characterId, String accessToken) {
-        List<Integer> implantTypeIds = clonesApi.listImplants(characterId, accessToken);
+        List<Integer> implantTypeIds = new ArrayList<>(clonesApi.listImplants(characterId, accessToken));
+        for (CharacterClonesDto.JumpClone jumpClone : clonesApi.getClones(characterId, accessToken).jumpClones()) {
+            implantTypeIds.addAll(jumpClone.implants());
+        }
         double total = 0;
         for (Integer typeId : implantTypeIds) {
             total += priceService.getUnitPrice(typeId).orElse(0);

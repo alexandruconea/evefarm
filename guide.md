@@ -127,7 +127,8 @@ A chart of your net worth over time. Each point is a snapshot, taken when EVE Fa
 - **Quick Date** picks a range: 1 Day, 1 Week, 2 Weeks, 1 Month, 3 Months, 6 Months, 1 Year or 2 Years. **From** and the date next to it set any range you like.
 - **All Profiles** shows all characters together. Clear it and pick characters in the **Characters** list to see only some of them.
 - **Series** lists the lines in the chart. Click a series to hide it, click again to show it:
-  - Total, Wallet Balance, Assets, Implants, Sell Orders;
+  - Total, Wallet Balance, Assets, Sell Orders;
+  - Implants (the implants in every clone: the one you are in and all your jump clones, so jumping between clones doesn't move the total);
   - Escrows (ISK held for your buy orders) and Escrows To Cover (ISK still needed for them);
   - Manufacturing (the value of what your running manufacturing and reaction jobs will produce, counting every unit a run makes once the Industry tab has downloaded EVE's blueprint data);
   - Contracts (the price and reward of the contracts you issued that are still open, not those issued for your corporation or offered to you by others) and Contract Collateral (the collateral of your open courier contracts and of the courier contracts you are carrying);

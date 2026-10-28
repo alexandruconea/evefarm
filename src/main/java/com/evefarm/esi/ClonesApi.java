@@ -1,5 +1,6 @@
 package com.evefarm.esi;
 
+import com.evefarm.esi.dto.CharacterClonesDto;
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import java.util.List;
@@ -17,5 +18,10 @@ public final class ClonesApi {
         String body = client.get("/characters/" + characterId + "/implants/", accessToken, Map.of());
         return client.read(body, new TypeReference<List<Integer>>() {
         }, "implants");
+    }
+
+    public CharacterClonesDto getClones(long characterId, String accessToken) {
+        String body = client.get("/characters/" + characterId + "/clones/", accessToken, Map.of());
+        return client.read(body, CharacterClonesDto.class, "clones");
     }
 }

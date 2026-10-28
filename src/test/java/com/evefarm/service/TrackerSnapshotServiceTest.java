@@ -11,6 +11,7 @@ import com.evefarm.esi.IndustryApi;
 import com.evefarm.esi.MarketsApi;
 import com.evefarm.esi.SkillsApi;
 import com.evefarm.esi.WalletApi;
+import com.evefarm.esi.dto.CharacterClonesDto;
 import com.evefarm.esi.dto.CharacterSkillsDto;
 import com.evefarm.esi.dto.ContractDto;
 import com.evefarm.esi.dto.IndustryJobDto;
@@ -115,6 +116,31 @@ class TrackerSnapshotServiceTest {
     }
 
     @Test
+    void implantsInEveryCloneCountNotOnlyTheActiveOne() {
+        AuthService auth = mock(AuthService.class);
+        ClonesApi clones = mock(ClonesApi.class);
+        PriceService prices = mock(PriceService.class);
+        SettingsDao settings = mock(SettingsDao.class);
+        when(auth.getValidAccessToken(42L)).thenReturn("token");
+        when(clones.listImplants(42L, "token")).thenReturn(List.of(10209, 10217));
+        when(clones.getClones(42L, "token")).thenReturn(new CharacterClonesDto(List.of(
+                new CharacterClonesDto.JumpClone(List.of(33516, 25868)),
+                new CharacterClonesDto.JumpClone(List.of()))));
+        when(prices.getUnitPrice(10209)).thenReturn(OptionalDouble.of(100.0));
+        when(prices.getUnitPrice(10217)).thenReturn(OptionalDouble.of(200.0));
+        when(prices.getUnitPrice(33516)).thenReturn(OptionalDouble.of(1_000.0));
+        when(prices.getUnitPrice(25868)).thenReturn(OptionalDouble.of(5_000.0));
+        when(settings.getOrDefault(SettingsDao.LP_STORE_FAVORITE_CORPORATION_ID, "")).thenReturn("");
+        TrackerSnapshotService tracker = tracker(auth, mock(WalletApi.class), mock(AssetDao.class),
+                mock(SnapshotDao.class), mock(IndustryApi.class), prices, mock(IndustryCatalogService.class),
+                mock(LoyaltyPointService.class), settings, clones);
+
+        TrackerSnapshot snapshot = tracker.captureSnapshot(42L);
+
+        assertEquals(6_300.0, snapshot.implantsValue(), 1e-9, "the active clone and every jump clone");
+    }
+
+    @Test
     void onlyTheCharactersOwnOpenContractsCount() {
         List<ContractDto> contracts = List.of(
                 contract("item_exchange", "outstanding", 42, null, false, 100, 0, 0),
@@ -159,11 +185,19 @@ class TrackerSnapshotServiceTest {
                                                    IndustryCatalogService catalog, LoyaltyPointService loyalty,
                                                    SettingsDao settings) {
         ClonesApi clones = mock(ClonesApi.class);
+        when(clones.listImplants(42L, "token")).thenReturn(List.of());
+        when(clones.getClones(42L, "token")).thenReturn(new CharacterClonesDto(List.of()));
+        return tracker(auth, wallet, assets, snapshots, industry, prices, catalog, loyalty, settings, clones);
+    }
+
+    private static TrackerSnapshotService tracker(AuthService auth, WalletApi wallet, AssetDao assets,
+                                                   SnapshotDao snapshots, IndustryApi industry, PriceService prices,
+                                                   IndustryCatalogService catalog, LoyaltyPointService loyalty,
+                                                   SettingsDao settings, ClonesApi clones) {
         MarketsApi markets = mock(MarketsApi.class);
         ContractsApi contracts = mock(ContractsApi.class);
         SkillsApi skills = mock(SkillsApi.class);
         SkillPointFilterDao filters = mock(SkillPointFilterDao.class);
-        when(clones.listImplants(42L, "token")).thenReturn(List.of());
         when(markets.listCharacterOrders(42L, "token")).thenReturn(List.of());
         when(contracts.listContracts(42L, "token")).thenReturn(List.of());
         when(skills.getSkills(42L, "token")).thenReturn(new CharacterSkillsDto(0, null, List.of()));
