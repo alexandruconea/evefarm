@@ -5,10 +5,14 @@ import com.auth0.jwk.SigningKeyNotFoundException;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.io.OutputStream;
 import java.math.BigInteger;
+import java.net.InetSocketAddress;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.ECPrivateKey;
@@ -73,6 +77,33 @@ class JwtValidatorTest {
         String token = token("ec-key", "https://login.eveonline.com", Instant.now()).sign(ec());
 
         assertEquals(CHARACTER_ID, validator.validate(token, CLIENT_ID).characterId());
+    }
+
+    @Test
+    void readsTheSigningKeysFromTheSsoServer() throws Exception {
+        byte[] jwks = new ObjectMapper().writeValueAsBytes(Map.of("keys", List.of(
+                rsaJwk("rsa-key", (RSAPublicKey) rsaKeys.getPublic()),
+                ecJwk("ec-key", (ECPublicKey) ecKeys.getPublic()))));
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/oauth/jwks", exchange -> {
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, jwks.length);
+            try (OutputStream out = exchange.getResponseBody()) {
+                out.write(jwks);
+            }
+        });
+        server.start();
+        try {
+            JwtValidator fromServer = new JwtValidator(JwtValidator.jwkProvider(
+                    "http://127.0.0.1:" + server.getAddress().getPort() + "/oauth/jwks"));
+
+            assertEquals(CHARACTER_ID, fromServer.validate(
+                    token("rsa-key", "https://login.eveonline.com", Instant.now()).sign(rsa()), CLIENT_ID).characterId());
+            assertEquals(CHARACTER_ID, fromServer.validate(
+                    token("ec-key", "https://login.eveonline.com", Instant.now()).sign(ec()), CLIENT_ID).characterId());
+        } finally {
+            server.stop(0);
+        }
     }
 
     @Test

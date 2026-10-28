@@ -31,16 +31,16 @@ public final class JwtValidator {
     private final JwkProvider jwkProvider;
 
     public JwtValidator() {
-        this(defaultJwkProvider());
+        this(jwkProvider(JWKS_URL));
     }
 
     JwtValidator(JwkProvider jwkProvider) {
         this.jwkProvider = jwkProvider;
     }
 
-    private static JwkProvider defaultJwkProvider() {
+    static JwkProvider jwkProvider(String url) {
         try {
-            return new UrlJwkProvider(URI.create(JWKS_URL).toURL(), JWKS_TIMEOUT_MILLIS, JWKS_TIMEOUT_MILLIS, null,
+            return new UrlJwkProvider(URI.create(url).toURL(), JWKS_TIMEOUT_MILLIS, JWKS_TIMEOUT_MILLIS, null,
                     Map.of("User-Agent", AppInfo.userAgent()));
         } catch (MalformedURLException e) {
             throw new IllegalStateException("Invalid JWKS URL", e);
