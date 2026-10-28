@@ -62,7 +62,7 @@ public final class LpOfferDepthService {
         }
     }
 
-    public record Result(int times, long lp, double isk, List<Purchase> purchases, Double otherCost, Sale sellOrder,
+    public record Result(long lp, double isk, List<Purchase> purchases, Double otherCost, Sale sellOrder,
                          Sale buyOrders) {
     }
 
@@ -149,7 +149,7 @@ public final class LpOfferDepthService {
         Fill bought = fill(buyOrders(output, orders.jumpsToJita()), units);
         Sale buyOrders = sale(units, bought.units(), bought.units() > 0 ? bought.isk() / bought.units() : null, lp,
                 isk, otherCost, fees.salesTax(), 0);
-        return new Result(times, lp, isk, purchases, otherCost, sellOrder, buyOrders);
+        return new Result(lp, isk, purchases, otherCost, sellOrder, buyOrders);
     }
 
     private static List<LpRequiredItem> items(LpOfferRow offer) {

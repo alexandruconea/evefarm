@@ -8,7 +8,7 @@ public final class ComboSizing {
 
     public static final int NAME_WIDTH = 220;
     private static final int SLACK = 12;
-    private static final String PROBE = "Malpais Legate";
+    private static final String PROBE = "Character Name";
 
     public static void names(JComboBox<?> combo) {
         fix(combo, NAME_WIDTH);

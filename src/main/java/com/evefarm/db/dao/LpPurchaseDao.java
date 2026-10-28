@@ -7,7 +7,6 @@ import com.evefarm.model.LpPurchase;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -22,20 +21,16 @@ public final class LpPurchaseDao {
         this.database = database;
     }
 
-    public long insert(LpPurchase purchase) {
-        return database.transactionResult("Failed to save the LP Store purchase", connection -> {
+    public void insert(LpPurchase purchase) {
+        database.transaction("Failed to save the LP Store purchase", connection -> {
             try (PreparedStatement ps = connection.prepareStatement("""
                     INSERT INTO lp_purchase(character_id, corporation_id, corporation_name, offer_id, type_id,
                       type_name, offers, units, lp_spent, isk_spent, other_cost, target_isk_per_lp, purchased_at,
                       journal_entry_id, used_units, notes)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, Statement.RETURN_GENERATED_KEYS)) {
+                    """)) {
                 bind(ps, purchase);
                 ps.executeUpdate();
-                try (ResultSet keys = ps.getGeneratedKeys()) {
-                    keys.next();
-                    return keys.getLong(1);
-                }
             }
         });
     }

@@ -7,7 +7,6 @@ public record MiningRow(
         String characterName,
         String date,
         String systemName,
-        int typeId,
         String oreName,
         String kind,
         long quantity,

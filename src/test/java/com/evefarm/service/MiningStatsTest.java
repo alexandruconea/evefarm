@@ -14,18 +14,18 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class MiningStatsTest {
 
     private static MiningRow mined(String character, String date, String ore, long quantity, double unitValue) {
-        return new MiningRow(1, character, date, "Jita", 1, ore, "Ore", quantity, quantity * 0.1, unitValue, 1,
+        return new MiningRow(1, character, date, "Jita", ore, "Ore", quantity, quantity * 0.1, unitValue, 1,
                 List.of());
     }
 
     private static MiningRow refined(String date, String ore, long quantity, List<RefinedMaterial> materials) {
         double value = materials.stream().mapToDouble(m -> m.value() == null ? 0 : m.value()).sum();
-        return new MiningRow(1, "Nozeu", date, "Jita", 1, ore, "Ore", quantity, quantity * 0.1, value / quantity, 1,
+        return new MiningRow(1, "Nozeu", date, "Jita", ore, "Ore", quantity, quantity * 0.1, value / quantity, 1,
                 materials);
     }
 
     private static RefinedMaterial material(String name, double quantity, Double value) {
-        return new RefinedMaterial(1, name, quantity, quantity * 0.01, value);
+        return new RefinedMaterial(name, quantity, quantity * 0.01, value);
     }
 
     private static final List<MiningRow> ROWS = List.of(

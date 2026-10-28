@@ -22,11 +22,7 @@ public final class ColumnCopySupport {
     }
 
     public static <T> void install(JTable table, ColumnTableModel<T> model) {
-        install(table, model, null);
-    }
-
-    public static <T> void install(JTable table, ColumnTableModel<T> model, CustomCopy<T> customCopy) {
-        install(table, model, customCopy, null);
+        install(table, model, null, null);
     }
 
     public static <T> void install(JTable table, ColumnTableModel<T> model, CustomCopy<T> customCopy,

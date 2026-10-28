@@ -5,7 +5,7 @@ import com.evefarm.model.EveCharacter;
 
 final class CharacterScopes {
 
-    static EveCharacter require(CharacterDao characterDao, long characterId, String scope, String purpose) {
+    static void require(CharacterDao characterDao, long characterId, String scope, String purpose) {
         EveCharacter character = characterDao.listAll().stream()
                 .filter(candidate -> candidate.characterId() == characterId)
                 .findFirst()
@@ -14,7 +14,6 @@ final class CharacterScopes {
             throw new IllegalStateException("Add " + character.characterName() + " again (File > Characters... > "
                     + "Add Character...) so EVE Farm may read its " + purpose + ".");
         }
-        return character;
     }
 
     private CharacterScopes() {

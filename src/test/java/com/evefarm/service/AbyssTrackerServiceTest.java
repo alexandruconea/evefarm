@@ -101,7 +101,6 @@ class AbyssTrackerServiceTest {
         assertEquals(9_500_000.0, run.filamentCost());
         assertEquals(List.of(run), runs.listRuns());
         assertEquals(AbyssTrackerService.Phase.WAITING, tracker.status().phase());
-        assertEquals(1, tracker.status().runsSaved());
     }
 
     @Test

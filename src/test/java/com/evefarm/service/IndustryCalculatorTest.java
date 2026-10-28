@@ -145,7 +145,8 @@ class IndustryCalculatorTest {
 
         assertEquals(288_000, built.materials().get(0).quantity());
         assertEquals(10, built.materials().get(1).quantity());
-        assertEquals(288_000 * 4.0 + 10 * 10.0, built.materialsCost(), 1e-6);
+        assertEquals(4.0, built.materials().get(0).unitPrice());
+        assertEquals(10.0, built.materials().get(1).unitPrice());
         assertEquals(320_000 * 3.5 + 10 * 8.0, built.estimatedItemValue(), 1e-6);
         assertEquals(built.estimatedItemValue() * (0.02 + 0.0025 + 0.04), built.jobFee(), 1e-6);
         assertEquals(10, built.units());

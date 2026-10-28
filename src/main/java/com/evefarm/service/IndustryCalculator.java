@@ -156,8 +156,8 @@ public final class IndustryCalculator {
         }
     }
 
-    public record Manufacturing(List<MaterialLine> materials, double materialsCost, double estimatedItemValue,
-                                double jobFee, long units, int jobs, Duration time) {
+    public record Manufacturing(List<MaterialLine> materials, double estimatedItemValue, double jobFee, long units,
+                                int jobs, Duration time) {
     }
 
     public record Invention(double chance, int runsPerCopy, int me, int te, double costPerRun) {
@@ -240,7 +240,6 @@ public final class IndustryCalculator {
                                             double costIndex, double timeMultiplier, Map<Integer, Double> prices,
                                             Map<Integer, Double> adjustedPrices) {
         List<MaterialLine> lines = new ArrayList<>();
-        double materialsCost = 0;
         for (TypeQuantity material : activity.materials()) {
             long quantity = jobs.fullJobs() * materialQuantity(material.quantity(), jobs.runsPerFullJob(), me,
                     facility.materialMultiplier());
@@ -248,18 +247,14 @@ public final class IndustryCalculator {
                 quantity += materialQuantity(material.quantity(), jobs.lastJobRuns(), me,
                         facility.materialMultiplier());
             }
-            MaterialLine line = new MaterialLine(material.typeId(), quantity,
-                    prices.getOrDefault(material.typeId(), 0.0));
-            lines.add(line);
-            materialsCost += line.total();
+            lines.add(new MaterialLine(material.typeId(), quantity, prices.getOrDefault(material.typeId(), 0.0)));
         }
         double estimatedItemValue = estimatedItemValue(activity.materials(), jobs.runs(), adjustedPrices);
         TypeQuantity product = activity.product();
         long units = product == null ? 0 : product.quantity() * jobs.runs();
         double secondsPerRun = activity.timeSeconds() * (1 - te / 100.0) * facility.timeMultiplier() * timeMultiplier;
-        return new Manufacturing(List.copyOf(lines), materialsCost, estimatedItemValue,
-                facility.jobFee(estimatedItemValue, costIndex), units, jobs.count(),
-                Duration.ofSeconds(Math.round(elapsedSeconds(jobs, secondsPerRun))));
+        return new Manufacturing(List.copyOf(lines), estimatedItemValue, facility.jobFee(estimatedItemValue, costIndex),
+                units, jobs.count(), Duration.ofSeconds(Math.round(elapsedSeconds(jobs, secondsPerRun))));
     }
 
     private static double elapsedSeconds(Jobs jobs, double secondsPerRun) {

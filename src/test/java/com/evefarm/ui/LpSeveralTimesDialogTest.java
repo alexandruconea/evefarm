@@ -39,12 +39,12 @@ class LpSeveralTimesDialogTest {
         Purchase bought = new Purchase(TAGS, false, 50, 130, 1_000_000.0, 50, 56_000_000);
 
         assertEquals("Cost: 50,000 LP + 5,000,000.00 ISK + 56,000,000.00 ISK for the items = 61,000,000.00 ISK",
-                LpSeveralTimesDialog.costText(new Result(5, 50_000, 5_000_000, List.of(bought), 56_000_000.0,
+                LpSeveralTimesDialog.costText(new Result(50_000, 5_000_000, List.of(bought), 56_000_000.0,
                         SOLD, SOLD)));
         assertEquals("Cost: 50,000 LP + 5,000,000.00 ISK, and Jita 4-4 hasn't all the items",
-                LpSeveralTimesDialog.costText(new Result(5, 50_000, 5_000_000, List.of(bought), null, SOLD, SOLD)));
+                LpSeveralTimesDialog.costText(new Result(50_000, 5_000_000, List.of(bought), null, SOLD, SOLD)));
         assertEquals("Cost: 50,000 LP + 5,000,000.00 ISK",
-                LpSeveralTimesDialog.costText(new Result(5, 50_000, 5_000_000, List.of(), 0.0, SOLD, SOLD)));
+                LpSeveralTimesDialog.costText(new Result(50_000, 5_000_000, List.of(), 0.0, SOLD, SOLD)));
     }
 
     @Test
@@ -58,9 +58,9 @@ class LpSeveralTimesDialogTest {
                         + "Nobody sells Tritanium in Jita 4-4.\n"
                         + "Nobody sells Imperial Navy Heat Sink in Jita 4-4, so there is no lowest sell price.\n"
                         + "The buy orders that reach Jita 4-4 take only 2 of the 5 Imperial Navy Heat Sink.",
-                LpSeveralTimesDialog.warnings(new Result(5, 50_000, 5_000_000, List.of(few, none), null, noSellers,
+                LpSeveralTimesDialog.warnings(new Result(50_000, 5_000_000, List.of(few, none), null, noSellers,
                         fewBuyers), "Imperial Navy Heat Sink"));
-        assertEquals("", LpSeveralTimesDialog.warnings(new Result(5, 50_000, 5_000_000, List.of(), 0.0, SOLD, SOLD),
+        assertEquals("", LpSeveralTimesDialog.warnings(new Result(50_000, 5_000_000, List.of(), 0.0, SOLD, SOLD),
                 "Imperial Navy Heat Sink"));
     }
 

@@ -133,7 +133,7 @@ public final class MiningService {
         List<RefinedMaterial> materials = refines(valuation, ore, prices)
                 ? refinedMaterials(row.quantity(), ore, prices, refineRate, types)
                 : List.of();
-        return new MiningRow(row.characterId(), row.characterName(), row.date(), row.systemName(), row.typeId(),
+        return new MiningRow(row.characterId(), row.characterName(), row.date(), row.systemName(),
                 row.oreName(), kind(row.groupName()), row.quantity(), row.quantity() * row.unitVolume(),
                 unitValue(valuation, row.typeId(), ore, prices, refineRate),
                 compressed == null ? row.typeId() : compressed, materials);
@@ -192,7 +192,7 @@ public final class MiningService {
                     TypeInfo type = types.apply(material.getKey());
                     double amount = material.getValue() * portions * refineRate;
                     Double price = prices.get(material.getKey());
-                    return new RefinedMaterial(material.getKey(), type.name(), amount, amount * type.volume(),
+                    return new RefinedMaterial(type.name(), amount, amount * type.volume(),
                             price == null ? null : price * amount);
                 })
                 .toList();

@@ -46,8 +46,6 @@ import java.awt.PopupMenu;
 import java.awt.SystemTray;
 import java.awt.Taskbar;
 import java.awt.TrayIcon;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
@@ -171,7 +169,7 @@ public final class MainFrame extends JFrame {
         });
 
         if (appContext.characterService.listCharacters().isEmpty()) {
-            SwingUtilities.invokeLater(() -> charactersItemActionPerformed(null));
+            SwingUtilities.invokeLater(this::showCharacters);
         }
 
         setupUpdates();
@@ -348,8 +346,7 @@ public final class MainFrame extends JFrame {
     }
 
     private void showUpdateDialog(ReleaseInfo release) {
-        new AppUpdateDialog(this, appContext, release,
-                () -> dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING))).setVisible(true);
+        new AppUpdateDialog(this, appContext, release, this::exitApplication).setVisible(true);
         if (appContext.updateService.isSkipped(release)) {
             updateAvailableButton.setVisible(false);
         }
@@ -404,7 +401,7 @@ public final class MainFrame extends JFrame {
         MenuItem openItem = new MenuItem("Open");
         openItem.addActionListener(e -> restoreFromTray());
         MenuItem exit = new MenuItem("Exit");
-        exit.addActionListener(e -> dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING)));
+        exit.addActionListener(e -> exitApplication());
         popup.add(openItem);
         popup.addSeparator();
         popup.add(exit);
@@ -509,7 +506,7 @@ public final class MainFrame extends JFrame {
         close.setEnabled(tabbedPane.getTabCount() > 1);
         close.addActionListener(event -> closeTab(key));
         JMenuItem showTabs = new JMenuItem("Show Tabs...", Icons.EYE);
-        showTabs.addActionListener(this::showTabsItemActionPerformed);
+        showTabs.addActionListener(event -> showTabVisibility());
         menu.add(close);
         menu.addSeparator();
         menu.add(showTabs);
@@ -594,20 +591,12 @@ public final class MainFrame extends JFrame {
         fileMenu.setText("File");
 
         charactersItem.setText("Characters...");
-        charactersItem.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent evt) {
-                charactersItemActionPerformed(evt);
-            }
-        });
+        charactersItem.addActionListener(e -> showCharacters());
         fileMenu.add(charactersItem);
         fileMenu.add(jSeparator1);
 
         exitItem.setText("Exit");
-        exitItem.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent evt) {
-                exitItemActionPerformed(evt);
-            }
-        });
+        exitItem.addActionListener(e -> exitApplication());
         fileMenu.add(exitItem);
 
         jMenuBar1.add(fileMenu);
@@ -615,11 +604,7 @@ public final class MainFrame extends JFrame {
         updateMenu.setText("Update");
 
         updateItem.setText("Update...");
-        updateItem.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent evt) {
-                updateItemActionPerformed(evt);
-            }
-        });
+        updateItem.addActionListener(e -> showDataUpdate());
         updateMenu.add(updateItem);
 
         jMenuBar1.add(updateMenu);
@@ -627,36 +612,20 @@ public final class MainFrame extends JFrame {
         optionsMenu.setText("Options");
 
         settingsItem.setText("Settings...");
-        settingsItem.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent evt) {
-                settingsItemActionPerformed(evt);
-            }
-        });
+        settingsItem.addActionListener(e -> showSettings());
         optionsMenu.add(settingsItem);
 
         showTabsItem.setText("Show Tabs...");
-        showTabsItem.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent evt) {
-                showTabsItemActionPerformed(evt);
-            }
-        });
+        showTabsItem.addActionListener(e -> showTabVisibility());
         optionsMenu.add(showTabsItem);
         optionsMenu.add(jSeparator2);
 
         backupItem.setText("Backup Data...");
-        backupItem.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent evt) {
-                backupItemActionPerformed(evt);
-            }
-        });
+        backupItem.addActionListener(e -> backupData());
         optionsMenu.add(backupItem);
 
         restoreItem.setText("Restore Data...");
-        restoreItem.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent evt) {
-                restoreItemActionPerformed(evt);
-            }
-        });
+        restoreItem.addActionListener(e -> restoreData());
         optionsMenu.add(restoreItem);
 
         jMenuBar1.add(optionsMenu);
@@ -671,17 +640,17 @@ public final class MainFrame extends JFrame {
         pack();
     }
 
-    private void charactersItemActionPerformed(ActionEvent evt) {
+    private void showCharacters() {
         CharactersDialog dialog = new CharactersDialog(this, appContext, this::onCharactersChanged);
         dialog.setVisible(true);
     }
 
-    private void settingsItemActionPerformed(ActionEvent evt) {
+    private void showSettings() {
         SettingsDialog dialog = new SettingsDialog(this, appContext.settingsDao);
         dialog.setVisible(true);
     }
 
-    private void showTabsItemActionPerformed(ActionEvent evt) {
+    private void showTabVisibility() {
         Map<String, String> labels = new LinkedHashMap<>();
         for (Map.Entry<String, TabSpec> entry : orderedTabSpecs().entrySet()) {
             labels.put(entry.getKey(), entry.getValue().label());
@@ -690,7 +659,7 @@ public final class MainFrame extends JFrame {
         dialog.setVisible(true);
     }
 
-    private void backupItemActionPerformed(ActionEvent evt) {
+    private void backupData() {
         JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle("Backup Data");
         chooser.setSelectedFile(new File(BackupRestoreService.defaultBackupFileName()));
@@ -712,7 +681,7 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    private void restoreItemActionPerformed(ActionEvent evt) {
+    private void restoreData() {
         int confirm = JOptionPane.showConfirmDialog(this,
                 "Restoring will replace ALL current data with the chosen backup, and the app will "
                         + "close so the restore can be applied on next launch.\n\n"
@@ -753,14 +722,14 @@ public final class MainFrame extends JFrame {
         JOptionPane.showMessageDialog(this,
                 "Restore staged. The app will now close - reopen it to finish the restore.",
                 "Restore Data", JOptionPane.INFORMATION_MESSAGE);
+        exitApplication();
+    }
+
+    private void exitApplication() {
         dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
     }
 
-    private void exitItemActionPerformed(ActionEvent evt) {
-        dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
-    }
-
-    private void updateItemActionPerformed(ActionEvent evt) {
+    private void showDataUpdate() {
         new UpdateDialog(this, dataUpdater).setVisible(true);
     }
 
@@ -798,7 +767,7 @@ public final class MainFrame extends JFrame {
         int choice = JOptionPane.showOptionDialog(this, panel, title, JOptionPane.DEFAULT_OPTION,
                 JOptionPane.WARNING_MESSAGE, null, options, options[0]);
         if (choice == 0) {
-            charactersItemActionPerformed(null);
+            showCharacters();
         }
     }
 

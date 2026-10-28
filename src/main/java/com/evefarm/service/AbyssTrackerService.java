@@ -40,9 +40,9 @@ public final class AbyssTrackerService {
     public enum EventType { STARTED, ENTERED_ABYSS, LEFT_ABYSS, STOPPED, PROBLEM }
 
     public record Status(Phase phase, Long characterId, String characterName, AbyssFleet fleet, Instant enteredAt,
-                         int runsSaved, String message) {
-        static Status stopped(String message) {
-            return new Status(Phase.STOPPED, null, null, null, null, 0, message);
+                         String message) {
+        static Status stopped() {
+            return new Status(Phase.STOPPED, null, null, null, null, null);
         }
     }
 
@@ -78,7 +78,6 @@ public final class AbyssTrackerService {
         Integer shipTypeId;
         String shipName;
         Instant lastActivity;
-        int runsSaved;
         String message;
         Future<?> task;
 
@@ -93,7 +92,7 @@ public final class AbyssTrackerService {
         }
 
         Status status() {
-            return new Status(phase, characterId, characterName, fleet, enteredAt, runsSaved, message);
+            return new Status(phase, characterId, characterName, fleet, enteredAt, message);
         }
     }
 
@@ -105,7 +104,7 @@ public final class AbyssTrackerService {
     private final PollScheduler scheduler;
     private final List<Listener> listeners = new CopyOnWriteArrayList<>();
     private Session session;
-    private Status lastStatus = Status.stopped(null);
+    private Status lastStatus = Status.stopped();
 
     public AbyssTrackerService(AuthService authService, LocationApi locationApi,
                                TypeNameCacheService typeNameCacheService, AbyssLootService lootService,
@@ -206,7 +205,7 @@ public final class AbyssTrackerService {
             }
             cancelTask();
             lastStatus = new Status(Phase.STOPPED, session.characterId, session.characterName, session.fleet, null,
-                    session.runsSaved, message);
+                    message);
             session = null;
             status = lastStatus;
         }
@@ -305,7 +304,6 @@ public final class AbyssTrackerService {
             current.phase = Phase.WAITING;
             current.enteredAt = null;
             current.lastActivity = now;
-            current.runsSaved++;
             current.message = survived
                     ? current.characterName + " left the Abyss, run saved"
                     : current.characterName + " left the Abyss in a capsule, run saved as lost";

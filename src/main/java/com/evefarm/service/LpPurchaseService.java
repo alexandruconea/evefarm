@@ -189,8 +189,8 @@ public final class LpPurchaseService {
                 offer.iskCost() * times, otherPerOffer * times, target, purchasedAt, journalEntryId, 0, null);
     }
 
-    public long record(LpPurchase purchase) {
-        return lpPurchaseDao.insert(purchase);
+    public void record(LpPurchase purchase) {
+        lpPurchaseDao.insert(purchase);
     }
 
     public void update(LpPurchase purchase) {

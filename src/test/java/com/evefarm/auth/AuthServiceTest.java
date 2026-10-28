@@ -186,7 +186,7 @@ class AuthServiceTest {
         TokenDao tokens = mock(TokenDao.class);
         EveSsoClient sso = mock(EveSsoClient.class);
         AuthService service = new AuthService(mock(CharacterDao.class), tokens, sso, mock(JwtValidator.class));
-        when(tokens.find(42L)).thenReturn(Optional.of(TokenRecord.active("refresh")), Optional.empty());
+        when(tokens.find(42L)).thenReturn(Optional.of(TokenRecord.active("refresh"))).thenReturn(Optional.empty());
         when(sso.refreshAccessToken(any(), eq("refresh"))).thenReturn(new TokenResponse("access", "refresh", 1199));
         when(tokens.saveRefreshedLogin(42L, "refresh")).thenReturn(true);
         service.getValidAccessToken(42L);
