@@ -61,6 +61,8 @@ public final class SettingsDao {
     public static final String INDUSTRY_SURPLUS = "industry_surplus";
     public static final String INDUSTRY_STOCK = "industry_stock";
     public static final String SKILLS_DIVIDER = "skills_divider";
+    public static final String MISSION_REPORT_PERIOD = "mission_report_period";
+    public static final String MISSION_REPORT_DIVIDER = "mission_report_split";
     public static final String ABYSS_CARGO_PREFIX = "abyss_cargo_";
     public static final String MARKET_ORDERS_SHOW_CLOSED = "market_orders_show_closed";
     public static final String NOTIFY_INDUSTRY_JOBS = "notify_industry_jobs";

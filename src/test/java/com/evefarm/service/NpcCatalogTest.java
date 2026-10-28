@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class NpcCatalogTest {
@@ -53,6 +54,21 @@ class NpcCatalogTest {
         assertEquals(Set.of("Estamel Tharchon"), CATALOG.officerNames());
         assertEquals(Optional.of("Burner Hawk"), CATALOG.nameForTypeId(34155));
         assertTrue(CATALOG.nameForTypeId(1).isEmpty());
+    }
+
+    @Test
+    void missionGroupsAndBurnersAreMissionNpcs() {
+        NpcCatalog catalog = NpcCatalog.of(List.of(
+                new NpcType(34155, "Burner Jaguar", 818, "Mission Generic Frigates"),
+                new NpcType(34189, "Burner Clone Soldier Transport", 790, "Asteroid Angel Cartel Hauler"),
+                new NpcType(12256, "Zor", 816, "Mission Generic Battleships"),
+                new NpcType(32960, "Matriarch Alvus", 1174, "Deadspace Rogue Drone Battleship")));
+
+        assertTrue(catalog.isMissionNpc(34155));
+        assertTrue(catalog.isMissionNpc(34189));
+        assertTrue(catalog.isMissionNpc(12256));
+        assertFalse(catalog.isMissionNpc(32960));
+        assertFalse(catalog.isMissionNpc(1));
     }
 
     @Test

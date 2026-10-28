@@ -12,14 +12,20 @@ import javax.swing.JTable;
 import javax.swing.SwingConstants;
 import javax.swing.UIManager;
 import javax.swing.border.Border;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.TableColumnModelEvent;
+import javax.swing.event.TableColumnModelListener;
 import javax.swing.plaf.BorderUIResource;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
+import javax.swing.table.TableColumnModel;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.util.function.Function;
 
 public final class TableStyler {
 
@@ -144,6 +150,45 @@ public final class TableStyler {
             }
             column.setPreferredWidth(packed);
         }
+    }
+
+    // Sizes the columns from sample text instead of the rows, so they keep their widths when the rows change
+    public static void sizeColumnsFromSamples(JTable table, Function<Object, String> sampleForKey) {
+        TableColumnModel columns = table.getColumnModel();
+        for (int col = 0; col < columns.getColumnCount(); col++) {
+            sizeFromSample(table, columns.getColumn(col), sampleForKey);
+        }
+        columns.addColumnModelListener(new TableColumnModelListener() {
+            @Override
+            public void columnAdded(TableColumnModelEvent e) {
+                sizeFromSample(table, columns.getColumn(e.getToIndex()), sampleForKey);
+            }
+
+            @Override
+            public void columnRemoved(TableColumnModelEvent e) {
+            }
+
+            @Override
+            public void columnMoved(TableColumnModelEvent e) {
+            }
+
+            @Override
+            public void columnMarginChanged(ChangeEvent e) {
+            }
+
+            @Override
+            public void columnSelectionChanged(ListSelectionEvent e) {
+            }
+        });
+    }
+
+    private static void sizeFromSample(JTable table, TableColumn column, Function<Object, String> sampleForKey) {
+        Component header = table.getTableHeader().getDefaultRenderer().getTableCellRendererComponent(
+                table, column.getHeaderValue(), false, false, -1, 0);
+        Component sample = table.getDefaultRenderer(Object.class).getTableCellRendererComponent(
+                table, sampleForKey.apply(column.getIdentifier()), false, false, 0, 0);
+        int width = Math.max(header.getPreferredSize().width, sample.getPreferredSize().width);
+        column.setPreferredWidth(Math.min(width + PACK_MARGIN_PX, PACK_MAX_WIDTH_PX));
     }
 
     private TableStyler() {

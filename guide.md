@@ -175,7 +175,7 @@ Your industry jobs: activity (manufacturing, research, copying, invention, react
 
 ### LP Store
 
-What your loyalty points are worth in each corporation's LP store, and how much LP you earn each day. It has two tabs: **Offers** and **LP per Day**.
+What your loyalty points are worth in each corporation's LP store, how much LP you earn each day and what your missions bring in. It has three tabs: **Offers**, **LP per Day** and **Report**.
 
 In **Offers**:
 
@@ -209,6 +209,20 @@ For each offer you see the item, quantity, LP cost, ISK cost, the other items it
 - EVE only shows how much LP you have, not when you earned it, and it renews that number once an hour. EVE Farm reads it as soon as EVE has new data, counts what went up since the read before, and puts it at the time EVE's data is from. Reading more often wouldn't bring anything new, so **Update** doesn't read it again before EVE renews it either. The line under the summary says how fresh your LP is and when the next read is; hover **Your LP** in **Offers** to see the same.
 - LP you earned while EVE Farm was closed shows on the day it reads it next, with a mark in the corner of the square, and the hover tip says since when. LP you spend between two reads isn't seen.
 - Squares with only an outline are days before EVE Farm started saving your LP.
+
+**Report** adds up the LP you earned and the ISK your missions brought in over a day, a week or a month.
+
+- Pick **Day**, **Week** or **Month**, then use **<** and **>** to go to the one before or after. **Today** goes back to the one you are in. Weeks start on the first day of the week of your computer's settings, as in **LP per Day**.
+- Pick a **Character:** to see only theirs.
+- **Missions turned in** counts the missions you completed. A mission that pays only a time bonus counts too.
+- **ISK from missions** is the mission rewards, the time bonuses and the bounties of the NPCs you killed in missions, after corporation tax:
+  - **Bounties for mission NPCs**: NPCs that only spawn in missions, such as burners.
+  - **Other bounties near a turn-in**: other NPCs, such as those of level 5 missions, when EVE paid their bounty up to 30 minutes after or an hour before a mission turn-in of the same character. EVE pays bounties every 20 minutes, so the last kills of a mission are often paid just after you turn it in.
+  - **Not counted: other bounties** are bounties far from any turn-in, such as ratting. They are shown, but not added to the mission ISK.
+- **LP earned** is the LP your characters earned with each corporation, counted as in **LP per Day**. **Worth at** values it at your **Set ISK/LP Target...**, and **ISK and LP together** adds it to the mission ISK.
+- **By day** lists each day of the report, and **By agent** each agent you ran missions for. A bounty counts for the agent of the turn-in closest to it; mission NPC bounties far from any turn-in are listed as **No turn-in nearby**.
+- **Save Report...** saves the report as a text file.
+- The ISK comes from your wallet journal, so run **Update** with **Journal** ticked first. EVE shows only the last 30 days of the journal, and EVE Farm keeps it from then on. LP is counted only since EVE Farm started saving it. **Save Report...** notes when that was.
 
 ### LP Purchases
 

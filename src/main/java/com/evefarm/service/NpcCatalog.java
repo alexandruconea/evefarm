@@ -5,6 +5,7 @@ import com.evefarm.model.SpawnClass;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -20,18 +21,25 @@ public final class NpcCatalog {
 
     private final Map<String, Entry> byName;
     private final Map<Integer, String> nameByTypeId;
+    private final Set<Integer> missionTypeIds;
 
-    private NpcCatalog(Map<String, Entry> byName, Map<Integer, String> nameByTypeId) {
+    private NpcCatalog(Map<String, Entry> byName, Map<Integer, String> nameByTypeId, Set<Integer> missionTypeIds) {
         this.byName = byName;
         this.nameByTypeId = nameByTypeId;
+        this.missionTypeIds = missionTypeIds;
     }
 
     public static NpcCatalog of(List<NpcType> types) {
         Map<String, List<NpcType>> grouped = new HashMap<>();
         Map<Integer, String> nameByTypeId = new HashMap<>();
+        Set<Integer> missionTypeIds = new HashSet<>();
         for (NpcType type : types) {
             grouped.computeIfAbsent(type.typeName(), n -> new ArrayList<>()).add(type);
             nameByTypeId.put(type.typeId(), type.typeName());
+            // EVE files the burners' Clone Soldier Transport under an asteroid group, so the name counts too
+            if (type.groupName().startsWith("Mission ") || type.typeName().startsWith("Burner ")) {
+                missionTypeIds.add(type.typeId());
+            }
         }
         Map<String, Entry> byName = new HashMap<>();
         for (Map.Entry<String, List<NpcType>> entry : grouped.entrySet()) {
@@ -48,7 +56,7 @@ public final class NpcCatalog {
             }
             byName.put(entry.getKey(), new Entry(entry.getKey(), best.groupName(), bestClass, List.copyOf(typeIds)));
         }
-        return new NpcCatalog(byName, nameByTypeId);
+        return new NpcCatalog(byName, nameByTypeId, Set.copyOf(missionTypeIds));
     }
 
     public boolean isEmpty() {
@@ -66,6 +74,10 @@ public final class NpcCatalog {
 
     public Optional<String> nameForTypeId(int typeId) {
         return Optional.ofNullable(nameByTypeId.get(typeId));
+    }
+
+    public boolean isMissionNpc(int typeId) {
+        return missionTypeIds.contains(typeId);
     }
 
     public Set<String> officerNames() {

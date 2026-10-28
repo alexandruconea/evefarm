@@ -153,6 +153,38 @@ public final class WalletJournalDao {
         }
     }
 
+    public record MissionIncomeEntry(long characterId, String characterName, Instant date, String refType,
+                                     double amount, String reason, String agentName) {
+    }
+
+    public List<MissionIncomeEntry> findMissionIncome() {
+        String sql = """
+                SELECT j.character_id, c.character_name, j.date, j.ref_type, j.amount, j.reason,
+                       CASE WHEN j.ref_type = 'bounty_prizes' OR j.first_party_id IS NULL THEN NULL
+                            ELSE COALESCE(e.name, 'Agent #' || j.first_party_id) END AS agent_name
+                FROM wallet_journal_entry j
+                JOIN characters c ON c.character_id = j.character_id
+                LEFT JOIN entity_name_cache e ON e.entity_id = j.first_party_id
+                WHERE c.removed_at IS NULL
+                  AND j.ref_type IN ('agent_mission_reward', 'agent_mission_time_bonus_reward', 'bounty_prizes')
+                ORDER BY j.date
+                """;
+        synchronized (database) {
+            List<MissionIncomeEntry> result = new ArrayList<>();
+            try (PreparedStatement ps = database.connection().prepareStatement(sql);
+                 ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    result.add(new MissionIncomeEntry(rs.getLong("character_id"), rs.getString("character_name"),
+                            Instant.parse(rs.getString("date")), rs.getString("ref_type"), rs.getDouble("amount"),
+                            rs.getString("reason"), rs.getString("agent_name")));
+                }
+            } catch (SQLException e) {
+                throw new IllegalStateException("Failed to read the mission income", e);
+            }
+            return result;
+        }
+    }
+
     public record LpStorePayment(long characterId, long entryId, Instant date, double amount, long corporationId) {
     }
 
