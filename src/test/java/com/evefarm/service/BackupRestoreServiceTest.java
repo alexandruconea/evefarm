@@ -140,4 +140,59 @@ class BackupRestoreServiceTest {
         assertThrows(IOException.class,
                 () -> BackupRestoreService.ensureSafeBackupTarget(pending, live, pending));
     }
+
+    @Test
+    void onlyTheNewestCopiesFromBeforeARestoreAreKept(@TempDir Path directory) throws Exception {
+        for (String stamp : List.of("20260901-120000", "20260915-080000", "20261001-210000", "20261020-093000",
+                "20261028-235959")) {
+            Files.writeString(directory.resolve("evefarm-before-restore-" + stamp + ".db"), stamp);
+        }
+        Files.writeString(directory.resolve("evefarm-before-restore-20260901-120000.db-wal"), "");
+        Files.writeString(directory.resolve("evefarm-before-restore-notes.db"), "");
+        Files.writeString(directory.resolve("evefarm.db"), "live");
+
+        BackupRestoreService.pruneBeforeRestoreCopies(directory, 3);
+
+        assertEquals(Set.of("evefarm-before-restore-20261001-210000.db", "evefarm-before-restore-20261020-093000.db",
+                        "evefarm-before-restore-20261028-235959.db", "evefarm-before-restore-notes.db", "evefarm.db"),
+                Set.of(directory.toFile().list()));
+    }
+
+    @Test
+    void stagingARestoreReplacesTheEarlierChoiceWithACompleteCopy(@TempDir Path directory) throws Exception {
+        Database database = new Database(":memory:");
+        MigrationRunner.run(database);
+        SettingsDao settings = new SettingsDao(database);
+        settings.set(SettingsDao.LAF_THEME, "adwaita");
+        BackupRestoreService service = new BackupRestoreService(database, settings);
+        Path source = directory.resolve("evefarm-backup.db");
+        Path pending = directory.resolve("pending-restore.db");
+        service.backupTo(source);
+        Files.writeString(pending, "an earlier choice");
+
+        assertEquals(List.of(), service.stage(source, pending, null));
+
+        assertEquals(Set.of("evefarm-backup.db", "pending-restore.db"), Set.of(directory.toFile().list()));
+        Database staged = new Database(pending.toString());
+        try {
+            assertEquals("adwaita", new SettingsDao(staged).getOrDefault(SettingsDao.LAF_THEME, ""));
+        } finally {
+            staged.close();
+        }
+    }
+
+    @Test
+    void aStagingThatFailsLeavesNoPartialCopyBehind(@TempDir Path directory) throws Exception {
+        Database database = new Database(":memory:");
+        MigrationRunner.run(database);
+        BackupRestoreService service = new BackupRestoreService(database, new SettingsDao(database));
+        Path source = directory.resolve("evefarm-backup.db");
+        Path pending = directory.resolve("pending-restore.db");
+        service.backupTo(source);
+        Files.createDirectories(pending.resolve("in-the-way"));
+
+        assertThrows(IOException.class, () -> service.stage(source, pending, null));
+
+        assertEquals(Set.of("evefarm-backup.db", "pending-restore.db"), Set.of(directory.toFile().list()));
+    }
 }

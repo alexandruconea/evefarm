@@ -26,7 +26,6 @@ public final class MissionIncome {
 
     static final String REWARD = "agent_mission_reward";
     static final String TIME_BONUS = "agent_mission_time_bonus_reward";
-    // EVE pays bounties every 20 minutes, so the last kills of a mission are often paid just after its turn-in
     static final Duration TURN_IN_BEFORE = Duration.ofMinutes(30);
     static final Duration TURN_IN_AFTER = Duration.ofHours(1);
 
@@ -34,9 +33,8 @@ public final class MissionIncome {
         REWARD, TIME_BONUS, MISSION_NPCS, NEAR_TURN_IN, OTHER_BOUNTY
     }
 
-    // turnIn marks one payment of each mission turned in: some missions pay only a time bonus
-    public record Payment(long characterId, String characterName, Instant paidAt, Kind kind, double amount,
-                          String agentName, boolean turnIn) {
+    public record Payment(String characterName, Instant paidAt, Kind kind, double amount, String agentName,
+                          boolean turnIn) {
     }
 
     public enum Period {
@@ -131,8 +129,7 @@ public final class MissionIncome {
                 kind = missionNpcs ? Kind.MISSION_NPCS : nearest != null ? Kind.NEAR_TURN_IN : Kind.OTHER_BOUNTY;
                 agent = nearest == null ? null : nearest.getValue();
             }
-            payments.add(new Payment(entry.characterId(), entry.characterName(), entry.date(), kind, entry.amount(),
-                    agent, turnIn));
+            payments.add(new Payment(entry.characterName(), entry.date(), kind, entry.amount(), agent, turnIn));
         }
         return payments;
     }

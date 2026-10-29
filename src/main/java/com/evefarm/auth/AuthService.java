@@ -26,7 +26,6 @@ public final class AuthService {
     private final Map<Long, Object> refreshLocks = new ConcurrentHashMap<>();
     private final Map<Long, AccessToken> accessTokens = new ConcurrentHashMap<>();
 
-    // Access tokens live only in memory: they last 20 minutes, so after a restart each character refreshes once.
     private record AccessToken(String token, Instant expiresAt) {
         boolean usable() {
             return expiresAt.isAfter(Instant.now().plusSeconds(60));

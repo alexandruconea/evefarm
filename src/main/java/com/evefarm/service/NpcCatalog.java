@@ -36,7 +36,6 @@ public final class NpcCatalog {
         for (NpcType type : types) {
             grouped.computeIfAbsent(type.typeName(), n -> new ArrayList<>()).add(type);
             nameByTypeId.put(type.typeId(), type.typeName());
-            // EVE files the burners' Clone Soldier Transport under an asteroid group, so the name counts too
             if (type.groupName().startsWith("Mission ") || type.typeName().startsWith("Burner ")) {
                 missionTypeIds.add(type.typeId());
             }

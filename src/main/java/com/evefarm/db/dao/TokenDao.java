@@ -16,13 +16,11 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Logger;
 
-// Encryption runs outside the database lock: on Linux the first decrypt can wait for the user to unlock the
-// keyring, and other database work (including reads on the Swing thread) must not wait with it.
 public final class TokenDao {
 
     private static final Logger LOG = Logger.getLogger(TokenDao.class.getName());
-    private static final String ACTIVE = "active";
-    private static final String LOGIN_REJECTED = "needs_reauth";
+    public static final String ACTIVE = "active";
+    public static final String LOGIN_REJECTED = "needs_reauth";
 
     private final Database database;
 
@@ -56,8 +54,6 @@ public final class TokenDao {
         }
     }
 
-    // Only updates a login that is still there, so a character removed while its token was being refreshed
-    // doesn't get its login back. Returns false when there was nothing to update.
     public boolean saveRefreshedLogin(long characterId, String refreshToken) {
         String sql = "UPDATE tokens SET refresh_token = ?, updated_at = ? WHERE character_id = ? AND status = ?";
         String sealed = TokenCipher.encrypt(refreshToken);
@@ -124,21 +120,36 @@ public final class TokenDao {
         }
     }
 
-    public Set<Long> characterIdsWithLoginsFromAnotherSystem() {
+    public Set<Long> characterIdsNeedingLogin() {
+        String sql = """
+                SELECT c.character_id, t.refresh_token, t.status
+                FROM characters c LEFT JOIN tokens t ON t.character_id = c.character_id
+                WHERE c.removed_at IS NULL
+                """;
         Set<Long> characterIds = new HashSet<>();
+        Map<Long, String> sealed = new HashMap<>();
         synchronized (database) {
             Connection connection = database.connection();
-            try (PreparedStatement ps = connection.prepareStatement("SELECT character_id, refresh_token FROM tokens");
+            try (PreparedStatement ps = connection.prepareStatement(sql);
                  ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    if (TokenCipher.isFromAnotherSystem(rs.getString("refresh_token"))) {
-                        characterIds.add(rs.getLong("character_id"));
+                    long characterId = rs.getLong("character_id");
+                    String refreshToken = rs.getString("refresh_token");
+                    if (refreshToken == null || LOGIN_REJECTED.equals(rs.getString("status"))) {
+                        characterIds.add(characterId);
+                    } else {
+                        sealed.put(characterId, refreshToken);
                     }
                 }
             } catch (SQLException e) {
-                throw new IllegalStateException("Failed to check which saved logins come from another system", e);
+                throw new IllegalStateException("Failed to check which characters need to log in again", e);
             }
         }
+        sealed.forEach((characterId, refreshToken) -> {
+            if (!TokenCipher.canReadHere(refreshToken)) {
+                characterIds.add(characterId);
+            }
+        });
         return characterIds;
     }
 

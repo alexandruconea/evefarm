@@ -112,7 +112,7 @@ public final class LpStorePanel extends JPanel {
         setTargetButton.addActionListener(e -> openTargetDialog());
         recordButton.setIcon(Icons.PACKAGE);
         recordButton.setEnabled(false);
-        recordButton.setToolTipText("Note that you bought the selected offer, so the LP Purchases tab can tell you "
+        recordButton.setToolTipText("Note that you bought the selected offer, so the Purchases tab can tell you "
                 + "the price you need to sell it without a loss");
         recordButton.addActionListener(e -> recordPurchase());
         table.getSelectionModel().addListSelectionListener(e -> recordButton.setEnabled(table.getSelectedRow() >= 0));
@@ -390,7 +390,7 @@ public final class LpStorePanel extends JPanel {
         new LpPurchaseDialog(SwingUtilities.getWindowAncestor(this), "Record Purchase", base, purchase -> {
             appContext.lpPurchaseService.record(purchase);
             offerCountLabel.setText("Recorded " + purchase.offers() + " x " + offer.itemName()
-                    + " - see the LP Purchases tab");
+                    + " - see the Purchases tab");
         }).setVisible(true);
     }
 

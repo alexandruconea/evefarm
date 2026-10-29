@@ -96,10 +96,10 @@ final class KeyringProtection implements TokenCipher.Protection {
         try {
             stored = Base64.getDecoder().decode(body);
         } catch (IllegalArgumentException e) {
-            throw new IllegalStateException("A saved login is damaged" + ADD_AGAIN, e);
+            throw new ForeignSecretException("A saved login is damaged" + ADD_AGAIN, e);
         }
         if (stored.length <= NONCE_BYTES) {
-            throw new IllegalStateException("A saved login is damaged" + ADD_AGAIN);
+            throw new ForeignSecretException("A saved login is damaged" + ADD_AGAIN);
         }
         SecretKeySpec current = key(false, false);
         try {
@@ -109,7 +109,7 @@ final class KeyringProtection implements TokenCipher.Protection {
             byte[] plain = cipher.doFinal(stored, NONCE_BYTES, stored.length - NONCE_BYTES);
             return new String(plain, StandardCharsets.UTF_8);
         } catch (AEADBadTagException e) {
-            throw new IllegalStateException("A saved login doesn't match the key in your keyring" + ADD_AGAIN, e);
+            throw new ForeignSecretException("A saved login doesn't match the key in your keyring" + ADD_AGAIN, e);
         } catch (GeneralSecurityException e) {
             throw new IllegalStateException("Couldn't decrypt a saved login", e);
         }
@@ -141,7 +141,9 @@ final class KeyringProtection implements TokenCipher.Protection {
             throw new IllegalStateException(unavailableMessage());
         }
         if (!askedByUser && lastFailure != null && clock.instant().isBefore(retryAt)) {
-            throw new IllegalStateException(lastFailure.getMessage(), lastFailure);
+            throw lastFailure instanceof ForeignSecretException
+                    ? new ForeignSecretException(lastFailure.getMessage(), lastFailure)
+                    : new IllegalStateException(lastFailure.getMessage(), lastFailure);
         }
         try {
             key = decode(loadOrCreate(createIfMissing));
@@ -164,7 +166,7 @@ final class KeyringProtection implements TokenCipher.Protection {
                     + "Unlock it, or allow EVE Farm when your desktop asks, and try again.");
         }
         if (!createIfMissing) {
-            throw new IllegalStateException("Your keyring has no EVE Farm key, so saved logins can't be read"
+            throw new ForeignSecretException("Your keyring has no EVE Farm key, so saved logins can't be read"
                     + ADD_AGAIN);
         }
         byte[] fresh = new byte[KEY_BYTES];

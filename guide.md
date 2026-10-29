@@ -19,7 +19,6 @@ This guide walks through every part of the app. Menu and button names are writte
    - [Contracts](#contracts)
    - [Industry Jobs](#industry-jobs)
    - [LP Store](#lp-store)
-   - [LP Purchases](#lp-purchases)
    - [NPC Kills](#npc-kills)
    - [Abyss](#abyss)
    - [Mining](#mining)
@@ -175,7 +174,7 @@ Your industry jobs: activity (manufacturing, research, copying, invention, react
 
 ### LP Store
 
-What your loyalty points are worth in each corporation's LP store, how much LP you earn each day and what your missions bring in. It has three tabs: **Offers**, **LP per Day** and **Report**.
+What your loyalty points are worth in each corporation's LP store, what you bought there, how much LP you earn each day and what your missions bring in. It has four tabs: **Offers**, **Purchases**, **LP per Day** and **Report**.
 
 In **Offers**:
 
@@ -199,7 +198,30 @@ For each offer you see the item, quantity, LP cost, ISK cost, the other items it
   - A red line tells you when Jita 4-4 hasn't enough of an item or the buy orders don't take everything. Profit is then left empty.
   - **Your LP is enough for** says how many times the character's LP buys the offer. **Refresh** reads the orders again.
 - **LP History...** shows every change in your LP that EVE Farm has seen, per character and corporation.
-- **Record Purchase...** saves what you bought from the selected offer, so the **LP Purchases** tab can tell you when selling it pays.
+- **Record Purchase...** saves what you bought from the selected offer, so **Purchases** can tell you when selling it pays.
+
+**Purchases** is what you bought in LP stores and what it is worth now, so you know when you can sell without losing ISK. Buy the same item at different ISK/LP over time and each purchase is kept apart.
+
+To record a purchase:
+
+- In **Offers**, select the offer and click **Record Purchase...**. Set **Times bought**, check **Bought on** and click **Save**. The LP and ISK come from the offer. **Other cost per offer** is what the required items and build materials cost now; change it if you paid a different amount.
+- Or click **Review Payments...** here. It lists the payments to LP stores in your wallet journal that are not recorded yet, with the offers of that store whose ISK cost fits the amount paid. The offer that best fits what you listed, sold and have of each item in the 30 days after the payment comes first, and **Find** narrows the list by name. Pick the offer, click **Record...** and save. **Ignore** hides a payment for good. Offers with no ISK cost leave no payment in the journal, so record those from **Offers**. When payments are waiting, the button shows how many.
+- A purchase you recorded from **Offers** is matched to its payment by itself: same character, same store and the same ISK, paid within a week of the **Bought on** date. It isn't listed again, and its **Bought on** becomes the exact time of the payment.
+- **Target ISK/LP** starts as the **ISK/LP (Sell)** the LP Store showed when you recorded the purchase. When the offer showed no ISK/LP above 0, it starts as your **Set ISK/LP Target...** value instead. Set it to what you want to make, or to 0 for no target.
+
+The top table has one row per item. The bottom table shows each purchase of the item you select, or every purchase when none is selected.
+
+- **Left**: the units you still have: what you bought, less what you sold and used.
+- **Avg Cost**: what one unit cost you in ISK: the ISK paid and the other items. The LP is not counted.
+- **Break-even**: the lowest sell price that gets that ISK back after the sales tax and broker fee. Below it you lose ISK.
+- **Target Price**: the sell price at which the purchase makes its **Target ISK/LP**, counted the way **Offers** counts ISK/LP.
+- **Sell Now**: the lowest sell price right now. It is green at or above the Target Price, yellow between the Break-even and the Target Price, and red below the Break-even.
+- **If Sold Now**: what you would make on what is left, selling at Sell Now after the tax and fee, against what it cost you in ISK. **Realized** is the same for what you already sold.
+- **Sold per Day** and **Days to Sell** work as in **Offers**, for the units you have left.
+- **ISK/LP Now** (bottom table): the ISK/LP the purchase makes at today's lowest sell price.
+- The bottom table also has **Corporation**, **Offers**, **Used**, **LP Spent**, **ISK Spent** and **Other Cost**, hidden at first. Right-click a header and choose **Choose Columns...** to show them.
+
+Your market sales come from **Update**: each sale of the item by any of your characters counts against the oldest purchase made before it. Sales of the same item that did not come from an LP store count too. Used some units yourself? Select the purchase, click **Edit...** and set **Units used**. **Show sold** also lists what you have sold or used up. The sales tax and the broker fee are those of the character who made the purchase, worked out as for the **Net** columns of **Offers**: from its Accounting and Broker Relations skills and its standings with the Caldari State and the Caldari Navy (skills EVE Farm has not read yet count as level IV).
 
 **LP per Day** is a calendar of the last year, one square per day, like the contributions chart on GitHub. The darker the square, the more LP your characters earned that day.
 
@@ -223,31 +245,6 @@ For each offer you see the item, quantity, LP cost, ISK cost, the other items it
 - **By day** lists each day of the report, and **By agent** each agent you ran missions for. A bounty counts for the agent of the turn-in closest to it; mission NPC bounties far from any turn-in are listed as **No turn-in nearby**.
 - **Save Report...** saves the report as a text file.
 - The ISK comes from your wallet journal, so run **Update** with **Journal** ticked first. EVE shows only the last 30 days of the journal, and EVE Farm keeps it from then on. LP is counted only since EVE Farm started saving it. **Save Report...** notes when that was.
-
-### LP Purchases
-
-What you bought in LP stores and what it is worth now, so you know when you can sell without losing ISK. Buy the same item at different ISK/LP over time and each purchase is kept apart.
-
-To record a purchase:
-
-- In the **LP Store** tab, select the offer and click **Record Purchase...**. Set **Times bought**, check **Bought on** and click **Save**. The LP and ISK come from the offer. **Other cost per offer** is what the required items and build materials cost now; change it if you paid a different amount.
-- Or click **Review Payments...** here. It lists the payments to LP stores in your wallet journal that are not recorded yet, with the offers of that store whose ISK cost fits the amount paid. The offer that best fits what you listed, sold and have of each item in the 30 days after the payment comes first, and **Find** narrows the list by name. Pick the offer, click **Record...** and save. **Ignore** hides a payment for good. Offers with no ISK cost leave no payment in the journal, so record those from the LP Store tab. When payments are waiting, the button shows how many.
-- A purchase you recorded from the LP Store tab is matched to its payment by itself: same character, same store and the same ISK, paid within a week of the **Bought on** date. It isn't listed again, and its **Bought on** becomes the exact time of the payment.
-- **Target ISK/LP** starts as the **ISK/LP (Sell)** the LP Store showed when you recorded the purchase. When the offer showed no ISK/LP above 0, it starts as your **Set ISK/LP Target...** value instead. Set it to what you want to make, or to 0 for no target.
-
-The top table has one row per item. The bottom table shows each purchase of the item you select, or every purchase when none is selected.
-
-- **Left**: the units you still have: what you bought, less what you sold and used.
-- **Avg Cost**: what one unit cost you in ISK: the ISK paid and the other items. The LP is not counted.
-- **Break-even**: the lowest sell price that gets that ISK back after the sales tax and broker fee. Below it you lose ISK.
-- **Target Price**: the sell price at which the purchase makes its **Target ISK/LP**, counted the way the LP Store tab counts ISK/LP.
-- **Sell Now**: the lowest sell price right now. It is green at or above the Target Price, yellow between the Break-even and the Target Price, and red below the Break-even.
-- **If Sold Now**: what you would make on what is left, selling at Sell Now after the tax and fee, against what it cost you in ISK. **Realized** is the same for what you already sold.
-- **Sold per Day** and **Days to Sell** work as in the LP Store tab, for the units you have left.
-- **ISK/LP Now** (bottom table): the ISK/LP the purchase makes at today's lowest sell price.
-- The bottom table also has **Corporation**, **Offers**, **Used**, **LP Spent**, **ISK Spent** and **Other Cost**, hidden at first. Right-click a header and choose **Choose Columns...** to show them.
-
-Your market sales come from **Update**: each sale of the item by any of your characters counts against the oldest purchase made before it. Sales of the same item that did not come from an LP store count too. Used some units yourself? Select the purchase, click **Edit...** and set **Units used**. **Show sold** also lists what you have sold or used up. The sales tax and the broker fee are those of the character who made the purchase, worked out as for the **Net** columns of the LP Store tab: from its Accounting and Broker Relations skills and its standings with the Caldari State and the Caldari Navy (skills EVE Farm has not read yet count as level IV).
 
 ### NPC Kills
 
@@ -450,7 +447,7 @@ Most tabs show a table, and all of them work the same way.
 
 Open **Options > Settings...**.
 
-- **Theme:** Windows (Light on Linux), Dark or EVE. Restart EVE Farm to see the new theme.
+- **Theme:** Windows (Light on Linux), Dark, EVE or Adwaita, the dark look of GNOME apps such as Files. Restart EVE Farm to see the new theme.
 - **Price provider:** where prices come from:
   - **CCP (ESI, global average)**: EVE's own average price across all markets;
   - **Fuzzwork (Jita 4-4 sell price)**: prices from the Jita 4-4 market;
@@ -458,6 +455,7 @@ Open **Options > Settings...**.
 - **Default price:** which price is used to value items: Sell Maximum, Sell Average, Sell Median, Sell Percentile, Sell Minimum, Midpoint, Buy Maximum, Buy Average, Buy Median, Buy Percentile or Buy Minimum. It only applies to Fuzzwork and Janice; CCP has a single average price.
 - **Gamelogs folder:** where EVE writes its Gamelogs, used by NPC Kills and the Abyss voice. Usually found by itself, also for EVE run through Steam (Proton), Lutris, Bottles, Heroic or Wine on Linux. If EVE is in more than one place, the folder EVE used last is picked; **Browse...** sets it by hand.
 - **Extra backup copy folder:** a second folder for the automatic backups, such as a cloud-synced one.
+- **Backup password** and **Repeat password:** every backup also keeps your EVE logins protected with this password, so a backup restored on another computer needs no characters added again. Leave it empty and the logins in a backup work only on this computer. Use at least 8 characters; EVE Farm can't recover a forgotten password.
 - **Updates:** **Check for new versions automatically**.
 - **Notifications:** which desktop notifications you get. See [Tray icon and notifications](#tray-icon-and-notifications).
 
@@ -482,7 +480,7 @@ Before replacing anything, EVE Farm makes a backup of the target files and check
 - **Options > Restore Data...** restores a backup. EVE Farm checks the file first, then puts it in place the next time it starts. Your current data is saved beside it before it's replaced, so you can go back.
 - Before installing an app update, EVE Farm also backs up your data. It keeps the backups of the last 3 updates.
 
-A backup restored on another computer, user account or system keeps all the history, but the characters must be added again, because their logins can only be read where they were saved.
+A backup restored on another computer, user account or system keeps all the history. Its logins can only be read where they were saved, unless a **Backup password** was set in **Options > Settings...** when the backup was made: **Restore Data...** then asks for that password and the characters work right away. Characters already added on the computer you restore to keep their logins, and any other character is listed once to be added again, which keeps all its history. A backup keeps the password it was made with, so after you change the password, older backups still open with the old one. Restoring on the same computer never asks for it.
 
 ## App updates
 
@@ -505,7 +503,7 @@ If you go back to an older version, it won't open data a newer version has alrea
   - **market orders** that someone else has outbid at the same station: a cheaper sell order or a higher buy order. Orders of your own characters don't count;
   - **skill queues** that end within 24 hours or are empty;
   - **your contracts** that someone accepted in the last day, or that expire within 24 hours. Contracts for your corporation don't count;
-  - **LP Store purchases** whose lowest sell price climbs back to their **Target Price** after being below it. See [LP Purchases](#lp-purchases).
+  - **LP Store purchases** whose lowest sell price climbs back to their **Target Price** after being below it. See **Purchases** in the [LP Store](#lp-store).
 
   Each event is shown once. An order that is outbid again after leading is shown again. The market order check runs even when its notification is off, as it keeps the **Outbid** column of Market Orders up to date. When several things happen at once, they come in one notification per kind. Turn each kind on or off under **Notifications** in **Options > Settings...**. Skill queue notifications need the character added with EVE Farm 1.0.16 or later.
 

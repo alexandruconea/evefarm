@@ -40,7 +40,13 @@ final class DpapiProtection implements TokenCipher.Protection {
 
     @Override
     public String unprotect(String body) {
-        byte[] protectedBytes = Base64.getDecoder().decode(body);
+        byte[] protectedBytes;
+        try {
+            protectedBytes = Base64.getDecoder().decode(body);
+        } catch (IllegalArgumentException e) {
+            throw new ForeignSecretException("A saved login is damaged - add the character again "
+                    + "(File > Characters... > Add Character...).", e);
+        }
         try {
             byte[] plainBytes = Crypt32Util.cryptUnprotectData(
                     protectedBytes, TokenCipher.ENTROPY, WinCrypt.CRYPTPROTECT_UI_FORBIDDEN, null);
@@ -50,7 +56,7 @@ final class DpapiProtection implements TokenCipher.Protection {
                 byte[] plainBytes = Crypt32Util.cryptUnprotectData(protectedBytes);
                 return new String(plainBytes, StandardCharsets.UTF_8);
             } catch (Exception withoutEntropy) {
-                throw new IllegalStateException("Failed to decrypt a stored token; it may have been "
+                throw new ForeignSecretException("Failed to decrypt a stored token; it may have been "
                         + "created on a different Windows user account or machine", withoutEntropy);
             }
         }

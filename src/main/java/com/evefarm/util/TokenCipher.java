@@ -65,7 +65,7 @@ public final class TokenCipher {
             return protection.unprotect(stored.substring(protection.prefix().length()));
         }
         if (isEncrypted(stored)) {
-            throw new IllegalStateException("A saved login was protected on another computer or system and "
+            throw new ForeignSecretException("A saved login was protected on another computer or system and "
                     + "can't be read here - add the character again (File > Characters... > Add Character...).");
         }
         if (!protection.isAvailable()) {
@@ -80,6 +80,19 @@ public final class TokenCipher {
 
     static boolean isFromAnotherSystem(Protection protection, String stored) {
         return isEncrypted(stored) && (protection.prefix().isEmpty() || !stored.startsWith(protection.prefix()));
+    }
+
+    public static boolean canReadHere(String stored) {
+        return canReadHere(PROTECTION, stored);
+    }
+
+    static boolean canReadHere(Protection protection, String stored) {
+        try {
+            decrypt(protection, stored);
+            return true;
+        } catch (ForeignSecretException e) {
+            return false;
+        }
     }
 
     public static boolean isEncrypted(String stored) {

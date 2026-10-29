@@ -10,6 +10,7 @@ import com.evefarm.util.AppPaths;
 import com.evefarm.util.Browser;
 import com.evefarm.util.Platform;
 import com.evefarm.util.Text;
+import com.evefarm.util.WrongPasswordException;
 import com.formdev.flatlaf.FlatLaf;
 
 import javax.imageio.ImageIO;
@@ -24,6 +25,7 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPasswordField;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
@@ -34,6 +36,8 @@ import javax.swing.SwingWorker;
 import javax.swing.Timer;
 import javax.swing.UIManager;
 import javax.swing.WindowConstants;
+import javax.swing.event.AncestorEvent;
+import javax.swing.event.AncestorListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.AWTException;
 import java.awt.BorderLayout;
@@ -117,7 +121,6 @@ public final class MainFrame extends JFrame {
                 () -> appContext.industryJobService.getJobRows(null))));
         tabSpecs.put("values", new TabSpec("Values", Icons.VALUE, new ValuesPanel(appContext)));
         tabSpecs.put("lpStore", new TabSpec("LP Store", Icons.LP, new LpStoreTabs(appContext)));
-        tabSpecs.put("lpPurchases", new TabSpec("LP Purchases", Icons.PACKAGE, new LpPurchasesPanel(appContext)));
         tabSpecs.put("kills", new TabSpec("NPC Kills", Icons.CROSSHAIR, new NpcKillsPanel(appContext)));
         tabSpecs.put("abyss", new TabSpec("Abyss", Icons.ABYSS, new AbyssPanel(appContext, this::showTrayNotification)));
         tabSpecs.put("mining", new TabSpec("Mining", Icons.MINING, new MiningPanel(appContext)));
@@ -570,6 +573,7 @@ public final class MainFrame extends JFrame {
     private void initComponents() {
 
         tabbedPane = new JTabbedPane();
+        tabbedPane.putClientProperty("FlatLaf.styleClass", "mainTabs");
         jMenuBar1 = new JMenuBar();
         fileMenu = new JMenu();
         charactersItem = new JMenuItem();
@@ -671,14 +675,34 @@ public final class MainFrame extends JFrame {
         if (!target.getName().toLowerCase(Locale.ROOT).endsWith(".db")) {
             target = new File(target.getParentFile(), target.getName() + ".db");
         }
-        try {
-            appContext.backupRestoreService.backupTo(target.toPath());
-            JOptionPane.showMessageDialog(this, "Backup saved to:\n" + target,
-                    "Backup Data", JOptionPane.INFORMATION_MESSAGE);
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Backup failed: " + e.getMessage(),
-                    "Backup Data", JOptionPane.ERROR_MESSAGE);
-        }
+        Path destination = target.toPath();
+        setBackupAndRestoreEnabled(false);
+        new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                appContext.backupRestoreService.backupTo(destination);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                setBackupAndRestoreEnabled(true);
+                try {
+                    get();
+                    JOptionPane.showMessageDialog(MainFrame.this, "Backup saved to:\n" + destination,
+                            "Backup Data", JOptionPane.INFORMATION_MESSAGE);
+                } catch (Exception e) {
+                    Throwable cause = e.getCause() == null ? e : e.getCause();
+                    JOptionPane.showMessageDialog(MainFrame.this, "Backup failed: " + cause.getMessage(),
+                            "Backup Data", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }.execute();
+    }
+
+    private void setBackupAndRestoreEnabled(boolean enabled) {
+        backupItem.setEnabled(enabled);
+        restoreItem.setEnabled(enabled);
     }
 
     private void restoreData() {
@@ -703,26 +727,121 @@ public final class MainFrame extends JFrame {
             return;
         }
         Path source = chooser.getSelectedFile().toPath();
+        setBackupAndRestoreEnabled(false);
+        new SwingWorker<RestoreCheck, Void>() {
+            @Override
+            protected RestoreCheck doInBackground() {
+                String error = appContext.backupRestoreService.validateBackupFile(source);
+                return error != null ? new RestoreCheck(error, null)
+                        : new RestoreCheck(null, appContext.backupRestoreService.passwordNeeds(source));
+            }
 
-        String error = appContext.backupRestoreService.validateBackupFile(source);
-        if (error != null) {
-            JOptionPane.showMessageDialog(this, "Can't restore this file:\n" + error,
-                    "Restore Data", JOptionPane.ERROR_MESSAGE);
-            return;
+            @Override
+            protected void done() {
+                RestoreCheck check;
+                try {
+                    check = get();
+                } catch (Exception e) {
+                    restoreFailed(e);
+                    return;
+                }
+                if (check.error() != null) {
+                    setBackupAndRestoreEnabled(true);
+                    JOptionPane.showMessageDialog(MainFrame.this, "Can't restore this file:\n" + check.error(),
+                            "Restore Data", JOptionPane.ERROR_MESSAGE);
+                } else if (check.needs().any()) {
+                    askBackupPassword(source, check.needs(), false);
+                } else {
+                    stageRestore(source, null, check.needs());
+                }
+            }
+        }.execute();
+    }
+
+    private record RestoreCheck(String error, BackupRestoreService.PasswordNeeds needs) {
+    }
+
+    private void askBackupPassword(Path source, BackupRestoreService.PasswordNeeds needs, boolean wrongBefore) {
+        List<String> kept = new ArrayList<>();
+        if (!needs.characters().isEmpty()) {
+            kept.add("the logins of " + String.join(", ", needs.characters()));
         }
-
-        try {
-            appContext.backupRestoreService.stageRestore(source);
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Failed to stage the restore: " + e.getMessage(),
-                    "Restore Data", JOptionPane.ERROR_MESSAGE);
-            return;
+        if (needs.janiceKey()) {
+            kept.add("the Janice API key");
         }
+        String text = (wrongBefore ? "That password doesn't open this backup's logins. " : "")
+                + "This backup keeps " + String.join(" and ", kept) + " protected with a backup password. Type "
+                + "it to restore them, or restore without them and add those characters again later.";
+        JPasswordField password = new JPasswordField(24);
+        password.addAncestorListener(new AncestorListener() {
+            @Override
+            public void ancestorAdded(AncestorEvent event) {
+                SwingUtilities.invokeLater(password::requestFocusInWindow);
+            }
 
-        JOptionPane.showMessageDialog(this,
-                "Restore staged. The app will now close - reopen it to finish the restore.",
-                "Restore Data", JOptionPane.INFORMATION_MESSAGE);
-        exitApplication();
+            @Override
+            public void ancestorRemoved(AncestorEvent event) {
+            }
+
+            @Override
+            public void ancestorMoved(AncestorEvent event) {
+            }
+        });
+        JPanel panel = new JPanel(new BorderLayout(0, 8));
+        panel.add(new JLabel("<html><body style=\"width: 340px\">" + Text.escapeHtml(text) + "</body></html>"),
+                BorderLayout.NORTH);
+        panel.add(password, BorderLayout.CENTER);
+        Object[] options = {"Restore Logins", "Restore Without Them", "Cancel"};
+        int choice = JOptionPane.showOptionDialog(this, panel, "Restore Data", JOptionPane.DEFAULT_OPTION,
+                wrongBefore ? JOptionPane.WARNING_MESSAGE : JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+        if (choice == 0 && password.getPassword().length > 0) {
+            stageRestore(source, new String(password.getPassword()), needs);
+        } else if (choice == 0) {
+            askBackupPassword(source, needs, false);
+        } else if (choice == 1) {
+            stageRestore(source, null, needs);
+        } else {
+            setBackupAndRestoreEnabled(true);
+        }
+    }
+
+    private void stageRestore(Path source, String password, BackupRestoreService.PasswordNeeds needs) {
+        new SwingWorker<List<String>, Void>() {
+            @Override
+            protected List<String> doInBackground() throws Exception {
+                return appContext.backupRestoreService.stageRestore(source, password);
+            }
+
+            @Override
+            protected void done() {
+                List<String> toAddAgain;
+                try {
+                    toAddAgain = get();
+                } catch (Exception e) {
+                    if (e.getCause() instanceof WrongPasswordException) {
+                        askBackupPassword(source, needs, true);
+                    } else {
+                        restoreFailed(e);
+                    }
+                    return;
+                }
+                setBackupAndRestoreEnabled(true);
+                String addAgain = toAddAgain.isEmpty() ? ""
+                        : "\n\nAfter it opens, add these characters again (File > Characters... > Add Character...): "
+                        + String.join(", ", toAddAgain) + ". Their history is kept.";
+                JOptionPane.showMessageDialog(MainFrame.this,
+                        "Restore staged. The app will now close - reopen it to finish the restore." + addAgain,
+                        "Restore Data", JOptionPane.INFORMATION_MESSAGE);
+                exitApplication();
+            }
+        }.execute();
+    }
+
+    private void restoreFailed(Exception e) {
+        setBackupAndRestoreEnabled(true);
+        Throwable cause = e.getCause() == null ? e : e.getCause();
+        JOptionPane.showMessageDialog(this, "Failed to stage the restore: " + cause.getMessage(),
+                "Restore Data", JOptionPane.ERROR_MESSAGE);
     }
 
     private void exitApplication() {
@@ -742,8 +861,8 @@ public final class MainFrame extends JFrame {
         JPanel panel = new JPanel(new BorderLayout(0, 8));
         if (!needLogin.isEmpty()) {
             panel.add(new JLabel("<html><b>Add " + Text.escapeHtml(String.join(", ", needLogin)) + " again.</b><br>"
-                    + "Their saved logins were protected on another computer or system, for example in a backup "
-                    + "made on Windows,<br>so they can't be read here. Adding a character again keeps all its "
+                    + "EVE Farm can't use their saved logins here: EVE no longer accepts them, or they come from a "
+                    + "backup<br>restored without its backup password. Adding a character again keeps all its "
                     + "history.</html>"), BorderLayout.NORTH);
         }
         if (!failures.isEmpty()) {

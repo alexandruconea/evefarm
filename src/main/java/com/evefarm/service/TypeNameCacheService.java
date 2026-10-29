@@ -39,12 +39,10 @@ public final class TypeNameCacheService {
         this.typeCacheDao = typeCacheDao;
     }
 
-    // For display: an item EVE can't name right now is shown as "Type #123".
     public TypeInfo resolveType(int typeId) {
         return findType(typeId).orElseGet(() -> new TypeInfo(typeId, "Type #" + typeId, null, null, 0));
     }
 
-    // For saving: empty when EVE couldn't be asked, so the "Type #123" placeholder is never stored as a name.
     public Optional<TypeInfo> findType(int typeId) {
         return typeCacheDao.find(typeId).or(() -> fetchAndCache(typeId));
     }

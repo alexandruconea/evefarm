@@ -36,7 +36,6 @@ public final class MiningStats {
         }
     }
 
-    // The quantity is null where a group adds up units of different items.
     public record Summary(String label, Double quantity, double volume, double value, int days) {
         public double valuePerDay() {
             return days == 0 ? 0 : value / days;
@@ -74,7 +73,6 @@ public final class MiningStats {
         return List.of(new Part(label, row.quantity(), row.volume(), row.value(), row.date()));
     }
 
-    // What isn't refined (gas, or an ore whose minerals have no price) stays itself, so the groups still add up.
     private static List<Part> refined(MiningRow row) {
         if (row.materials().isEmpty()) {
             return whole(row, row.oreName());

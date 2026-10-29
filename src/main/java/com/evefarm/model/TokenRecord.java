@@ -1,6 +1,5 @@
 package com.evefarm.model;
 
-// A rejected login keeps no usable refresh token: EVE refused it, so the character has to be added again.
 public record TokenRecord(String refreshToken, boolean loginRejected) {
 
     public static TokenRecord active(String refreshToken) {

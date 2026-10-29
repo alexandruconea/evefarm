@@ -35,11 +35,12 @@ public final class SettingsDialog extends JDialog {
 
     private static final Logger LOG = Logger.getLogger(SettingsDialog.class.getName());
     private static final int FIELD_WIDTH = 320;
+    private static final int MIN_BACKUP_PASSWORD = 8;
 
     private final SettingsDao settingsDao;
-    private static final List<String> THEME_KEYS = List.of("system", "flatlaf-dark", "eve");
+    private static final List<String> THEME_KEYS = List.of("system", "flatlaf-dark", "eve", "adwaita");
     private final JComboBox<String> themeCombo = new JComboBox<>(new String[]{
-            Platform.isWindows() ? "Windows" : "Light", "Dark", "EVE"});
+            Platform.isWindows() ? "Windows" : "Light", "Dark", "EVE", "Adwaita"});
     private final JComboBox<String> priceProviderCombo = new JComboBox<>(new String[]{
             "CCP (ESI, global average)", "Fuzzwork (Jita 4-4 sell price)", "Janice (Jita 4-4, requires API key)"});
     private final JPasswordField janiceApiKeyField = new JPasswordField();
@@ -50,6 +51,8 @@ public final class SettingsDialog extends JDialog {
     private final JButton gameLogDirectoryBrowseButton = new JButton("Browse...");
     private final JTextField backupCopyDirectoryField = new JTextField();
     private final JButton backupCopyDirectoryBrowseButton = new JButton("Browse...");
+    private final JPasswordField backupPasswordField = new JPasswordField();
+    private final JPasswordField backupPasswordRepeatField = new JPasswordField();
     private final JCheckBox updateCheckBox = new JCheckBox("Check for new versions automatically");
     private final JCheckBox notifyJobsBox = new JCheckBox("Industry jobs that are ready");
     private final JCheckBox notifyOrdersBox = new JCheckBox("Market orders that are outbid");
@@ -115,6 +118,17 @@ public final class SettingsDialog extends JDialog {
         backupCopyDirectoryField.setToolTipText(backupTip);
         backupCopyDirectoryBrowseButton.setToolTipText(backupTip);
         addRow(panel, c, row++, "Extra backup copy folder:", backupCopyPanel);
+
+        ComboSizing.fix(backupPasswordField, FIELD_WIDTH);
+        ComboSizing.fix(backupPasswordRepeatField, FIELD_WIDTH);
+        String backupPasswordTip = "Your backups also keep your EVE logins, protected with this password, so a backup "
+                + "restored on another computer needs no characters added again. Without it, the logins in a backup "
+                + "work only on this computer. At least " + MIN_BACKUP_PASSWORD + " characters - EVE Farm can't "
+                + "recover a forgotten password.";
+        backupPasswordField.setToolTipText(backupPasswordTip);
+        backupPasswordRepeatField.setToolTipText(backupPasswordTip);
+        addRow(panel, c, row++, "Backup password:", backupPasswordField);
+        addRow(panel, c, row++, "Repeat password:", backupPasswordRepeatField);
         addRow(panel, c, row++, "Updates:", updateCheckBox);
 
         JPanel notificationsPanel = new JPanel(new GridLayout(0, 1));
@@ -230,6 +244,14 @@ public final class SettingsDialog extends JDialog {
         gameLogDirectoryField.setText(AppPaths.gameLogDirectory(
                 settingsDao.get(SettingsDao.GAMELOG_DIRECTORY).orElse(null)).toString());
         backupCopyDirectoryField.setText(settingsDao.getOrDefault(SettingsDao.BACKUP_COPY_DIRECTORY, ""));
+        String storedBackupPassword = settingsDao.getOrDefault(SettingsDao.BACKUP_PASSWORD, "");
+        try {
+            String backupPassword = TokenCipher.decrypt(storedBackupPassword);
+            backupPasswordField.setText(backupPassword);
+            backupPasswordRepeatField.setText(backupPassword);
+        } catch (IllegalStateException e) {
+            LOG.log(Level.WARNING, "The saved backup password couldn't be read", e);
+        }
         updateCheckBox.setSelected(!"false".equals(settingsDao.getOrDefault(SettingsDao.UPDATE_AUTO_CHECK, "true")));
         notifyJobsBox.setSelected(isOn(SettingsDao.NOTIFY_INDUSTRY_JOBS));
         notifyOrdersBox.setSelected(isOn(SettingsDao.NOTIFY_OUTBID_ORDERS));
@@ -263,6 +285,25 @@ public final class SettingsDialog extends JDialog {
                     "Settings", JOptionPane.WARNING_MESSAGE);
             return;
         }
+        String backupPassword = new String(backupPasswordField.getPassword());
+        if (!backupPassword.equals(new String(backupPasswordRepeatField.getPassword()))) {
+            JOptionPane.showMessageDialog(this, "The two backup passwords are different. Type the same password "
+                    + "in both fields.", "Settings", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (!backupPassword.isEmpty() && backupPassword.length() < MIN_BACKUP_PASSWORD) {
+            JOptionPane.showMessageDialog(this, "The backup password needs at least " + MIN_BACKUP_PASSWORD
+                    + " characters.", "Settings", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        String storedBackupPassword;
+        try {
+            storedBackupPassword = backupPassword.isEmpty() ? "" : TokenCipher.encrypt(backupPassword);
+        } catch (IllegalStateException e) {
+            JOptionPane.showMessageDialog(this, "The backup password couldn't be saved:\n" + e.getMessage(),
+                    "Settings", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
         settingsDao.set(SettingsDao.LAF_THEME, THEME_KEYS.get(themeCombo.getSelectedIndex()));
         String provider = switch (priceProviderCombo.getSelectedIndex()) {
             case 1 -> PriceService.PROVIDER_FUZZWORK;
@@ -277,6 +318,7 @@ public final class SettingsDialog extends JDialog {
         settingsDao.set(SettingsDao.GAMELOG_DIRECTORY,
                 gameLogDirectory.equals(AppPaths.defaultGameLogDirectory().toString()) ? "" : gameLogDirectory);
         settingsDao.set(SettingsDao.BACKUP_COPY_DIRECTORY, backupCopyDirectoryField.getText().trim());
+        settingsDao.set(SettingsDao.BACKUP_PASSWORD, storedBackupPassword);
         settingsDao.set(SettingsDao.UPDATE_AUTO_CHECK, String.valueOf(updateCheckBox.isSelected()));
         settingsDao.set(SettingsDao.NOTIFY_INDUSTRY_JOBS, String.valueOf(notifyJobsBox.isSelected()));
         settingsDao.set(SettingsDao.NOTIFY_OUTBID_ORDERS, String.valueOf(notifyOrdersBox.isSelected()));

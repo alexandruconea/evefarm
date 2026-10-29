@@ -4,6 +4,7 @@ import com.evefarm.db.Database;
 import com.evefarm.db.MigrationRunner;
 import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.service.BackupRestoreService;
+import com.evefarm.ui.AdwaitaLaf;
 import com.evefarm.ui.ComboBoxFocus;
 import com.evefarm.ui.CompactMenuItemUI;
 import com.evefarm.ui.CompactToolTips;
@@ -167,6 +168,8 @@ public final class Main {
                 UIManager.setLookAndFeel(new FlatDarkLaf());
             } else if ("eve".equals(theme)) {
                 UIManager.setLookAndFeel(new EveLaf());
+            } else if ("adwaita".equals(theme)) {
+                UIManager.setLookAndFeel(new AdwaitaLaf());
             } else if (!Platform.isWindows()) {
                 UIManager.setLookAndFeel(new FlatLightLaf());
             } else {

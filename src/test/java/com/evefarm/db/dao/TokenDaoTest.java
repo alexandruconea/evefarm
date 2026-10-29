@@ -13,6 +13,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -46,6 +47,10 @@ class TokenDaoTest {
             assertFalse(Thread.holdsLock(database), "decrypted while holding the database lock");
             return call.<String>getArgument(0).substring(SEALED.length());
         });
+        cipher.when(() -> TokenCipher.canReadHere(anyString())).thenAnswer(call -> {
+            assertFalse(Thread.holdsLock(database), "checked a login while holding the database lock");
+            return call.<String>getArgument(0).startsWith(SEALED);
+        });
     }
 
     @AfterEach
@@ -73,6 +78,27 @@ class TokenDaoTest {
         assertFalse(tokens.saveRefreshedLogin(42L, "late"), "a refresh doesn't undo the rejection");
         tokens.saveLogin(42L, "again");
         assertEquals(Optional.of(TokenRecord.active("again")), tokens.find(42L));
+    }
+
+    @Test
+    void charactersWhoseLoginCantBeUsedHereNeedToLogInAgain() throws SQLException {
+        CharacterDao characters = new CharacterDao(database);
+        characters.upsert(43L, "Yasonar Anoh", List.of(), null);
+        characters.upsert(44L, "Ichiro Saihara", List.of(), null);
+        characters.upsert(45L, "Aakari Ebiahi", List.of(), null);
+        characters.upsert(46L, "Removed Pilot", List.of(), null);
+        tokens.saveLogin(42L, "works");
+        tokens.saveLogin(43L, "from another computer");
+        tokens.saveLogin(44L, "expired");
+        tokens.markLoginRejected(44L);
+        tokens.saveLogin(46L, "gone");
+        characters.remove(46L);
+        try (PreparedStatement ps = database.connection().prepareStatement(
+                "UPDATE tokens SET refresh_token = 'other-computer' WHERE character_id = 43")) {
+            ps.executeUpdate();
+        }
+
+        assertEquals(Set.of(43L, 44L, 45L), tokens.characterIdsNeedingLogin());
     }
 
     @Test

@@ -14,6 +14,7 @@ public final class SettingsDao {
     public static final String DEFAULT_LAF_THEME = "system";
     public static final String PRICE_PROVIDER = "price_provider";
     public static final String JANICE_API_KEY = "janice_api_key";
+    public static final String BACKUP_PASSWORD = "backup_password";
     public static final String DEFAULT_PRICE_MODE = "default_price_mode";
     public static final String HIDDEN_TABS = "hidden_tabs";
     public static final String TAB_ORDER = "tab_order";

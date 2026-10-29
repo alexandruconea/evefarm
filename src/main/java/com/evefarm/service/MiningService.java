@@ -171,13 +171,11 @@ public final class MiningService {
         return prices.get(typeId);
     }
 
-    // The compressed ore is used only when it has a price - otherwise the ore is valued as mined.
     static Integer compressedType(Valuation valuation, Ore ore, Map<Integer, Double> prices) {
         return valuation == Valuation.COMPRESSED && ore != null && ore.compressedTypeId() != null
                 && prices.get(ore.compressedTypeId()) != null ? ore.compressedTypeId() : null;
     }
 
-    // Likewise the minerals are used only when at least one of them has a price.
     static boolean refines(Valuation valuation, Ore ore, Map<Integer, Double> prices) {
         return valuation == Valuation.REFINED && ore != null
                 && ore.materials().keySet().stream().anyMatch(materialId -> prices.get(materialId) != null);

@@ -152,7 +152,6 @@ public final class TableStyler {
         }
     }
 
-    // Sizes the columns from sample text instead of the rows, so they keep their widths when the rows change
     public static void sizeColumnsFromSamples(JTable table, Function<Object, String> sampleForKey) {
         TableColumnModel columns = table.getColumnModel();
         for (int col = 0; col < columns.getColumnCount(); col++) {

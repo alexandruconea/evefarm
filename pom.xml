@@ -6,7 +6,7 @@
 
   <groupId>com.evefarm</groupId>
   <artifactId>evefarm</artifactId>
-  <version>1.0.37</version>
+  <version>1.0.38</version>
   <packaging>jar</packaging>
 
   <name>EVE Farm</name>
@@ -61,7 +61,6 @@
       <artifactId>jwks-rsa</artifactId>
       <version>0.24.1</version>
       <exclusions>
-        <!-- Only jwks-rsa's key cache (JwkProviderBuilder) needs Guava, and EVE Farm uses UrlJwkProvider directly -->
         <exclusion>
           <groupId>com.google.guava</groupId>
           <artifactId>guava</artifactId>

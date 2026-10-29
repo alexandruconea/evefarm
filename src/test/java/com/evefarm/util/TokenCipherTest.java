@@ -194,6 +194,34 @@ class TokenCipherTest {
     }
 
     @Test
+    void onlyLoginsThisComputerCanOpenAreReadableHere() {
+        KeyringProtection keyring = new KeyringProtection(new MemoryKeyStore());
+        String sealedHere = TokenCipher.encrypt(keyring, "refresh-token");
+        String sealedElsewhere = TokenCipher.encrypt(new KeyringProtection(new MemoryKeyStore()), "refresh-token");
+
+        assertTrue(TokenCipher.canReadHere(keyring, sealedHere));
+        assertTrue(TokenCipher.canReadHere(keyring, "legacy-plaintext"));
+        assertFalse(TokenCipher.canReadHere(keyring, sealedElsewhere));
+        assertFalse(TokenCipher.canReadHere(keyring, "dpapi:AQAAANCMnd8BFdERjHoAwE"));
+    }
+
+    @Test
+    void aComputerWithoutAnEveFarmKeyCannotReadAnyLogin() {
+        String sealedElsewhere = TokenCipher.encrypt(new KeyringProtection(new MemoryKeyStore()), "refresh-token");
+
+        assertFalse(TokenCipher.canReadHere(new KeyringProtection(new MemoryKeyStore()), sealedElsewhere));
+    }
+
+    @Test
+    void aLockedKeyringIsNotMistakenForALoginFromElsewhere() {
+        MemoryKeyStore store = new MemoryKeyStore();
+        String sealed = TokenCipher.encrypt(new KeyringProtection(store), "refresh-token");
+        store.locked = true;
+
+        assertThrows(IllegalStateException.class, () -> TokenCipher.canReadHere(new KeyringProtection(store), sealed));
+    }
+
+    @Test
     void legacyPlaintextIsReadOnlyWhileProtectionWorks() {
         KeyringProtection keyring = new KeyringProtection(new MemoryKeyStore());
 

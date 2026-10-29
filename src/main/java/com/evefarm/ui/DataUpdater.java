@@ -175,7 +175,7 @@ final class DataUpdater {
     private void run(List<Category> toRun, boolean firstCharacterOnly) {
         List<String> failures = new ArrayList<>();
         Set<String> needLogin = new LinkedHashSet<>();
-        Set<Long> loginsFromAnotherSystem = loginsFromAnotherSystem();
+        Set<Long> needingLogin = charactersNeedingLogin();
         for (Category category : toRun) {
             SwingUtilities.invokeLater(() -> {
                 current = category;
@@ -187,7 +187,7 @@ final class DataUpdater {
                 List<EveCharacter> characters = characters(firstCharacterOnly);
                 if (category.usesLogins()) {
                     List<EveCharacter> withoutLogin = characters.stream()
-                            .filter(character -> loginsFromAnotherSystem.contains(character.characterId()))
+                            .filter(character -> needingLogin.contains(character.characterId()))
                             .toList();
                     withoutLogin.forEach(character -> needLogin.add(character.characterName()));
                     characters = characters.stream().filter(character -> !withoutLogin.contains(character)).toList();
@@ -219,11 +219,11 @@ final class DataUpdater {
         SwingUtilities.invokeLater(() -> finishedListeners.forEach(listener -> listener.accept(result)));
     }
 
-    private Set<Long> loginsFromAnotherSystem() {
+    private Set<Long> charactersNeedingLogin() {
         try {
-            return appContext.tokenDao.characterIdsWithLoginsFromAnotherSystem();
+            return appContext.tokenDao.characterIdsNeedingLogin();
         } catch (RuntimeException e) {
-            LOG.log(Level.WARNING, "Couldn't check which saved logins come from another system", e);
+            LOG.log(Level.WARNING, "Couldn't check which characters need to log in again", e);
             return Set.of();
         }
     }

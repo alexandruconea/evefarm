@@ -69,7 +69,8 @@ public final class MigrationRunner {
             "db/migrations/V44__tracker_lp_value_at_target.sql",
             "db/migrations/V45__lp_store_net_columns.sql",
             "db/migrations/V46__asset_blueprint_copies.sql",
-            "db/migrations/V47__token_status.sql"
+            "db/migrations/V47__token_status.sql",
+            "db/migrations/V48__backup_secret.sql"
     );
 
     public static void run(Database database) {

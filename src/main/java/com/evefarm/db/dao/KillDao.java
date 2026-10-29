@@ -251,7 +251,7 @@ public final class KillDao {
         String factionPlaceholders = JdbcUtil.placeholders(factionLabels.size());
         String namePlaceholders = JdbcUtil.placeholders(npcNames.size());
         String sql = "SELECT npc_name, faction_label, solar_system, killed_at FROM character_kills "
-                + "WHERE killed_at BETWEEN ? AND ? "
+                + "WHERE killed_at >= ? AND killed_at < ? "
                 + "AND character_id IN (" + characterPlaceholders + ") "
                 + "AND faction_label IN (" + factionPlaceholders + ") "
                 + "AND npc_name IN (" + namePlaceholders + ") "
