@@ -13,6 +13,7 @@ import com.evefarm.service.AbyssLootService;
 import com.evefarm.service.ItemIconService;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
+import com.evefarm.ui.column.ColumnWidthMemory;
 import com.evefarm.util.IskFormatter;
 import com.evefarm.util.Text;
 
@@ -179,6 +180,7 @@ final class AbyssRunDialog extends JDialog {
         afterArea.setToolTipText(cargoTip);
 
         TableStyler.style(lootTable);
+        ColumnWidthMemory.install(lootTable, "abyssRunLoot", appContext.tableColumnStateDao);
         lootTable.setRowHeight(Math.max(lootTable.getRowHeight(), ItemIconService.RENDER_SIZE + 6));
         JScrollPane lootScroll = new JScrollPane(lootTable);
         lootScroll.setPreferredSize(new Dimension(760, 170));

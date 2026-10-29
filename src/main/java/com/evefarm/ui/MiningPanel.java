@@ -7,6 +7,7 @@ import com.evefarm.service.ItemIconService;
 import com.evefarm.service.MiningService;
 import com.evefarm.service.MiningStats;
 import com.evefarm.ui.column.ColumnDescriptions;
+import com.evefarm.ui.column.ColumnWidthMemory;
 import com.evefarm.util.IskFormatter;
 import com.evefarm.util.Text;
 
@@ -101,6 +102,7 @@ public final class MiningPanel extends TabPanel {
         support.init();
         table.setRowHeight(Math.max(table.getRowHeight(), ItemIconService.RENDER_SIZE + 6));
         TableStyler.style(statsTable);
+        ColumnWidthMemory.install(statsTable, "miningStats", appContext.tableColumnStateDao);
     }
 
     @Override

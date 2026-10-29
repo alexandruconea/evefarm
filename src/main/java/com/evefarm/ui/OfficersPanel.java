@@ -6,6 +6,7 @@ import com.evefarm.model.OfficerDrop;
 import com.evefarm.model.OfficerSighting;
 import com.evefarm.model.SpawnMember;
 import com.evefarm.service.NpcCatalog;
+import com.evefarm.ui.column.ColumnWidthMemory;
 import com.evefarm.util.DateUtil;
 import com.evefarm.util.IskFormatter;
 import com.evefarm.util.Text;
@@ -102,12 +103,15 @@ public final class OfficersPanel extends JPanel {
             }
         });
         TableStyler.style(officersTable);
+        ColumnWidthMemory.install(officersTable, "officers", appContext.tableColumnStateDao);
         spawnTable.setRowSorter(new TableRowSorter<>(spawnModel));
         TableStyler.style(spawnTable);
+        ColumnWidthMemory.install(spawnTable, "officerSpawn", appContext.tableColumnStateDao);
         dropsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         dropsTable.getSelectionModel().addListSelectionListener(e ->
                 removeDropButton.setEnabled(selected != null && dropsTable.getSelectedRow() >= 0));
         TableStyler.style(dropsTable);
+        ColumnWidthMemory.install(dropsTable, "officerDrops", appContext.tableColumnStateDao);
 
         JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT,
                 new JScrollPane(officersTable), buildDetailPanel());

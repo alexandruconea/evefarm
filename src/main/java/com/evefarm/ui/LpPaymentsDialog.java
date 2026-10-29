@@ -4,6 +4,7 @@ import com.evefarm.AppContext;
 import com.evefarm.model.LpPurchase;
 import com.evefarm.service.LpPurchaseService.Candidate;
 import com.evefarm.service.LpPurchaseService.PendingPayment;
+import com.evefarm.ui.column.ColumnWidthMemory;
 
 import javax.swing.BorderFactory;
 import javax.swing.DefaultComboBoxModel;
@@ -66,6 +67,7 @@ final class LpPaymentsDialog extends JDialog {
             }
         });
         TableStyler.style(table);
+        ColumnWidthMemory.install(table, "lpPayments", appContext.tableColumnStateDao);
         ComboSizing.fix(offerCombo, 300);
         offerCombo.setToolTipText("The offer you bought with this payment, and how many times. Listed and sold "
                 + "count the units of the item put up for sale and sold in the 30 days after the payment, in assets "

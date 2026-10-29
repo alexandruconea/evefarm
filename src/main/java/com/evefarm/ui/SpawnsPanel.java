@@ -4,6 +4,7 @@ import com.evefarm.AppContext;
 import com.evefarm.model.CharacterContribution;
 import com.evefarm.model.SpawnMember;
 import com.evefarm.model.SpawnRow;
+import com.evefarm.ui.column.ColumnWidthMemory;
 import com.evefarm.util.DateUtil;
 import com.evefarm.util.IskFormatter;
 import com.evefarm.util.Text;
@@ -100,6 +101,7 @@ public final class SpawnsPanel extends JPanel {
         headerPanel.add(detailHeader);
         headerPanel.add(fightersLabel);
         TableStyler.style(detailTable);
+        ColumnWidthMemory.install(detailTable, "spawnMembers", appContext.tableColumnStateDao);
         JPanel detailPanel = new JPanel(new BorderLayout());
         detailPanel.add(headerPanel, BorderLayout.NORTH);
         detailPanel.add(new JScrollPane(detailTable), BorderLayout.CENTER);

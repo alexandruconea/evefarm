@@ -1,6 +1,7 @@
 package com.evefarm.ui;
 
 import com.evefarm.ui.column.ColumnDescriptions;
+import com.evefarm.ui.column.ColumnWidthMemory;
 import com.formdev.flatlaf.FlatLaf;
 
 import javax.swing.BorderFactory;
@@ -32,6 +33,7 @@ public final class TableStyler {
     private static final int PACK_MARGIN_PX = 14;
     private static final int PACK_MAX_WIDTH_PX = 320;
     private static final int PACK_SAMPLE_ROWS = 300;
+    private static final String ICON_COLUMNS_FIXED = "TableStyler.iconColumnsFixed";
 
     public static void style(JTable table) {
         table.setRowHeight(26);
@@ -79,6 +81,72 @@ public final class TableStyler {
         iconRenderer.setHorizontalAlignment(SwingConstants.CENTER);
         table.setDefaultRenderer(Icon.class, iconRenderer);
         table.setDefaultRenderer(ImageIcon.class, iconRenderer);
+        keepIconColumnsFixed(table);
+    }
+
+    public static boolean isIconColumn(JTable table, TableColumn column) {
+        int modelIndex = column.getModelIndex();
+        return modelIndex >= 0 && modelIndex < table.getModel().getColumnCount()
+                && Icon.class.isAssignableFrom(table.getModel().getColumnClass(modelIndex));
+    }
+
+    private static boolean isIconColumn(JTable table, int column) {
+        return table != null && column >= 0 && column < table.getColumnCount()
+                && isIconColumn(table, table.getColumnModel().getColumn(column));
+    }
+
+    private static void keepIconColumnsFixed(JTable table) {
+        if (table.getClientProperty(ICON_COLUMNS_FIXED) != null) {
+            return;
+        }
+        table.putClientProperty(ICON_COLUMNS_FIXED, Boolean.TRUE);
+        for (int col = 0; col < table.getColumnCount(); col++) {
+            if (isIconColumn(table, col)) {
+                fixIconWidth(table, col);
+            }
+        }
+        table.getColumnModel().addColumnModelListener(new TableColumnModelListener() {
+            @Override
+            public void columnAdded(TableColumnModelEvent e) {
+                if (isIconColumn(table, e.getToIndex())) {
+                    fixIconWidth(table, e.getToIndex());
+                }
+            }
+
+            @Override
+            public void columnRemoved(TableColumnModelEvent e) {
+            }
+
+            @Override
+            public void columnMoved(TableColumnModelEvent e) {
+            }
+
+            @Override
+            public void columnMarginChanged(ChangeEvent e) {
+            }
+
+            @Override
+            public void columnSelectionChanged(ListSelectionEvent e) {
+            }
+        });
+    }
+
+    private static void fixIconWidth(JTable table, int col) {
+        int width = table.getRowHeight();
+        int rowCount = Math.min(table.getRowCount(), PACK_SAMPLE_ROWS);
+        if (rowCount > 0) {
+            width = 0;
+            for (int row = 0; row < rowCount; row++) {
+                Component comp = table.prepareRenderer(table.getCellRenderer(row, col), row, col);
+                width = Math.max(width, comp.getPreferredSize().width);
+            }
+            width += table.getIntercellSpacing().width;
+        }
+        TableColumn column = table.getColumnModel().getColumn(col);
+        column.setMinWidth(0);
+        column.setMaxWidth(width);
+        column.setMinWidth(width);
+        column.setPreferredWidth(width);
     }
 
     static String columnDescription(JTable table, int column) {
@@ -95,7 +163,8 @@ public final class TableStyler {
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
                                                        boolean hasFocus, int row, int column) {
-            Component component = base.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            Object shown = isIconColumn(table, column) ? "" : value;
+            Component component = base.getTableCellRendererComponent(table, shown, isSelected, hasFocus, row, column);
             if (component instanceof JComponent described) {
                 described.setToolTipText(columnDescription(table, column));
             }
@@ -131,25 +200,28 @@ public final class TableStyler {
     public static void packColumns(JTable table) {
         for (int col = 0; col < table.getColumnCount(); col++) {
             TableColumn column = table.getColumnModel().getColumn(col);
-
-            TableCellRenderer headerRenderer = table.getTableHeader().getDefaultRenderer();
-            Component headerComp = headerRenderer.getTableCellRendererComponent(
-                    table, column.getHeaderValue(), false, false, -1, col);
-            int width = headerComp.getPreferredSize().width;
-
-            int rowCount = Math.min(table.getRowCount(), PACK_SAMPLE_ROWS);
-            for (int row = 0; row < rowCount; row++) {
-                TableCellRenderer cellRenderer = table.getCellRenderer(row, col);
-                Component comp = table.prepareRenderer(cellRenderer, row, col);
-                width = Math.max(width, comp.getPreferredSize().width);
+            if (isIconColumn(table, column)) {
+                fixIconWidth(table, col);
+                continue;
             }
-            int packed = Math.min(width + PACK_MARGIN_PX, PACK_MAX_WIDTH_PX);
-            if (Icon.class.isAssignableFrom(table.getColumnClass(col))) {
-                column.setMinWidth(packed);
-                column.setMaxWidth(packed);
-            }
-            column.setPreferredWidth(packed);
+            int saved = ColumnWidthMemory.savedWidth(table, column);
+            column.setPreferredWidth(saved > 0 ? saved : packedWidth(table, column, col));
         }
+    }
+
+    private static int packedWidth(JTable table, TableColumn column, int col) {
+        TableCellRenderer headerRenderer = table.getTableHeader().getDefaultRenderer();
+        Component headerComp = headerRenderer.getTableCellRendererComponent(
+                table, column.getHeaderValue(), false, false, -1, col);
+        int width = headerComp.getPreferredSize().width;
+
+        int rowCount = Math.min(table.getRowCount(), PACK_SAMPLE_ROWS);
+        for (int row = 0; row < rowCount; row++) {
+            TableCellRenderer cellRenderer = table.getCellRenderer(row, col);
+            Component comp = table.prepareRenderer(cellRenderer, row, col);
+            width = Math.max(width, comp.getPreferredSize().width);
+        }
+        return Math.min(width + PACK_MARGIN_PX, PACK_MAX_WIDTH_PX);
     }
 
     public static void sizeColumnsFromSamples(JTable table, Function<Object, String> sampleForKey) {
@@ -182,6 +254,11 @@ public final class TableStyler {
     }
 
     private static void sizeFromSample(JTable table, TableColumn column, Function<Object, String> sampleForKey) {
+        int saved = ColumnWidthMemory.savedWidth(table, column);
+        if (saved > 0) {
+            column.setPreferredWidth(saved);
+            return;
+        }
         Component header = table.getTableHeader().getDefaultRenderer().getTableCellRendererComponent(
                 table, column.getHeaderValue(), false, false, -1, 0);
         Component sample = table.getDefaultRenderer(Object.class).getTableCellRendererComponent(

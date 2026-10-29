@@ -70,7 +70,8 @@ public final class MigrationRunner {
             "db/migrations/V45__lp_store_net_columns.sql",
             "db/migrations/V46__asset_blueprint_copies.sql",
             "db/migrations/V47__token_status.sql",
-            "db/migrations/V48__backup_secret.sql"
+            "db/migrations/V48__backup_secret.sql",
+            "db/migrations/V49__table_column_width.sql"
     );
 
     public static void run(Database database) {

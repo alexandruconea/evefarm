@@ -5,6 +5,7 @@ import com.evefarm.model.LoyaltyPointHistoryRow;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnSorting;
 import com.evefarm.ui.column.ColumnTableModel;
+import com.evefarm.ui.column.ColumnWidthMemory;
 import com.evefarm.util.DateUtil;
 import com.evefarm.util.Text;
 
@@ -76,6 +77,7 @@ final class LoyaltyPointHistoryDialog extends JDialog {
         ColumnSorting.install(sorter, tableModel);
         table.setRowSorter(sorter);
         TableStyler.style(table);
+        ColumnWidthMemory.install(table, "lpHistory", appContext.tableColumnStateDao);
         JScrollPane scroll = new JScrollPane(table);
         scroll.setPreferredSize(new Dimension(720, 380));
 

@@ -7,6 +7,7 @@ import com.evefarm.model.ContractRow;
 import com.evefarm.service.ItemIconService;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
+import com.evefarm.ui.column.ColumnWidthMemory;
 import com.evefarm.util.DateUtil;
 import com.evefarm.util.IskFormatter;
 import com.evefarm.util.Text;
@@ -79,9 +80,9 @@ final class ContractContentsDialog extends JDialog {
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
         content.setBorder(BorderFactory.createEmptyBorder(12, 12, 6, 12));
         content.add(details());
-        content.add(section("Items in this contract", includedTable, includedTotal));
+        content.add(section("Items in this contract", includedTable, "contractItemsIncluded", includedTotal));
         askedSection.add(sectionTitle("Items asked for in return"), BorderLayout.NORTH);
-        askedSection.add(scroll(askedTable), BorderLayout.CENTER);
+        askedSection.add(scroll(askedTable, "contractItemsAsked"), BorderLayout.CENTER);
         askedSection.add(askedTotal, BorderLayout.SOUTH);
         askedSection.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
         askedSection.setVisible(false);
@@ -163,11 +164,11 @@ final class ContractContentsDialog extends JDialog {
         return value == null || value == 0 ? null : IskFormatter.format(value);
     }
 
-    private JPanel section(String title, JTable table, JLabel total) {
+    private JPanel section(String title, JTable table, String widthKey, JLabel total) {
         JPanel panel = new JPanel(new BorderLayout(0, 4));
         panel.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(sectionTitle(title), BorderLayout.NORTH);
-        panel.add(scroll(table), BorderLayout.CENTER);
+        panel.add(scroll(table, widthKey), BorderLayout.CENTER);
         panel.add(total, BorderLayout.SOUTH);
         return panel;
     }
@@ -178,8 +179,9 @@ final class ContractContentsDialog extends JDialog {
         return label;
     }
 
-    private JScrollPane scroll(JTable table) {
+    private JScrollPane scroll(JTable table, String widthKey) {
         TableStyler.style(table);
+        ColumnWidthMemory.install(table, widthKey, appContext.tableColumnStateDao);
         table.setRowHeight(Math.max(table.getRowHeight(), ItemIconService.RENDER_SIZE + 6));
         JScrollPane scroll = new JScrollPane(table);
         scroll.setPreferredSize(new Dimension(760, 200));

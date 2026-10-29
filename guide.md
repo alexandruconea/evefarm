@@ -437,6 +437,8 @@ Most tabs show a table, and all of them work the same way.
 - Hover a column header to see what the column shows and how it is worked out. **Choose Columns...** shows the same when you hover a column in its list.
 - Click a column header to sort by it; click again to reverse. Numbers and amounts sort as numbers.
 - Drag a header to move the column. The order is remembered.
+- Drag the edge of a header to make a column wider or narrower. The widths are remembered, in every table of EVE Farm. Right-click a header and choose **Reset Column Widths** to fit the columns to what they show again.
+- Columns that only show an icon are as wide as the icon and can't be resized.
 - Right-click a header and choose **Choose Columns...** to show or hide columns. Some useful columns are hidden at first, such as the IDs.
 
 **Copying**

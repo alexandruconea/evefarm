@@ -4,6 +4,7 @@ import com.evefarm.AppContext;
 import com.evefarm.model.EveCharacter;
 import com.evefarm.model.KillDayTypeRow;
 import com.evefarm.service.KillsReportService;
+import com.evefarm.ui.column.ColumnWidthMemory;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -84,6 +85,7 @@ public final class KillsPanel extends JPanel {
 
         killsTable.setRowSorter(new TableRowSorter<>(killsTableModel));
         TableStyler.style(killsTable);
+        ColumnWidthMemory.install(killsTable, "kills", appContext.tableColumnStateDao);
 
         add(new JScrollPane(killsTable), BorderLayout.CENTER);
         add(sidebar(), BorderLayout.EAST);

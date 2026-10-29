@@ -4,6 +4,7 @@ import com.evefarm.AppContext;
 import com.evefarm.auth.CharacterIdentity;
 import com.evefarm.model.EveCharacter;
 import com.evefarm.ui.column.ColumnDescriptions;
+import com.evefarm.ui.column.ColumnWidthMemory;
 import com.evefarm.util.DateUtil;
 
 import javax.swing.JButton;
@@ -53,6 +54,7 @@ public final class CharactersDialog extends JDialog {
         table = new JTable(tableModel);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         TableStyler.style(table);
+        ColumnWidthMemory.install(table, "characters", appContext.tableColumnStateDao);
         DefaultTableCellRenderer nameRenderer = new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable t, Object value, boolean isSelected,

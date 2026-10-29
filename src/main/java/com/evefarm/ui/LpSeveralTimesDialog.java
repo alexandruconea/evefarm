@@ -10,6 +10,7 @@ import com.evefarm.service.LpOfferDepthService.Result;
 import com.evefarm.service.LpOfferDepthService.Sale;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
+import com.evefarm.ui.column.ColumnWidthMemory;
 import com.evefarm.util.DateUtil;
 import com.evefarm.util.IskFormatter;
 import com.evefarm.util.Text;
@@ -170,6 +171,8 @@ final class LpSeveralTimesDialog extends JDialog {
 
         TableStyler.style(purchaseTable);
         TableStyler.style(saleTable);
+        ColumnWidthMemory.install(purchaseTable, "lpSeveralTimesPurchases", appContext.tableColumnStateDao);
+        ColumnWidthMemory.install(saleTable, "lpSeveralTimesSales", appContext.tableColumnStateDao);
         int rowHeight = purchaseTable.getRowHeight();
         int purchaseRows = Math.clamp(offer.requiredItems().size() + offer.buildMaterials().size(), 3, 10);
         purchaseTable.setPreferredScrollableViewportSize(new Dimension(tableWidth, rowHeight * purchaseRows));

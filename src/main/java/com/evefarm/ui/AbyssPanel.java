@@ -15,6 +15,7 @@ import com.evefarm.service.AbyssTrackerService;
 import com.evefarm.service.CargoParser;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
+import com.evefarm.ui.column.ColumnWidthMemory;
 import com.evefarm.util.DateUtil;
 import com.evefarm.util.IskFormatter;
 import com.formdev.flatlaf.FlatLaf;
@@ -181,6 +182,7 @@ public final class AbyssPanel extends TabPanel {
             }
         });
         TableStyler.style(statsTable);
+        ColumnWidthMemory.install(statsTable, "abyssStats", appContext.tableColumnStateDao);
 
         trackerStatus = appContext.abyssTrackerService.status();
         appContext.abyssTrackerService.addListener(event -> SwingUtilities.invokeLater(() -> onTrackerEvent(event)));

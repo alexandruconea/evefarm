@@ -25,6 +25,7 @@ public final class ColumnVisibilitySupport<T> {
     private final ColumnTableModel<T> model;
     private final String panelKey;
     private final TableColumnStateDao dao;
+    private ColumnWidthMemory widthMemory;
     private boolean applyingState;
     private boolean columnsMovedSinceRelease;
 
@@ -38,6 +39,7 @@ public final class ColumnVisibilitySupport<T> {
     public static <T> void install(JTable table, ColumnTableModel<T> model, String panelKey, TableColumnStateDao dao) {
         ColumnVisibilitySupport<T> support = new ColumnVisibilitySupport<>(table, model, panelKey, dao);
         support.applyPersistedOrDefaultState();
+        support.widthMemory = ColumnWidthMemory.attach(table, panelKey, dao);
         support.installHeaderMenu();
         support.installReorderPersistence();
     }
@@ -114,6 +116,7 @@ public final class ColumnVisibilitySupport<T> {
                 JMenuItem chooseColumns = new JMenuItem("Choose Columns...");
                 chooseColumns.addActionListener(a -> openChooser());
                 menu.add(chooseColumns);
+                menu.add(widthMemory.resetItem());
                 menu.show(e.getComponent(), e.getX(), e.getY());
             }
         });

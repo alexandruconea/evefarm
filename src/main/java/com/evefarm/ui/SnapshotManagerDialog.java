@@ -4,6 +4,7 @@ import com.evefarm.AppContext;
 import com.evefarm.model.EveCharacter;
 import com.evefarm.model.TrackerSnapshot;
 import com.evefarm.ui.column.ColumnDescriptions;
+import com.evefarm.ui.column.ColumnWidthMemory;
 import com.evefarm.util.DateUtil;
 import com.evefarm.util.IskFormatter;
 
@@ -50,6 +51,7 @@ public final class SnapshotManagerDialog extends JDialog {
         JTable table = new JTable(tableModel);
         table.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
         TableStyler.style(table);
+        ColumnWidthMemory.install(table, "snapshots", appContext.tableColumnStateDao);
         TableStyler.packColumns(table);
         JScrollPane scrollPane = new JScrollPane(table);
         scrollPane.setPreferredSize(new Dimension(520, 320));
