@@ -16,7 +16,7 @@
     <maven.compiler.release>25</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <mainClass>com.evefarm.Main</mainClass>
-    <jacoco.version>0.8.15</jacoco.version>
+    <jacoco.version>0.8.16</jacoco.version>
     <mockito.version>5.24.0</mockito.version>
   </properties>
 
@@ -30,7 +30,7 @@
     <dependency>
       <groupId>org.xerial</groupId>
       <artifactId>sqlite-jdbc</artifactId>
-      <version>3.53.4.0</version>
+      <version>3.54.1.0</version>
     </dependency>
 
     <dependency>
@@ -59,7 +59,7 @@
     <dependency>
       <groupId>com.auth0</groupId>
       <artifactId>jwks-rsa</artifactId>
-      <version>0.24.1</version>
+      <version>0.24.2</version>
       <exclusions>
         <exclusion>
           <groupId>com.google.guava</groupId>
@@ -128,7 +128,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>3.6.0</version>
+        <version>3.6.1</version>
       </plugin>
       <plugin>
         <groupId>org.jacoco</groupId>
