@@ -20,7 +20,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad
         with:
           distribution: temurin
           java-version: '25'
@@ -53,7 +53,7 @@ jobs:
       - name: Upload EVEFarm.exe for Authenticode signing
         id: unsigned-launcher
         if: vars.SIGNPATH_ORGANIZATION_ID != ''
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: unsigned-launcher
           path: dist/EVEFarm/EVEFarm.exe
@@ -97,7 +97,7 @@ jobs:
         run: java -cp target/classes packaging/SignRelease.java "dist/EVEFarm-$env:VERSION-win64.zip" $env:VERSION
 
       - name: Keep the Windows files for the release
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: windows-release
           path: |
@@ -118,7 +118,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad
         with:
           distribution: temurin
           java-version: '25'
@@ -152,7 +152,7 @@ jobs:
         run: java -cp target/classes packaging/SignRelease.java "dist/EVEFarm-$VERSION-linux-x64.tar.gz" "$VERSION"
 
       - name: Keep the Linux files for the release
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: linux-release
           path: |
