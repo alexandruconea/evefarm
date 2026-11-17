@@ -10,8 +10,13 @@ import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JViewport;
 import javax.swing.LayoutStyle;
+import javax.swing.Scrollable;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.GridLayout;
+import java.awt.Rectangle;
 import java.util.List;
 
 public final class ValuesPanel extends TabPanel {
@@ -19,6 +24,7 @@ public final class ValuesPanel extends TabPanel {
     private final AppContext appContext;
     private final ValueColumnPanel grandTotalColumn = new ValueColumnPanel();
     private final ValueColumnPanel characterColumn = new ValueColumnPanel();
+    private final WalletLpProjectionPanel projectionPanel = new WalletLpProjectionPanel();
     private List<EveCharacter> characters = List.of();
     private String mainCharacterName;
 
@@ -30,10 +36,15 @@ public final class ValuesPanel extends TabPanel {
 
     private void postInit() {
         columnsContainer.setLayout(new GridLayout(1, 2, 20, 0));
-        columnsContainer.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        columnsContainer.setOpaque(false);
         columnsScrollPane.setBorder(BorderFactory.createEmptyBorder());
         columnsContainer.add(grandTotalColumn);
         columnsContainer.add(characterColumn);
+        FillViewportPanel content = new FillViewportPanel();
+        content.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        content.add(columnsContainer, BorderLayout.NORTH);
+        content.add(projectionPanel, BorderLayout.CENTER);
+        columnsScrollPane.setViewportView(content);
 
         characterCombo.addActionListener(e -> refreshCharacterColumn());
         characterCombo.setRenderer(MainCharacterMarks.comboRenderer(() -> mainCharacterName));
@@ -61,6 +72,16 @@ public final class ValuesPanel extends TabPanel {
 
         refreshGrandTotalColumn();
         refreshCharacterColumn();
+        refreshProjection();
+    }
+
+    private void refreshProjection() {
+        projectionPanel.setVisible(!characters.isEmpty());
+        if (!characters.isEmpty()) {
+            EveCharacter main = characters.getFirst();
+            projectionPanel.setProjection(main.characterName(),
+                    appContext.valueSummaryService.projectWalletAndLp(main.characterId()));
+        }
     }
 
     private void refreshGrandTotalColumn() {
@@ -79,6 +100,38 @@ public final class ValuesPanel extends TabPanel {
         }
         ValueSummary summary = appContext.valueSummaryService.summarizeCharacter(selected.characterId());
         characterColumn.setSummary(selected.characterName(), summary);
+    }
+
+    private static final class FillViewportPanel extends JPanel implements Scrollable {
+
+        FillViewportPanel() {
+            super(new BorderLayout(0, 20));
+        }
+
+        @Override
+        public Dimension getPreferredScrollableViewportSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return 16;
+        }
+
+        @Override
+        public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return Math.max(16, visibleRect.height - 16);
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+            return getParent() instanceof JViewport viewport && viewport.getWidth() > getPreferredSize().width;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportHeight() {
+            return getParent() instanceof JViewport viewport && viewport.getHeight() > getPreferredSize().height;
+        }
     }
 
     private JLabel characterLabel;

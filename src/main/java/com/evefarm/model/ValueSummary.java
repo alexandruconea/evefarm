@@ -5,8 +5,7 @@ public record ValueSummary(
         double walletBalance,
         double assetsValue,
         double sellOrdersValue,
-        double escrowValue,
-        double escrowToCoverValue,
+        Today today,
         String bestAssetName,
         double bestAssetValue,
         String bestShipName,
@@ -14,4 +13,19 @@ public record ValueSummary(
         String bestModuleName,
         double bestModuleValue
 ) {
+
+    public record Today(double isk, long lp, double targetIskPerLp) {
+
+        public double lpValue() {
+            return targetIskPerLp > 0 ? lp * targetIskPerLp : 0;
+        }
+
+        public double total() {
+            return isk + lpValue();
+        }
+
+        public boolean isEmpty() {
+            return isk == 0 && lp == 0;
+        }
+    }
 }

@@ -13,6 +13,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public final class WalletJournalDao {
 
@@ -153,11 +154,43 @@ public final class WalletJournalDao {
         }
     }
 
+    public List<DatedAmount> findByRefTypes(long characterId, Set<String> refTypes, Instant since) {
+        if (refTypes.isEmpty()) {
+            return List.of();
+        }
+        String sql = "SELECT date, amount FROM wallet_journal_entry WHERE character_id = ? AND date >= ? "
+                + "AND ref_type IN (" + JdbcUtil.placeholders(refTypes.size()) + ") ORDER BY date";
+        synchronized (database) {
+            List<DatedAmount> result = new ArrayList<>();
+            try (PreparedStatement ps = database.connection().prepareStatement(sql)) {
+                ps.setLong(1, characterId);
+                ps.setString(2, since.toString());
+                int index = 3;
+                for (String refType : refTypes) {
+                    ps.setString(index++, refType);
+                }
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        result.add(new DatedAmount(rs.getString("date"), rs.getDouble("amount")));
+                    }
+                }
+            } catch (SQLException e) {
+                throw new IllegalStateException("Failed to read " + refTypes + " journal entries for " + characterId,
+                        e);
+            }
+            return result;
+        }
+    }
+
     public record MissionIncomeEntry(long characterId, String characterName, Instant date, String refType,
                                      double amount, String reason, String agentName) {
     }
 
     public List<MissionIncomeEntry> findMissionIncome() {
+        return findMissionIncome(Instant.EPOCH);
+    }
+
+    public List<MissionIncomeEntry> findMissionIncome(Instant since) {
         String sql = """
                 SELECT j.character_id, c.character_name, j.date, j.ref_type, j.amount, j.reason,
                        CASE WHEN j.ref_type = 'bounty_prizes' OR j.first_party_id IS NULL THEN NULL
@@ -167,16 +200,20 @@ public final class WalletJournalDao {
                 LEFT JOIN entity_name_cache e ON e.entity_id = j.first_party_id
                 WHERE c.removed_at IS NULL
                   AND j.ref_type IN ('agent_mission_reward', 'agent_mission_time_bonus_reward', 'bounty_prizes')
+                  AND j.date >= ?
                 ORDER BY j.date
                 """;
         synchronized (database) {
             List<MissionIncomeEntry> result = new ArrayList<>();
-            try (PreparedStatement ps = database.connection().prepareStatement(sql);
-                 ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    result.add(new MissionIncomeEntry(rs.getLong("character_id"), rs.getString("character_name"),
-                            Instant.parse(rs.getString("date")), rs.getString("ref_type"), rs.getDouble("amount"),
-                            rs.getString("reason"), rs.getString("agent_name")));
+            try (PreparedStatement ps = database.connection().prepareStatement(sql)) {
+                ps.setString(1, since.toString());
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        result.add(new MissionIncomeEntry(rs.getLong("character_id"),
+                                rs.getString("character_name"), Instant.parse(rs.getString("date")),
+                                rs.getString("ref_type"), rs.getDouble("amount"), rs.getString("reason"),
+                                rs.getString("agent_name")));
+                    }
                 }
             } catch (SQLException e) {
                 throw new IllegalStateException("Failed to read the mission income", e);

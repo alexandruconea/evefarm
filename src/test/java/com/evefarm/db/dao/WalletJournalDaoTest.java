@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -68,5 +69,26 @@ class WalletJournalDaoTest {
         assertEquals("Yasonar Anoh", income.get(1).agentName());
         assertNull(income.get(0).agentName(), "a bounty is paid by CONCORD, not an agent");
         assertEquals("16037: 1", income.get(0).reason());
+    }
+
+    @Test
+    void transfersAreFoundByTheirTypesSinceADate() {
+        dao.saveForCharacter(CHARACTER_ID, List.of(
+                new JournalEntry(1, "2026-10-20T10:00:00Z", "corporation_account_withdrawal", 1_000_000_000, 0,
+                        "", "", null, null, 0, null),
+                new JournalEntry(2, "2026-10-30T10:52:00Z", "corporation_account_withdrawal", 7_001_843_399.0, 0,
+                        "Malpais Legate transferred cash from Isolated Tech's corporate account", "", null, null, 0,
+                        null),
+                new JournalEntry(3, "2026-11-02T08:00:00Z", "player_donation", -250_000_000, 0, "", "", null, null,
+                        0, null),
+                payout(4, "2026-11-03T10:00:00Z", 970_000)));
+
+        List<WalletJournalDao.DatedAmount> transfers = dao.findByRefTypes(CHARACTER_ID,
+                Set.of("corporation_account_withdrawal", "player_donation"), Instant.parse("2026-10-28T00:00:00Z"));
+
+        assertEquals(List.of("2026-10-30T10:52:00Z", "2026-11-02T08:00:00Z"),
+                transfers.stream().map(WalletJournalDao.DatedAmount::date).toList());
+        assertEquals(List.of(7_001_843_399.0, -250_000_000.0),
+                transfers.stream().map(WalletJournalDao.DatedAmount::amount).toList());
     }
 }

@@ -116,8 +116,14 @@ Each card shows:
 - **Wallet Balance**: ISK in the wallet;
 - **Assets**: the value of everything the character owns;
 - **Sell Orders**: the value of the items on your open sell orders;
-- **Escrows (To Cover)**: the ISK still needed to fill your buy orders, on top of the escrow already paid;
+- **Earned Today**: the ISK from missions and the LP earned today, counted as in **LP Store > Report**, and below it both together, with the LP at your **Set ISK/LP Target...**;
 - **Best Asset**, **Best Ship** and **Best Module**: the most valuable item of each kind, with its value.
+
+Under the cards, **Forecast for Favorite Character** projects the wallet and LP of your main character (**Set as Main**) to December 31. The LP is the same as the Tracker's **LP Value**: the LP with your favorite corporation in the LP Store, times your **Set ISK/LP Target...**.
+
+- The pace is the trend line of the last 30 days of Tracker snapshots. The band shows where you would be at the pace of the slowest and the fastest week in them.
+- ISK moved from or to a corporation wallet and donations between characters don't count as produced, so moving ISK around doesn't change the forecast.
+- The forecast needs at least 3 days of snapshots. Hover the chart to see the value of a day.
 
 ### Tracker
 

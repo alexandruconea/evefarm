@@ -103,6 +103,8 @@ import com.evefarm.service.VoiceService;
 import com.evefarm.update.UpdateInstaller;
 import com.evefarm.update.UpdateService;
 
+import java.time.Clock;
+
 public final class AppContext {
 
     public final SettingsDao settingsDao;
@@ -274,7 +276,8 @@ public final class AppContext {
         this.industryService = new IndustryService(industryCatalogService,
                 new IndustryMarketService(new IndustryIndexApi(esiHttpClient), marketsApi), priceService, skillService,
                 assetService);
-        this.valueSummaryService = new ValueSummaryService(snapshotDao, assetDao, characterService);
+        this.valueSummaryService = new ValueSummaryService(snapshotDao, assetDao, characterService,
+                walletJournalDao, loyaltyPointDao, npcCatalogService, settingsDao, Clock.systemDefaultZone());
         this.backupRestoreService = new BackupRestoreService(database, settingsDao);
         this.eveSettingsService = new EveSettingsService(settingsDao);
         this.updateService = new UpdateService(settingsDao);

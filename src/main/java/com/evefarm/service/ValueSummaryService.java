@@ -1,12 +1,26 @@
 package com.evefarm.service;
 
 import com.evefarm.db.dao.AssetDao;
+import com.evefarm.db.dao.LoyaltyPointDao;
+import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.db.dao.SnapshotDao;
+import com.evefarm.db.dao.WalletJournalDao;
+import com.evefarm.db.dao.WalletJournalDao.MissionIncomeEntry;
 import com.evefarm.model.AssetRow;
 import com.evefarm.model.EveCharacter;
+import com.evefarm.model.LpGain;
 import com.evefarm.model.TrackerSnapshot;
 import com.evefarm.model.ValueSummary;
+import com.evefarm.model.ValueSummary.Today;
+import com.evefarm.service.WalletLpProjection.Point;
+import com.evefarm.service.WalletLpProjection.Projection;
+import com.evefarm.service.WalletLpProjection.Transfer;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -20,16 +34,28 @@ public final class ValueSummaryService {
     private final SnapshotDao snapshotDao;
     private final AssetDao assetDao;
     private final CharacterService characterService;
+    private final WalletJournalDao walletJournalDao;
+    private final LoyaltyPointDao loyaltyPointDao;
+    private final NpcCatalogService npcCatalogService;
+    private final SettingsDao settingsDao;
+    private final Clock clock;
 
-    public ValueSummaryService(SnapshotDao snapshotDao, AssetDao assetDao, CharacterService characterService) {
+    public ValueSummaryService(SnapshotDao snapshotDao, AssetDao assetDao, CharacterService characterService,
+                               WalletJournalDao walletJournalDao, LoyaltyPointDao loyaltyPointDao,
+                               NpcCatalogService npcCatalogService, SettingsDao settingsDao, Clock clock) {
         this.snapshotDao = snapshotDao;
         this.assetDao = assetDao;
         this.characterService = characterService;
+        this.walletJournalDao = walletJournalDao;
+        this.loyaltyPointDao = loyaltyPointDao;
+        this.npcCatalogService = npcCatalogService;
+        this.settingsDao = settingsDao;
+        this.clock = clock;
     }
 
     public ValueSummary summarizeCharacter(long characterId) {
         Optional<TrackerSnapshot> latest = snapshotDao.findLatest(characterId);
-        return build(latest, findBest(Set.of(characterId)));
+        return build(latest, today(characterId), findBest(Set.of(characterId)));
     }
 
     public ValueSummary summarizeGrandTotal() {
@@ -37,8 +63,6 @@ public final class ValueSummaryService {
         double wallet = 0;
         double assets = 0;
         double sellOrders = 0;
-        double escrow = 0;
-        double escrowToCover = 0;
         double total = 0;
         for (EveCharacter character : characters) {
             Optional<TrackerSnapshot> latest = snapshotDao.findLatest(character.characterId());
@@ -49,25 +73,55 @@ public final class ValueSummaryService {
             wallet += snapshot.walletBalance();
             assets += snapshot.assetsValue();
             sellOrders += snapshot.sellOrdersValue();
-            escrow += snapshot.escrowValue();
-            escrowToCover += snapshot.escrowToCoverValue();
             total += snapshot.totalValue();
         }
         Best best = findBest(null);
-        return new ValueSummary(total, wallet, assets, sellOrders, escrow, escrowToCover,
+        return new ValueSummary(total, wallet, assets, sellOrders, today(null),
                 best.assetName(), best.assetValue(), best.shipName(), best.shipValue(),
                 best.moduleName(), best.moduleValue());
     }
 
-    private ValueSummary build(Optional<TrackerSnapshot> latest, Best best) {
+    public Projection projectWalletAndLp(long characterId) {
+        Instant now = clock.instant();
+        ZoneId zone = clock.getZone();
+        Instant paceStart = now.minus(WalletLpProjection.PACE_WINDOW).minus(Duration.ofDays(1));
+        Instant yearStart = WalletLpProjection.yearStart(now, zone);
+        Instant since = paceStart.isBefore(yearStart) ? paceStart : yearStart;
+        List<Point> points = snapshotDao.listBetween(Set.of(characterId), since, now).stream()
+                .map(snapshot -> new Point(snapshot.capturedAt(), snapshot.walletBalance(), snapshot.lpValue()))
+                .toList();
+        List<Transfer> transfers = walletJournalDao.findByRefTypes(characterId,
+                        WalletLpProjection.TRANSFER_REF_TYPES, since).stream()
+                .map(entry -> new Transfer(Instant.parse(entry.date()), entry.amount()))
+                .toList();
+        return WalletLpProjection.project(points, transfers, now, zone);
+    }
+
+    private Today today(Long characterId) {
+        ZoneId zone = clock.getZone();
+        LocalDate date = LocalDate.now(clock);
+        Instant since = date.atStartOfDay(zone).toInstant().minus(MissionIncome.TURN_IN_BEFORE);
+        List<MissionIncomeEntry> entries = walletJournalDao.findMissionIncome(since).stream()
+                .filter(entry -> characterId == null || entry.characterId() == characterId)
+                .toList();
+        List<LpGain> gains = loyaltyPointDao.listGains().stream()
+                .filter(gain -> characterId == null || gain.characterId() == characterId)
+                .toList();
+        MissionIncome.Totals totals = MissionIncome.report(
+                MissionIncome.classify(entries, npcCatalogService.catalog()::isMissionNpc), gains, date, date, zone)
+                .totals();
+        return new Today(totals.isk(), totals.lp(), settingsDao.getDouble(SettingsDao.LP_STORE_TARGET_ISK_PER_LP,
+                SettingsDao.DEFAULT_LP_STORE_TARGET_ISK_PER_LP));
+    }
+
+    private ValueSummary build(Optional<TrackerSnapshot> latest, Today today, Best best) {
         TrackerSnapshot snapshot = latest.orElse(null);
         return new ValueSummary(
                 snapshot == null ? 0 : snapshot.totalValue(),
                 snapshot == null ? 0 : snapshot.walletBalance(),
                 snapshot == null ? 0 : snapshot.assetsValue(),
                 snapshot == null ? 0 : snapshot.sellOrdersValue(),
-                snapshot == null ? 0 : snapshot.escrowValue(),
-                snapshot == null ? 0 : snapshot.escrowToCoverValue(),
+                today,
                 best.assetName(), best.assetValue(),
                 best.shipName(), best.shipValue(),
                 best.moduleName(), best.moduleValue());

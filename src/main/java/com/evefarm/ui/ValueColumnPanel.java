@@ -1,6 +1,7 @@
 package com.evefarm.ui;
 
 import com.evefarm.model.ValueSummary;
+import com.evefarm.model.ValueSummary.Today;
 import com.evefarm.util.IskFormatter;
 import com.evefarm.util.Text;
 
@@ -14,6 +15,9 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 
 final class ValueColumnPanel extends JPanel {
 
@@ -40,7 +44,8 @@ final class ValueColumnPanel extends JPanel {
         addRow(row++, "Wallet Balance", isk(summary == null ? 0 : summary.walletBalance()), false);
         addRow(row++, "Assets", isk(summary == null ? 0 : summary.assetsValue()), false);
         addRow(row++, "Sell Orders", isk(summary == null ? 0 : summary.sellOrdersValue()), false);
-        addRow(row++, "Escrows (To Cover)", escrow(summary), false);
+        addRow(row++, "Earned Today", today(summary == null ? null : summary.today()), false,
+                todayTip(summary == null ? null : summary.today()));
         addRow(row++, "Best Asset", best(summary == null ? null : summary.bestAssetName(),
                 summary == null ? 0 : summary.bestAssetValue()), false);
         addRow(row++, "Best Ship", best(summary == null ? null : summary.bestShipName(),
@@ -52,6 +57,10 @@ final class ValueColumnPanel extends JPanel {
     }
 
     private void addRow(int row, String label, String value, boolean emphasized) {
+        addRow(row, label, value, emphasized, null);
+    }
+
+    private void addRow(int row, String label, String value, boolean emphasized, String tip) {
         JLabel name = new JLabel(label);
         name.setForeground(UiColors.muted());
         JLabel amount = new JLabel(value == null ? "—" : value);
@@ -73,6 +82,8 @@ final class ValueColumnPanel extends JPanel {
                 BorderFactory.createEmptyBorder(9, 0, 9, 0)));
         line.add(name, BorderLayout.WEST);
         line.add(amount, BorderLayout.CENTER);
+        name.setToolTipText(tip);
+        amount.setToolTipText(tip);
 
         GridBagConstraints c = new GridBagConstraints();
         c.gridx = 0;
@@ -87,15 +98,32 @@ final class ValueColumnPanel extends JPanel {
         return value > 0 ? IskFormatter.format(value) : null;
     }
 
-    private static String escrow(ValueSummary summary) {
-        if (summary == null || (summary.escrowValue() <= 0 && summary.escrowToCoverValue() <= 0)) {
+    private static String today(Today today) {
+        if (today == null || today.isEmpty()) {
             return null;
         }
-        String text = IskFormatter.format(summary.escrowValue());
-        if (summary.escrowToCoverValue() > 0) {
-            text += " (" + IskFormatter.format(summary.escrowToCoverValue()) + ")";
+        List<String> parts = new ArrayList<>();
+        if (today.isk() != 0) {
+            parts.add(IskFormatter.format(today.isk()));
         }
-        return text;
+        if (today.lp() != 0) {
+            parts.add(Text.count(today.lp()) + " LP");
+        }
+        String earned = String.join(" + ", parts);
+        if (today.lpValue() == 0) {
+            return earned;
+        }
+        return "<html><div style='text-align:right'>" + Text.escapeHtml(earned) + "<br>"
+                + IskFormatter.format(today.total()) + "</div></html>";
+    }
+
+    private static String todayTip(Today today) {
+        String tip = "ISK from missions and the LP earned today, as in LP Store > Report";
+        if (today != null && today.targetIskPerLp() > 0) {
+            tip += ". The total counts the LP at " + String.format(Locale.US, "%,.0f ISK/LP", today.targetIskPerLp())
+                    + ", your target set with Set ISK/LP Target... in Offers";
+        }
+        return tip;
     }
 
     private static String best(String itemName, double value) {
