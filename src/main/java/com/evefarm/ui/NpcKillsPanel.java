@@ -1,33 +1,30 @@
 package com.evefarm.ui;
 
 import com.evefarm.AppContext;
+import com.evefarm.ui.PhosphorIcons.Hue;
 
-import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
-import java.awt.BorderLayout;
 
-public final class NpcKillsPanel extends TabPanel {
+public final class NpcKillsPanel extends SubTabs {
 
     private final OfficersPanel officersPanel;
     private final SpawnsPanel spawnsPanel;
     private final KillsPanel killsPanel;
 
     public NpcKillsPanel(AppContext appContext) {
-        super(new BorderLayout());
-        officersPanel = new OfficersPanel(appContext);
-        spawnsPanel = new SpawnsPanel(appContext);
-        killsPanel = new KillsPanel(appContext);
-        JTabbedPane tabs = new JTabbedPane();
-        tabs.addTab("Officers", Icons.TARGET, officersPanel);
-        tabs.addTab("Spawns", Icons.NOTEBOOK, spawnsPanel);
-        tabs.addTab("All Kills", Icons.CROSSHAIR, killsPanel);
-        tabs.addChangeListener(e -> {
-            if (tabs.getSelectedComponent() == spawnsPanel) {
-                spawnsPanel.onShown();
-            }
-        });
-        add(tabs, BorderLayout.CENTER);
+        this(appContext, new OfficersPanel(appContext), new SpawnsPanel(appContext), new KillsPanel(appContext));
         appContext.killService.addLogChangeListener(() -> SwingUtilities.invokeLater(this::refreshAfterScan));
+    }
+
+    private NpcKillsPanel(AppContext appContext, OfficersPanel officersPanel, SpawnsPanel spawnsPanel,
+                          KillsPanel killsPanel) {
+        super(appContext.settingsDao, "kills",
+                new Page("officers", "Officers", PhosphorIcons.menu("crown", Hue.RED), officersPanel),
+                new Page("spawns", "Spawns", PhosphorIcons.menu("users-three", Hue.RED), spawnsPanel),
+                new Page("allKills", "All Kills", PhosphorIcons.menu("skull", Hue.RED), killsPanel));
+        this.officersPanel = officersPanel;
+        this.spawnsPanel = spawnsPanel;
+        this.killsPanel = killsPanel;
     }
 
     private void refreshAfterScan() {
@@ -40,19 +37,5 @@ public final class NpcKillsPanel extends TabPanel {
         if (killsPanel.isShowing()) {
             killsPanel.refreshKills();
         }
-    }
-
-    @Override
-    public void onShown() {
-        officersPanel.onShown();
-        spawnsPanel.onShown();
-        killsPanel.onShown();
-    }
-
-    @Override
-    public void refreshCharacterFilter() {
-        killsPanel.refreshCharacterFilter();
-        officersPanel.onShown();
-        spawnsPanel.onShown();
     }
 }

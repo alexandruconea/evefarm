@@ -18,6 +18,9 @@ public final class SettingsDao {
     public static final String DEFAULT_PRICE_MODE = "default_price_mode";
     public static final String HIDDEN_TABS = "hidden_tabs";
     public static final String TAB_ORDER = "tab_order";
+    public static final String SUB_TAB_PREFIX = "sub_tab_";
+    public static final String TRACKER_COMBINATIONS = "tracker_combinations";
+    public static final String TRACKER_COMBINATION = "tracker_combination";
     public static final String WINDOW_WIDTH = "window_width";
     public static final String WINDOW_HEIGHT = "window_height";
     public static final String WINDOW_MAXIMIZED = "window_maximized";

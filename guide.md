@@ -10,22 +10,14 @@ This guide walks through every part of the app. Menu and button names are writte
 2. [Characters](#characters)
 3. [Updating your data](#updating-your-data)
 4. [The tabs](#the-tabs)
-   - [Values](#values)
-   - [Tracker](#tracker)
-   - [Assets](#assets)
-   - [Journal](#journal)
-   - [Market Orders](#market-orders)
-   - [Transactions](#transactions)
-   - [Contracts](#contracts)
-   - [Industry Jobs](#industry-jobs)
+   - [Values](#values): [Values](#values-1), [Tracker](#tracker), [Assets](#assets)
+   - [Wallet](#wallet): [Journal](#journal), [Transactions](#transactions), [Market Orders](#market-orders), [Contracts](#contracts)
    - [LP Store](#lp-store)
    - [NPC Kills](#npc-kills)
    - [Abyss](#abyss)
-   - [Mining](#mining)
-   - [Agents](#agents)
-   - [Standings](#standings)
+   - [Industry](#industry): [Calculator](#calculator), [Jobs](#jobs), [Mining](#mining)
+   - [Standings](#standings): [Standings](#standings-1), [Agents](#agents)
    - [Skills](#skills)
-   - [Industry Calculator](#industry-calculator)
 5. [Working with tables](#working-with-tables)
 6. [Settings](#settings)
 7. [Copy EVE Settings](#copy-eve-settings)
@@ -64,7 +56,7 @@ When a new version of EVE Farm needs a new permission from EVE, the release note
 
 ## Updating your data
 
-The round button at the right end of the tabs updates everything that can be updated, for all your characters. Hover it to see what it will update and how long the rest has to wait. It is gray when everything was updated recently, and it spins while an update runs.
+The round button at the right end of the top bar updates everything that can be updated, for all your characters. Hover it to see what it will update and how long the rest has to wait. It is gray when everything was updated recently, and it spins while an update runs.
 
 To choose what to update, open **Update > Update...**:
 
@@ -102,11 +94,17 @@ During EVE's daily downtime the servers don't answer. The update says so; try ag
 
 ## The tabs
 
-You can hide tabs you don't use and change their order in **Options > Show Tabs...** (tick a tab to show it, **Move Up** and **Move Down** to reorder). To hide a tab quickly, right-click it and choose **Close Tab**; it comes back when you tick it again in **Show Tabs...**.
+The tabs sit in the top bar, between **File** and the **Update**, **Options** and **Help** menus: **Values**, **Wallet**, **LP Store**, **NPC Kills**, **Abyss**, **Industry**, **Standings** and **Skills**. When the window is too narrow for their names, they show only their icons; hover one to see its name. A tab with an arrow next to its name holds several pages: click it to open the page you used last there and a list of its pages, with a tick next to the one you are on, then pick another page from the list or click anywhere else to stay.
+
+You can hide tabs you don't use and change their order in **Options > Show Tabs...**: tick a tab to show it, also the pages of **Values**, **Wallet**, **Industry** and **Standings** (ticking or clearing one of these shows or hides all its pages), and use **Move Up** and **Move Down** to reorder. To hide a tab quickly, right-click it and choose **Close Tab**; it comes back when you tick it again in **Show Tabs...**.
 
 To keep the screens tidy, the explanations sit behind the mouse: hover a tab, a field, a button or a line of the Industry Result to read what it does.
 
 ### Values
+
+What your characters are worth: **Values** for today, **Tracker** for how it changed and **Assets** for everything they own.
+
+#### Values
 
 A quick look at what your characters are worth. The left card is the **Grand Total** of all characters; the right card is the character chosen in **Character:**.
 
@@ -119,23 +117,25 @@ Each card shows:
 - **Earned Today**: the ISK from missions and the LP earned today, counted as in **LP Store > Report**, and below it both together, with the LP at your **Set ISK/LP Target...**;
 - **Best Asset**, **Best Ship** and **Best Module**: the most valuable item of each kind, with its value.
 
-Under the cards, **Forecast for Favorite Character** projects the wallet and LP of your main character (**Set as Main**) to December 31. The LP is the same as the Tracker's **LP Value**: the LP with your favorite corporation in the LP Store, times your **Set ISK/LP Target...**.
+Under the cards, **Forecast for Favorite Character** projects your main character (**Set as Main**) to December 31. **Adds up:** chooses what it projects, **Wallet + LP** unless you choose another. The LP is the same as the Tracker's **LP Value**: the LP with your favorite corporation in the LP Store, times your **Set ISK/LP Target...**.
+
+- **Edit...** adds, renames and deletes combinations, and ticks what each adds up: any of the Tracker's series (Wallet Balance, Assets, Sell Orders, LP Value and the others), and **Mining**, the ISK value of everything the character has mined so far, valued as chosen in **Industry > Mining**. Ore you sell is also in Wallet Balance, and ore you keep is also in Assets, so tick Mining with them only if you want it counted twice. **Net Worth**, **Wallet + LP** and **Wallet + LP + Mining** are there to start with.
 
 - The pace is the trend line of the last 30 days of Tracker snapshots. The band shows where you would be at the pace of the slowest and the fastest week in them.
-- ISK moved from or to a corporation wallet and donations between characters don't count as produced, so moving ISK around doesn't change the forecast.
+- When the combination has Wallet Balance, ISK moved from or to a corporation wallet and donations between characters don't count as produced, so moving ISK around doesn't change the forecast.
 - The forecast needs at least 3 days of snapshots. Hover the chart to see the value of a day.
 
-### Tracker
+#### Tracker
 
 A chart of your net worth over time. Each point is a snapshot, taken when EVE Farm starts and when you run **Tracker Snapshot** in the Update window.
 
 - **Quick Date** picks a range: 1 Day, 1 Week, 2 Weeks, 1 Month, 3 Months, 6 Months, 1 Year or 2 Years. **From** and the date next to it set any range you like.
 - **All Profiles** shows all characters together. Clear it and pick characters in the **Characters** list to see only some of them.
-- **Series** lists the lines in the chart. Click a series to hide it, click again to show it:
+- **Series** lists the lines in the chart. Click a series to hide it, click again to show it. **Total** adds up only the series that are shown:
   - Total, Wallet Balance, Assets, Sell Orders;
   - Implants (the implants in every clone: the one you are in and all your jump clones, so jumping between clones doesn't move the total);
   - Escrows (ISK held for your buy orders) and Escrows To Cover (ISK still needed for them);
-  - Manufacturing (the value of what your running manufacturing and reaction jobs will produce, counting every unit a run makes once the Industry tab has downloaded EVE's blueprint data);
+  - Manufacturing (the value of what your running manufacturing and reaction jobs will produce, counting every unit a run makes once **Industry > Calculator** has downloaded EVE's blueprint data);
   - Contracts (the price and reward of the contracts you issued that are still open, not those issued for your corporation or offered to you by others) and Contract Collateral (the collateral of your open courier contracts and of the courier contracts you are carrying);
   - Skill Points and LP Value.
 - Hover the chart to see the values at a date. Scroll to zoom, drag to move, and double-click to show everything again.
@@ -143,7 +143,7 @@ A chart of your net worth over time. Each point is a snapshot, taken when EVE Fa
 - **LP Value** is the LP you hold with your favorite corporation in the LP Store tab, times your **Set ISK/LP Target...**, the same as **Estimated Value** in the LP Store. It goes up when you earn LP and down when you spend it, not with the market. A snapshot keeps the target it was taken with.
 - **Manage Snapshots...** lists every snapshot. Select some and click **Delete Selected** to remove wrong points. You can also right-click a point in the chart and choose **Delete Snapshot**.
 
-### Assets
+#### Assets
 
 Every item your characters own: location, quantity, unit price, total value, volume, ISK per m3, group, category, and the ship a module is fitted to.
 
@@ -151,11 +151,19 @@ Every item your characters own: location, quantity, unit price, total value, vol
 - The total value of what's shown is at the bottom.
 - Blueprint copies have **(Blueprint Copy)** after their name and count as 0 ISK, as copies can't be sold on the market.
 
-### Journal
+### Wallet
+
+Where your ISK came from and went: **Journal**, **Transactions**, **Market Orders** and **Contracts**.
+
+#### Journal
 
 Your wallet journal: date, type, amount, balance, description and the two parties of every entry. EVE only shows the last 30 days; EVE Farm keeps every entry it has seen.
 
-### Market Orders
+#### Transactions
+
+Your market purchases and sales: date, item, group, quantity, price, total, buy or sell, client and location. EVE Farm keeps every transaction it has seen.
+
+#### Market Orders
 
 Your buy and sell orders with price, quantity, location, issue and expiry date, status and range.
 
@@ -164,23 +172,15 @@ Your buy and sell orders with price, quantity, location, issue and expiry date, 
 - **Broker's Fee** and **Broker's Fee %** show what you paid to place the order: the broker's fee in your wallet journal from the second the order was issued. They stay empty when the journal has no fee from that second, for example for orders placed before EVE Farm saved your journal.
 - Hidden columns (right-click a column header and choose **Choose Columns...** to show them): **Market Sell Min**, **Market Buy Max**, **Market Price**, **Market Margin %** and **Market Profit +**, which compare your price with the market.
 
-### Transactions
-
-Your market purchases and sales: date, item, group, quantity, price, total, buy or sell, client and location. EVE Farm keeps every transaction it has seen.
-
-### Contracts
+#### Contracts
 
 Your contracts: type, status, title, issuer, assignee, acceptor, price, reward, collateral, volume, start and end location and dates. Finished contracts are kept.
 
 Click the **Info** icon at the start of a row to see what's in the contract. The window lists the items included and, for item exchanges, the items asked for in return, each with its price and an **Estimated value** of the whole contract. Contracts that expired long ago may no longer show their items in EVE.
 
-### Industry Jobs
-
-Your industry jobs: activity (manufacturing, research, copying, invention, reactions), blueprint, product, runs, facility, cost, start and end date and status. A job that has finished shows as **Ready** until you deliver it. Finished jobs are kept.
-
 ### LP Store
 
-What your loyalty points are worth in each corporation's LP store, what you bought there, how much LP you earn each day and what your missions bring in. It has four tabs: **Offers**, **Purchases**, **LP per Day** and **Report**.
+What your loyalty points are worth in each corporation's LP store, what you bought there, how much LP you earn each day and what your missions bring in. It has four pages: **Offers**, **Purchases**, **LP per Day** and **Report**.
 
 In **Offers**:
 
@@ -256,7 +256,7 @@ Your market sales come from **Update**: each sale of the item by any of your cha
 
 Everything EVE Farm learns from your Gamelogs: the combat logs EVE writes on your computer. It finds them by itself; if not, set the folder in **Options > Settings...**. New kills show up within 10 minutes.
 
-The tab has three parts.
+It has three pages.
 
 **All Kills** counts your kills by date, faction, ship type and system.
 
@@ -312,71 +312,11 @@ It reads your characters' Gamelogs and speaks with Windows' own voice. On Linux 
 - **Say who gets aggro** says a character's name as soon as NPCs start shooting at it.
 - **Volume** sets how loud it is.
 
-### Mining
+### Industry
 
-Everything your characters mined, kept for as long as you keep the app (EVE only shows 30 days). Run **Update > Mining Ledger** to fill it.
+What you build and mine: the **Calculator**, your industry **Jobs** and your **Mining**.
 
-- Each row shows the ore's icon, the date, character, system, ore, kind, quantity, volume, unit value and value. Valued at the compressed ore price, the icon is the compressed ore's.
-- **Show:** picks the period: Today, Last 7 days, Last 30 days, This month or All time.
-- **Value:** chooses how the ore is valued: at the ore price, at the compressed ore price, or as the refined minerals. For refined minerals, set your **Refining yield (%)**; **Refined Into** then shows the minerals each row gives, and hovering it shows what each one is worth.
-- **Statistics** shows the totals for what's in the table: volume, value, days mined and ISK per day. **Group by:** splits them by day, character, ore, kind or system, with each group's share of the total, and grouped by ore also shows the quantity. Valued as refined minerals, **Group by: Material** shows how much of each mineral your mining gives; what can't be refined, like gas or mission ore, is listed as it is.
-
-A character added before EVE Farm 1.0.14 must be added again (**File > Characters... > Add Character...**) so EVE Farm may read its mining ledger.
-
-### Agents
-
-A searchable list of all of EVE's NPC agents: name, corporation, faction, division, level, type, whether it is a locator agent, and its station, system, constellation, region and security status.
-
-- Click **Refresh Agent Data...** the first time to download the list. It changes rarely.
-- System, constellation and region names have a zKillboard icon. Click it to see the recent kills there, so you can judge how dangerous the area is.
-
-### Standings
-
-Your characters' standings with EVE's factions, NPC corporations and agents. Run **Update > Standings** to fill it.
-
-The tab has two sides. Drag the bar between them to make one wider; EVE Farm remembers where you leave it.
-
-- **Factions and corporations** (left): each faction, best standing first, with its corporations just below it, indented. Corporations whose faction you have no standing with come after, then those whose faction isn't known.
-- **Agents** (right): each agent with its standing, corporation, level, division and system.
-- Click a faction on the left to see only its agents on the right, or a corporation to see only that corporation's agents, for the same character. **Show All Agents**, Esc, or a click below the rows shows every agent again.
-- Positive standings are blue, negative ones red.
-- Each side has its own filters and columns. Click a column header to sort another way; the grouping on the left comes back when the tab is opened again.
-
-The corporation, faction, level, division and system of an agent, and the faction of a corporation, come from the agent list. Click **Refresh Agent Data...** in the Agents tab once to fill them; without it, clicking a faction finds none of its agents.
-
-EVE's API gives the standing without the bonus from the Connections, Diplomacy and Criminal Connections skills, so it can differ a little from the value the game shows with your skills applied.
-
-A character added before EVE Farm 1.0.16 must be added again (**File > Characters... > Add Character...**) so EVE Farm may read its standings.
-
-### Skills
-
-A skill planner: make training plans for each character and see how long they take.
-
-Run **Update > Skills** first. The first time, it also downloads the list of EVE's skills, which takes a few seconds.
-
-**At the top** you see the character's attributes, total and unallocated skill points, and when the next attribute remap is available. The attributes are the ones EVE reports, with implants and any active cerebral accelerator.
-
-**Cerebral accelerators.** EVE Farm works out from the attributes how much an active accelerator adds, recognizes which accelerator gives that bonus, and how long it lasts with your Biology skill. EVE doesn't say when it was injected, so EVE Farm counts from the first time it sees it; skills are read every time EVE Farm starts, so start it soon after you inject one. The end date is shown next to the skill points, marked "about" while it is an estimate. Click **Accelerator...** to type the time left that EVE shows when you hover the booster icon under Active Boosters (for example `505:31:31`, hours:minutes:seconds), a time like `6d 4h`, or the end date. Training times use the accelerator until it ends and the normal speed after that, splitting a level that is in training when it runs out.
-
-**Plans** (left): **New...**, **Rename...**, **Copy...** and **Delete**. A character can have as many plans as you like.
-
-**The plan** (right) lists each skill level in training order: training time, finish date, how much is already done, skill points, attributes, group and notes. **Prerequisite** marks levels added because a planned skill needs them. Below the list are the total training time, the finish date, the skill books you still have to buy with their price, and how many skill injectors would finish the plan right away, with their price.
-
-**Skill injectors.** EVE Farm counts the cheapest mix of Large and Small Skill Injectors that gives the skill points the plan still needs, after your unallocated skill points. It follows EVE's rule that an injector gives fewer skill points the more the character has: a Large Skill Injector gives 500,000 SP under 5 million, 400,000 up to 50 million, 300,000 up to 80 million and 150,000 above that, and a Small one a fifth of that. The count goes up a threshold as soon as the injected points cross it. Prices come from your price provider.
-
-- **Add Skills...** opens the skill browser: skills by group, with a search box, each with its description, rank, attributes and what it requires (trained, planned or missing). Click **Plan to I** ... **Plan to V**; the levels and prerequisites it needs are added for you.
-- **Remove** takes the selected levels off. Levels that need them, and prerequisites nothing else needs, go too; EVE Farm asks first.
-- **Move Up** and **Move Down** change the order. A skill can't go above something it needs.
-- **Notes...** adds a note to a level.
-- **Import...** adds skills from text: a skill list, one per line (for example `Caldari Cruiser 4` or `Caldari Cruiser IV`), or a ship fit copied from EVE. For a fit, EVE Farm adds every skill the ship, modules, charges and drones need.
-- **From Skill Queue** adds the skills in the character's training queue in EVE, in the same order.
-- **Copy as Text** copies the plan as a skill list, one level per line, to paste anywhere.
-
-Training times use the character's attributes as of the last update and assume an Omega clone. Levels you have trained leave the plan by themselves after the next update.
-
-A character added before EVE Farm 1.0.16 must be added again (**File > Characters... > Add Character...**) so EVE Farm may read its skill queue.
-
-### Industry Calculator
+#### Calculator
 
 Works out what it costs to build an item and what you make selling it. The first time you open the tab, EVE Farm downloads EVE's blueprint and solar system data (about 27 MB, refreshed once a month).
 
@@ -428,15 +368,87 @@ The numbers follow EVE's rules:
 
 If the character's skills aren't saved yet, they count as level IV; run **Update > Skills** for the real ones. If the character lacks a skill needed to build or invent the item, a note under the settings says so.
 
+#### Jobs
+
+Your industry jobs: activity (manufacturing, research, copying, invention, reactions), blueprint, product, runs, facility, cost, start and end date and status. A job that has finished shows as **Ready** until you deliver it. Finished jobs are kept.
+
+#### Mining
+
+Everything your characters mined, kept for as long as you keep the app (EVE only shows 30 days). Run **Update > Mining Ledger** to fill it.
+
+- Each row shows the ore's icon, the date, character, system, ore, kind, quantity, volume, unit value and value. Valued at the compressed ore price, the icon is the compressed ore's.
+- **Show:** picks the period: Today, Last 7 days, Last 30 days, This month or All time.
+- **Value:** chooses how the ore is valued: at the ore price, at the compressed ore price, or as the refined minerals. For refined minerals, set your **Refining yield (%)**; **Refined Into** then shows the minerals each row gives, and hovering it shows what each one is worth.
+- **Statistics** shows the totals for what's in the table: volume, value, days mined and ISK per day. **Group by:** splits them by day, character, ore, kind or system, with each group's share of the total, and grouped by ore also shows the quantity. Valued as refined minerals, **Group by: Material** shows how much of each mineral your mining gives; what can't be refined, like gas or mission ore, is listed as it is.
+
+A character added before EVE Farm 1.0.14 must be added again (**File > Characters... > Add Character...**) so EVE Farm may read its mining ledger.
+
+### Standings
+
+Who you can work for: your **Standings** and the list of all **Agents**.
+
+#### Standings
+
+Your characters' standings with EVE's factions, NPC corporations and agents. Run **Update > Standings** to fill it.
+
+The tab has two sides. Drag the bar between them to make one wider; EVE Farm remembers where you leave it.
+
+- **Factions and corporations** (left): each faction, best standing first, with its corporations just below it, indented. Corporations whose faction you have no standing with come after, then those whose faction isn't known.
+- **Agents** (right): each agent with its standing, corporation, level, division and system.
+- Click a faction on the left to see only its agents on the right, or a corporation to see only that corporation's agents, for the same character. **Show All Agents**, Esc, or a click below the rows shows every agent again.
+- Positive standings are blue, negative ones red.
+- Each side has its own filters and columns. Click a column header to sort another way; the grouping on the left comes back when the tab is opened again.
+
+The corporation, faction, level, division and system of an agent, and the faction of a corporation, come from the agent list. Click **Refresh Agent Data...** in **Standings > Agents** once to fill them; without it, clicking a faction finds none of its agents.
+
+EVE's API gives the standing without the bonus from the Connections, Diplomacy and Criminal Connections skills, so it can differ a little from the value the game shows with your skills applied.
+
+A character added before EVE Farm 1.0.16 must be added again (**File > Characters... > Add Character...**) so EVE Farm may read its standings.
+
+#### Agents
+
+A searchable list of all of EVE's NPC agents: name, corporation, faction, division, level, type, whether it is a locator agent, and its station, system, constellation, region and security status.
+
+- Click **Refresh Agent Data...** the first time to download the list. It changes rarely.
+- System, constellation and region names have a zKillboard icon. Click it to see the recent kills there, so you can judge how dangerous the area is.
+
+### Skills
+
+A skill planner: make training plans for each character and see how long they take.
+
+Run **Update > Skills** first. The first time, it also downloads the list of EVE's skills, which takes a few seconds.
+
+**At the top** you see the character's attributes, total and unallocated skill points, and when the next attribute remap is available. The attributes are the ones EVE reports, with implants and any active cerebral accelerator.
+
+**Cerebral accelerators.** EVE Farm works out from the attributes how much an active accelerator adds, recognizes which accelerator gives that bonus, and how long it lasts with your Biology skill. EVE doesn't say when it was injected, so EVE Farm counts from the first time it sees it; skills are read every time EVE Farm starts, so start it soon after you inject one. The end date is shown next to the skill points, marked "about" while it is an estimate. Click **Accelerator...** to type the time left that EVE shows when you hover the booster icon under Active Boosters (for example `505:31:31`, hours:minutes:seconds), a time like `6d 4h`, or the end date. Training times use the accelerator until it ends and the normal speed after that, splitting a level that is in training when it runs out.
+
+**Plans** (left): **New...**, **Rename...**, **Copy...** and **Delete**. A character can have as many plans as you like.
+
+**The plan** (right) lists each skill level in training order: training time, finish date, how much is already done, skill points, attributes, group and notes. **Prerequisite** marks levels added because a planned skill needs them. Below the list are the total training time, the finish date, the skill books you still have to buy with their price, and how many skill injectors would finish the plan right away, with their price.
+
+**Skill injectors.** EVE Farm counts the cheapest mix of Large and Small Skill Injectors that gives the skill points the plan still needs, after your unallocated skill points. It follows EVE's rule that an injector gives fewer skill points the more the character has: a Large Skill Injector gives 500,000 SP under 5 million, 400,000 up to 50 million, 300,000 up to 80 million and 150,000 above that, and a Small one a fifth of that. The count goes up a threshold as soon as the injected points cross it. Prices come from your price provider.
+
+- **Add Skills...** opens the skill browser: skills by group, with a search box, each with its description, rank, attributes and what it requires (trained, planned or missing). Click **Plan to I** ... **Plan to V**; the levels and prerequisites it needs are added for you.
+- **Remove** takes the selected levels off. Levels that need them, and prerequisites nothing else needs, go too; EVE Farm asks first.
+- **Move Up** and **Move Down** change the order. A skill can't go above something it needs.
+- **Notes...** adds a note to a level.
+- **Import...** adds skills from text: a skill list, one per line (for example `Caldari Cruiser 4` or `Caldari Cruiser IV`), or a ship fit copied from EVE. For a fit, EVE Farm adds every skill the ship, modules, charges and drones need.
+- **From Skill Queue** adds the skills in the character's training queue in EVE, in the same order.
+- **Copy as Text** copies the plan as a skill list, one level per line, to paste anywhere.
+
+Training times use the character's attributes as of the last update and assume an Omega clone. Levels you have trained leave the plan by themselves after the next update.
+
+A character added before EVE Farm 1.0.16 must be added again (**File > Characters... > Add Character...**) so EVE Farm may read its skill queue.
+
 ## Working with tables
 
-Most tabs show a table, and all of them work the same way.
+Most pages show a table, and all of them work the same way.
 
 **Filters**
 
 - Click **Add** to add a filter line. Each line has a tick box to turn it on or off, **And**/**Or** to combine it with the line above, the column to look in (**All** looks in every column), the condition (Contains, Equals, Not Equals, Starts With, Ends With, Greater Than, Less Than) and the value.
 - **Clear** removes all filters. **Showing X of Y** says how many rows match.
-- **Save...** saves the filters under a name; **Load...** brings them back. Saved filters belong to their tab.
+- **Save...** saves the filters under a name; **Load...** brings them back. Saved filters belong to their page.
 
 **Columns**
 

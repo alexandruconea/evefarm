@@ -69,7 +69,7 @@ public final class IndustryPanel extends TabPanel {
     private final AppContext appContext;
     private final JLabel blueprintLabel = new JLabel("No blueprint chosen");
     private final JButton chooseButton = new JButton("Choose...");
-    private final JComboBox<String> characterCombo = new JComboBox<>();
+    private final CharacterCombo characterCombo;
     private final JSpinner runsSpinner = new JSpinner(new SpinnerNumberModel(1, 1, 1_000_000, 1));
     private final JSpinner meSpinner = new JSpinner(new SpinnerNumberModel(0, 0, IndustryCalculator.MAX_ME, 1));
     private final JSpinner teSpinner = new JSpinner(new SpinnerNumberModel(0, 0, IndustryCalculator.MAX_TE, 2));
@@ -110,8 +110,6 @@ public final class IndustryPanel extends TabPanel {
     private final Timer recalculation = new Timer(400, e -> calculate());
     private final AtomicInteger generation = new AtomicInteger();
 
-    private List<EveCharacter> characters = List.of();
-    private String mainCharacterName;
     private BlueprintChoice blueprint;
     private IndustryService.Result result;
     private int shownOption;
@@ -123,6 +121,7 @@ public final class IndustryPanel extends TabPanel {
 
     public IndustryPanel(AppContext appContext) {
         this.appContext = appContext;
+        characterCombo = new CharacterCombo(appContext.characterService);
         buildUi();
         postInit();
     }
@@ -162,7 +161,6 @@ public final class IndustryPanel extends TabPanel {
         updateStructureControls();
 
         chooseButton.addActionListener(e -> chooseBlueprint());
-        characterCombo.setRenderer(MainCharacterMarks.comboRenderer(() -> mainCharacterName));
         characterCombo.addActionListener(e -> changed());
         meSpinner.addChangeListener(e -> {
             if (!loading) {
@@ -259,13 +257,9 @@ public final class IndustryPanel extends TabPanel {
     }
 
     private void reloadCharacters(boolean selectMain) {
-        characters = appContext.characterService.listCharactersMainFirst();
-        mainCharacterName = MainCharacterMarks.mainName(characters,
-                appContext.characterService.mainCharacterId().orElse(null));
-        String previous = selectMain ? null : (String) characterCombo.getSelectedItem();
         loading = true;
         try {
-            MainCharacterMarks.fill(characterCombo, characters, previous);
+            characterCombo.reload(selectMain);
         } finally {
             loading = false;
         }
@@ -357,9 +351,8 @@ public final class IndustryPanel extends TabPanel {
     }
 
     private IndustryService.Settings settings() {
-        Object name = characterCombo.getSelectedItem();
-        Long characterId = characters.stream().filter(character -> character.characterName().equals(name))
-                .map(EveCharacter::characterId).findFirst().orElse(null);
+        EveCharacter character = characterCombo.selectedCharacter();
+        Long characterId = character == null ? null : character.characterId();
         return new IndustryService.Settings(blueprint.blueprintId(), characterId, (Integer) runsSpinner.getValue(),
                 ownMe, ownTe, inventionCheck.isSelected(),
                 systemField.getText(), (Structure) structureCombo.getSelectedItem(),
@@ -399,30 +392,11 @@ public final class IndustryPanel extends TabPanel {
             return;
         }
         IndustryService.Settings settings = settings();
-        int run = generation.incrementAndGet();
         hintLabel.setText("Calculating...");
-        new SwingWorker<IndustryService.Result, Void>() {
-            @Override
-            protected IndustryService.Result doInBackground() {
-                return appContext.industryService.calculate(settings);
-            }
-
-            @Override
-            protected void done() {
-                if (run != generation.get()) {
-                    return;
-                }
-                try {
-                    IndustryService.Result calculated = get();
-                    calculatedRuns = settings.runs();
-                    showResult(calculated);
-                } catch (Exception e) {
-                    Throwable cause = e.getCause() == null ? e : e.getCause();
-                    LOG.log(Level.WARNING, "Failed to calculate the industry job", cause);
-                    hintLabel.setText("Couldn't calculate: " + cause.getMessage());
-                }
-            }
-        }.execute();
+        BackgroundLoader.load(generation, () -> appContext.industryService.calculate(settings), calculated -> {
+            calculatedRuns = settings.runs();
+            showResult(calculated);
+        }, "the industry job", failure -> hintLabel.setText("Couldn't calculate: " + failure.getMessage()));
     }
 
     private void showResult(IndustryService.Result calculated) {
@@ -583,7 +557,6 @@ public final class IndustryPanel extends TabPanel {
         blueprintLabel.putClientProperty("html.disable", Boolean.TRUE);
         blueprintLabel.setIconTextGap(10);
         ComboSizing.fix(runsSpinner, 90);
-        ComboSizing.names(characterCombo);
         inventionCheck.setOpaque(false);
         inventionCheck.setToolTipText("For Tech II blueprints: count the cost of inventing the blueprint copies");
         buildCombo.setToolTipText("Buy the components, make those that cost less to build than to buy, or build the "

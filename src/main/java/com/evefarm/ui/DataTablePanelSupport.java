@@ -55,7 +55,7 @@ final class DataTablePanelSupport<R> {
 
     void reload() {
         BackgroundLoader.load(reloadGeneration, rowsSupplier, this::applyRows, countNoun,
-                () -> countLabel.setText("Couldn't load " + countNoun + " - see the log"));
+                failure -> countLabel.setText("Couldn't load " + countNoun + " - see the log"));
     }
 
     private void applyRows(List<R> rows) {

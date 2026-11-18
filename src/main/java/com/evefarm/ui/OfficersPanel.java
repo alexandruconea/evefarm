@@ -4,7 +4,6 @@ import com.evefarm.AppContext;
 import com.evefarm.model.KillDayTypeRow;
 import com.evefarm.model.OfficerDrop;
 import com.evefarm.model.OfficerSighting;
-import com.evefarm.model.SpawnMember;
 import com.evefarm.service.NpcCatalog;
 import com.evefarm.ui.column.ColumnWidthMemory;
 import com.evefarm.util.DateUtil;
@@ -28,7 +27,6 @@ import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
-import javax.swing.table.TableRowSorter;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -44,7 +42,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public final class OfficersPanel extends JPanel {
+public final class OfficersPanel extends TabPanel {
 
     private static final Logger LOG = Logger.getLogger(OfficersPanel.class.getName());
 
@@ -93,7 +91,6 @@ public final class OfficersPanel extends JPanel {
         toolbar.add(summaryLabel);
         add(toolbar, BorderLayout.NORTH);
 
-        officersTable.setRowSorter(new TableRowSorter<>(officersModel));
         officersTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         officersTable.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting() && !applyingRows) {
@@ -102,11 +99,8 @@ public final class OfficersPanel extends JPanel {
                         : officersModel.rowAt(officersTable.convertRowIndexToModel(viewRow)));
             }
         });
-        TableStyler.style(officersTable);
-        ColumnWidthMemory.install(officersTable, "officers", appContext.tableColumnStateDao);
-        spawnTable.setRowSorter(new TableRowSorter<>(spawnModel));
-        TableStyler.style(spawnTable);
-        ColumnWidthMemory.install(spawnTable, "officerSpawn", appContext.tableColumnStateDao);
+        SortableTables.withWidths(officersTable, officersModel, "officers", appContext.tableColumnStateDao);
+        SortableTables.withWidths(spawnTable, spawnModel, "officerSpawn", appContext.tableColumnStateDao);
         dropsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         dropsTable.getSelectionModel().addListSelectionListener(e ->
                 removeDropButton.setEnabled(selected != null && dropsTable.getSelectedRow() >= 0));
@@ -200,25 +194,8 @@ public final class OfficersPanel extends JPanel {
     }
 
     private void reload() {
-        int generation = listGeneration.incrementAndGet();
-        new SwingWorker<List<OfficerSighting>, Void>() {
-            @Override
-            protected List<OfficerSighting> doInBackground() {
-                return appContext.officerService.listSightings();
-            }
-
-            @Override
-            protected void done() {
-                if (generation != listGeneration.get()) {
-                    return;
-                }
-                try {
-                    applySightings(get());
-                } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Failed to load officer sightings", e);
-                }
-            }
-        }.execute();
+        BackgroundLoader.load(listGeneration, appContext.officerService::listSightings, this::applySightings,
+                "officer sightings");
     }
 
     private void applySightings(List<OfficerSighting> sightings) {
@@ -302,48 +279,17 @@ public final class OfficersPanel extends JPanel {
         beltCombo.getEditor().setItem(sighting.belt() == null ? "" : sighting.belt());
         refreshDetail(sighting);
 
-        new SwingWorker<List<SpawnMember>, Void>() {
-            @Override
-            protected List<SpawnMember> doInBackground() {
-                return appContext.officerService.listSpawn(sighting.encounterIds());
-            }
-
-            @Override
-            protected void done() {
-                if (generation != detailGeneration.get()) {
-                    return;
-                }
-                try {
-                    spawnModel.setRows(get());
+        BackgroundLoader.load(generation, detailGeneration,
+                () -> appContext.officerService.listSpawn(sighting.encounterIds()), members -> {
+                    spawnModel.setRows(members);
                     TableStyler.packColumns(spawnTable);
-                } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Failed to load the spawn for " + sighting.officerName(), e);
-                }
-            }
-        }.execute();
-
-        new SwingWorker<List<String>, Void>() {
-            @Override
-            protected List<String> doInBackground() {
-                return appContext.officerService.listBelts(sighting.solarSystem());
-            }
-
-            @Override
-            protected void done() {
-                if (generation != detailGeneration.get()) {
-                    return;
-                }
-                try {
+                }, "the spawn for " + sighting.officerName());
+        BackgroundLoader.load(generation, detailGeneration,
+                () -> appContext.officerService.listBelts(sighting.solarSystem()), belts -> {
                     String typed = Objects.toString(beltCombo.getEditor().getItem(), "");
-                    for (String belt : get()) {
-                        beltModel.addElement(belt);
-                    }
+                    belts.forEach(beltModel::addElement);
                     beltCombo.getEditor().setItem(typed);
-                } catch (Exception e) {
-                    LOG.log(Level.INFO, "Couldn't load belts for " + sighting.solarSystem(), e);
-                }
-            }
-        }.execute();
+                }, "the belts of " + sighting.solarSystem());
     }
 
     private void refreshDetail(OfficerSighting sighting) {
@@ -361,30 +307,13 @@ public final class OfficersPanel extends JPanel {
     }
 
     private void loadDrops(OfficerSighting sighting) {
-        int generation = dropsGeneration.incrementAndGet();
-        new SwingWorker<List<OfficerDrop>, Void>() {
-            @Override
-            protected List<OfficerDrop> doInBackground() {
-                return appContext.officerService.listDrops(sighting);
-            }
-
-            @Override
-            protected void done() {
-                if (generation != dropsGeneration.get()) {
-                    return;
-                }
-                try {
-                    List<OfficerDrop> drops = get();
-                    dropsModel.setRows(drops);
-                    TableStyler.packColumns(dropsTable);
-                    removeDropButton.setEnabled(false);
-                    double dropValue = drops.stream().mapToDouble(OfficerDrop::totalValue).sum();
-                    dropsTotalLabel.setText(drops.isEmpty() ? "" : IskFormatter.format(dropValue));
-                } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Failed to load drops for " + sighting.officerName(), e);
-                }
-            }
-        }.execute();
+        BackgroundLoader.load(dropsGeneration, () -> appContext.officerService.listDrops(sighting), drops -> {
+            dropsModel.setRows(drops);
+            TableStyler.packColumns(dropsTable);
+            removeDropButton.setEnabled(false);
+            double dropValue = drops.stream().mapToDouble(OfficerDrop::totalValue).sum();
+            dropsTotalLabel.setText(drops.isEmpty() ? "" : IskFormatter.format(dropValue));
+        }, "the drops of " + sighting.officerName());
     }
 
     private static String timingDescription(OfficerSighting sighting) {

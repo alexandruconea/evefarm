@@ -2,9 +2,7 @@ package com.evefarm.ui;
 
 import com.evefarm.AppContext;
 import com.evefarm.ui.column.ColumnCopySupport;
-import com.evefarm.ui.column.ColumnSorting;
 import com.evefarm.ui.column.ColumnTableModel;
-import com.evefarm.ui.column.ColumnVisibilitySupport;
 import com.evefarm.ui.filter.FilterBarPanel;
 
 import javax.swing.GroupLayout;
@@ -37,11 +35,7 @@ final class FilteredTable<R> {
         this.tableModel = tableModel;
         this.onFiltered = onFiltered;
         table.setModel(tableModel);
-        sorter = new TableRowSorter<>(tableModel);
-        ColumnSorting.install(sorter, tableModel);
-        table.setRowSorter(sorter);
-        TableStyler.style(table);
-        ColumnVisibilitySupport.install(table, tableModel, panelKey, appContext.tableColumnStateDao);
+        sorter = SortableTables.withColumnChooser(table, tableModel, panelKey, appContext.tableColumnStateDao);
         ColumnCopySupport.install(table, tableModel);
 
         filterBarPanel = new FilterBarPanel(panelKey, tableModel.columnNames(), appContext.savedFilterDao);

@@ -4,7 +4,6 @@ import com.evefarm.AppContext;
 import com.evefarm.model.EveCharacter;
 import com.evefarm.model.KillDayTypeRow;
 import com.evefarm.service.KillsReportService;
-import com.evefarm.ui.column.ColumnWidthMemory;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -24,7 +23,6 @@ import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.SwingWorker;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import javax.swing.table.TableRowSorter;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -40,7 +38,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-public final class KillsPanel extends JPanel {
+public final class KillsPanel extends TabPanel {
 
     private static final Logger LOG = Logger.getLogger(KillsPanel.class.getName());
     private static final String ALL_SYSTEMS = "All Systems";
@@ -83,9 +81,7 @@ public final class KillsPanel extends JPanel {
     private void buildUi() {
         setLayout(new BorderLayout());
 
-        killsTable.setRowSorter(new TableRowSorter<>(killsTableModel));
-        TableStyler.style(killsTable);
-        ColumnWidthMemory.install(killsTable, "kills", appContext.tableColumnStateDao);
+        SortableTables.withWidths(killsTable, killsTableModel, "kills", appContext.tableColumnStateDao);
 
         add(new JScrollPane(killsTable), BorderLayout.CENTER);
         add(sidebar(), BorderLayout.EAST);
@@ -201,25 +197,9 @@ public final class KillsPanel extends JPanel {
         int generation = reloadGeneration.incrementAndGet();
         Set<Long> characterIds = characters.selectedIds();
         String previouslySelected = (String) factionCombo.getSelectedItem();
-
-        new SwingWorker<List<String>, Void>() {
-            @Override
-            protected List<String> doInBackground() {
-                return appContext.killService.listFactionOptions(characterIds);
-            }
-
-            @Override
-            protected void done() {
-                if (generation != reloadGeneration.get()) {
-                    return;
-                }
-                try {
-                    applyFactionOptions(get(), previouslySelected, generation);
-                } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Failed to load kill factions", e);
-                }
-            }
-        }.execute();
+        BackgroundLoader.load(generation, reloadGeneration,
+                () -> appContext.killService.listFactionOptions(characterIds),
+                factions -> applyFactionOptions(factions, previouslySelected, generation), "kill factions");
     }
 
     private void applyFactionOptions(List<String> factions, String previouslySelected, int generation) {
@@ -244,25 +224,9 @@ public final class KillsPanel extends JPanel {
         Set<Long> characterIds = characters.selectedIds();
         Set<String> factionLabels = selectedFactionLabels();
         String previouslySelected = (String) systemCombo.getSelectedItem();
-
-        new SwingWorker<List<String>, Void>() {
-            @Override
-            protected List<String> doInBackground() {
-                return appContext.killService.listSystemOptions(characterIds, factionLabels);
-            }
-
-            @Override
-            protected void done() {
-                if (generation != reloadGeneration.get()) {
-                    return;
-                }
-                try {
-                    applySystemOptions(get(), previouslySelected, generation);
-                } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Failed to load kill systems", e);
-                }
-            }
-        }.execute();
+        BackgroundLoader.load(generation, reloadGeneration,
+                () -> appContext.killService.listSystemOptions(characterIds, factionLabels),
+                systems -> applySystemOptions(systems, previouslySelected, generation), "kill systems");
     }
 
     private void applySystemOptions(List<String> systems, String previouslySelected, int generation) {
@@ -288,25 +252,9 @@ public final class KillsPanel extends JPanel {
         Set<Long> characterIds = characters.selectedIds();
         Set<String> factionLabels = selectedFactionLabels();
         String systemFilter = selectedSystemFilter();
-
-        new SwingWorker<List<String>, Void>() {
-            @Override
-            protected List<String> doInBackground() {
-                return appContext.killService.listShipTypeOptions(characterIds, factionLabels, systemFilter);
-            }
-
-            @Override
-            protected void done() {
-                if (generation != reloadGeneration.get()) {
-                    return;
-                }
-                try {
-                    applyShipTypeOptions(get(), generation);
-                } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Failed to load kill ship types", e);
-                }
-            }
-        }.execute();
+        BackgroundLoader.load(generation, reloadGeneration,
+                () -> appContext.killService.listShipTypeOptions(characterIds, factionLabels, systemFilter),
+                npcNames -> applyShipTypeOptions(npcNames, generation), "kill ship types");
     }
 
     private void applyShipTypeOptions(List<String> npcNames, int generation) {
@@ -338,27 +286,12 @@ public final class KillsPanel extends JPanel {
         String systemFilter = selectedSystemFilter();
         Instant from = dates.from();
         Instant to = dates.to();
-
-        new SwingWorker<List<KillDayTypeRow>, Void>() {
-            @Override
-            protected List<KillDayTypeRow> doInBackground() {
-                return appContext.killService.listDayTypeRows(
-                        characterIds, factionLabels, npcNames, systemFilter, from, to);
-            }
-
-            @Override
-            protected void done() {
-                if (generation != reloadGeneration.get()) {
-                    return;
-                }
-                try {
-                    killsTableModel.setRows(get());
+        BackgroundLoader.load(generation, reloadGeneration,
+                () -> appContext.killService.listDayTypeRows(characterIds, factionLabels, npcNames, systemFilter,
+                        from, to), rows -> {
+                    killsTableModel.setRows(rows);
                     TableStyler.packColumns(killsTable);
-                } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Failed to reload kills table", e);
-                }
-            }
-        }.execute();
+                }, "the kills table");
     }
 
     private void exportPdf() {

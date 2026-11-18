@@ -9,7 +9,6 @@ import com.evefarm.model.AbyssalCargo;
 import com.evefarm.model.AbyssalLoot;
 import com.evefarm.model.AbyssalRun;
 import com.evefarm.model.EveCharacter;
-import com.evefarm.service.AbyssLootService;
 import com.evefarm.service.ItemIconService;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
@@ -36,7 +35,6 @@ import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
-import javax.swing.SwingWorker;
 import javax.swing.Timer;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -414,24 +412,12 @@ final class AbyssRunDialog extends JDialog {
 
     private void loadSavedLoot() {
         long runId = original.id();
-        new SwingWorker<List<AbyssalLoot>, Void>() {
-            @Override
-            protected List<AbyssalLoot> doInBackground() {
-                return appContext.abyssalRunDao.listLoot(runId);
+        BackgroundLoader.load(() -> appContext.abyssalRunDao.listLoot(runId), saved -> {
+            if (lootGeneration.get() == 0) {
+                showLoot(saved, List.of(), 0, false);
             }
-
-            @Override
-            protected void done() {
-                try {
-                    List<AbyssalLoot> saved = get();
-                    if (lootGeneration.get() == 0) {
-                        showLoot(saved, List.of(), 0, false);
-                    }
-                } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Failed to load the loot of Abyssal run " + runId, e);
-                }
-            }
-        }.execute();
+        }, "the loot of Abyssal run " + runId, failure -> {
+        });
     }
 
     private void prefillCargoBefore() {
@@ -463,26 +449,9 @@ final class AbyssRunDialog extends JDialog {
         AbyssTier tier = (AbyssTier) tierCombo.getSelectedItem();
         AbyssWeather weather = (AbyssWeather) weatherCombo.getSelectedItem();
         AbyssFleet fleet = (AbyssFleet) fleetCombo.getSelectedItem();
-        int generation = filamentGeneration.incrementAndGet();
-        new SwingWorker<Double, Void>() {
-            @Override
-            protected Double doInBackground() {
-                return appContext.abyssLootService.filamentCost(tier, weather, fleet);
-            }
-
-            @Override
-            protected void done() {
-                if (generation != filamentGeneration.get()) {
-                    return;
-                }
-                try {
-                    Double cost = get();
-                    filamentField.setText(cost == null ? "" : IskFormatter.formatPlain(cost));
-                } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Failed to price the filament", e);
-                }
-            }
-        }.execute();
+        BackgroundLoader.load(filamentGeneration, () -> appContext.abyssLootService.filamentCost(tier, weather, fleet),
+                cost -> filamentField.setText(cost == null ? "" : IskFormatter.formatPlain(cost)),
+                "the filament price");
     }
 
     private void calculateLoot() {
@@ -492,31 +461,13 @@ final class AbyssRunDialog extends JDialog {
             lootStatus.setText("Paste the cargo after the run to count the loot.");
             return;
         }
-        int generation = lootGeneration.incrementAndGet();
         lootStatus.setText("Pricing the loot...");
-        new SwingWorker<AbyssLootService.LootResult, Void>() {
-            @Override
-            protected AbyssLootService.LootResult doInBackground() {
-                return appContext.abyssLootService.calculate(before, after);
-            }
-
-            @Override
-            protected void done() {
-                if (generation != lootGeneration.get()) {
-                    return;
-                }
-                try {
-                    AbyssLootService.LootResult result = get();
-                    List<AbyssalLoot> kept = result.items().stream()
-                            .filter(item -> !removedHere.contains(item.typeId())).toList();
-                    leftOut = result.ignored().size() + result.items().size() - kept.size();
-                    showLoot(kept, result.unknownNames(), leftOut, true);
-                } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Failed to calculate the Abyssal loot", e);
-                    lootStatus.setText("Couldn't calculate the loot - see the log.");
-                }
-            }
-        }.execute();
+        BackgroundLoader.load(lootGeneration, () -> appContext.abyssLootService.calculate(before, after), result -> {
+            List<AbyssalLoot> kept = result.items().stream()
+                    .filter(item -> !removedHere.contains(item.typeId())).toList();
+            leftOut = result.ignored().size() + result.items().size() - kept.size();
+            showLoot(kept, result.unknownNames(), leftOut, true);
+        }, "the Abyssal loot", failure -> lootStatus.setText("Couldn't calculate the loot - see the log."));
     }
 
     private void showLoot(List<AbyssalLoot> items, List<String> unknown, int ignoredCount, boolean updateValue) {

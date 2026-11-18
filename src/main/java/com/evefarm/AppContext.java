@@ -95,6 +95,7 @@ import com.evefarm.service.SellingFeesService;
 import com.evefarm.service.SkillCatalogService;
 import com.evefarm.service.SkillService;
 import com.evefarm.service.StandingService;
+import com.evefarm.service.TrackerCombinationService;
 import com.evefarm.service.TrackerSnapshotService;
 import com.evefarm.service.TransactionService;
 import com.evefarm.service.TypeNameCacheService;
@@ -167,6 +168,7 @@ public final class AppContext {
     public final LpPurchaseService lpPurchaseService;
     public final ItemIconService itemIconService;
     public final ValueSummaryService valueSummaryService;
+    public final TrackerCombinationService trackerCombinationService;
     public final NotificationService notificationService;
     public final SchedulerService schedulerService;
     public final BackupRestoreService backupRestoreService;
@@ -278,6 +280,8 @@ public final class AppContext {
                 assetService);
         this.valueSummaryService = new ValueSummaryService(snapshotDao, assetDao, characterService,
                 walletJournalDao, loyaltyPointDao, npcCatalogService, settingsDao, Clock.systemDefaultZone());
+        this.trackerCombinationService = new TrackerCombinationService(snapshotDao, walletJournalDao, miningService,
+                settingsDao, Clock.systemDefaultZone());
         this.backupRestoreService = new BackupRestoreService(database, settingsDao);
         this.eveSettingsService = new EveSettingsService(settingsDao);
         this.updateService = new UpdateService(settingsDao);

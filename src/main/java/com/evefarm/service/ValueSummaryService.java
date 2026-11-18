@@ -12,12 +12,8 @@ import com.evefarm.model.LpGain;
 import com.evefarm.model.TrackerSnapshot;
 import com.evefarm.model.ValueSummary;
 import com.evefarm.model.ValueSummary.Today;
-import com.evefarm.service.WalletLpProjection.Point;
-import com.evefarm.service.WalletLpProjection.Projection;
-import com.evefarm.service.WalletLpProjection.Transfer;
 
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -79,22 +75,6 @@ public final class ValueSummaryService {
         return new ValueSummary(total, wallet, assets, sellOrders, today(null),
                 best.assetName(), best.assetValue(), best.shipName(), best.shipValue(),
                 best.moduleName(), best.moduleValue());
-    }
-
-    public Projection projectWalletAndLp(long characterId) {
-        Instant now = clock.instant();
-        ZoneId zone = clock.getZone();
-        Instant paceStart = now.minus(WalletLpProjection.PACE_WINDOW).minus(Duration.ofDays(1));
-        Instant yearStart = WalletLpProjection.yearStart(now, zone);
-        Instant since = paceStart.isBefore(yearStart) ? paceStart : yearStart;
-        List<Point> points = snapshotDao.listBetween(Set.of(characterId), since, now).stream()
-                .map(snapshot -> new Point(snapshot.capturedAt(), snapshot.walletBalance(), snapshot.lpValue()))
-                .toList();
-        List<Transfer> transfers = walletJournalDao.findByRefTypes(characterId,
-                        WalletLpProjection.TRANSFER_REF_TYPES, since).stream()
-                .map(entry -> new Transfer(Instant.parse(entry.date()), entry.amount()))
-                .toList();
-        return WalletLpProjection.project(points, transfers, now, zone);
     }
 
     private Today today(Long characterId) {

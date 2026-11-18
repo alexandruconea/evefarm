@@ -6,8 +6,6 @@ import com.evefarm.model.LoyaltyPointCheck;
 import com.evefarm.model.LpGain;
 import com.evefarm.service.LpProduction;
 import com.evefarm.service.LpProduction.Day;
-import com.evefarm.ui.column.ColumnSorting;
-import com.evefarm.ui.column.ColumnVisibilitySupport;
 
 import javax.swing.BorderFactory;
 import javax.swing.DefaultComboBoxModel;
@@ -18,7 +16,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
-import javax.swing.table.TableRowSorter;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.time.Instant;
@@ -38,7 +35,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public final class LpProductionPanel extends JPanel {
+public final class LpProductionPanel extends TabPanel {
 
     private static final String ALL_CHARACTERS = "All characters";
     private static final String ALL_CORPORATIONS = "All corporations";
@@ -86,7 +83,7 @@ public final class LpProductionPanel extends JPanel {
                         appContext.settingsDao.getDouble(SettingsDao.LP_STORE_TARGET_ISK_PER_LP,
                                 SettingsDao.DEFAULT_LP_STORE_TARGET_ISK_PER_LP)),
                 this::apply, "the LP earned per day",
-                () -> summaryLabel.setText("Couldn't load the LP history - see the log."));
+                failure -> summaryLabel.setText("Couldn't load the LP history - see the log."));
     }
 
     private void buildUi() {
@@ -120,9 +117,7 @@ public final class LpProductionPanel extends JPanel {
                 + "and counts it at the time EVE's data is from");
         overview.add(summaryLines, BorderLayout.CENTER);
 
-        gainsTable.setRowSorter(sortedBy(gainsModel));
-        TableStyler.style(gainsTable);
-        ColumnVisibilitySupport.install(gainsTable, gainsModel, "lpGains", appContext.tableColumnStateDao);
+        SortableTables.withColumnChooser(gainsTable, gainsModel, "lpGains", appContext.tableColumnStateDao);
         JPanel dayPanel = new JPanel(new BorderLayout(0, 4));
         dayPanel.setBorder(BorderFactory.createEmptyBorder(0, 8, 8, 8));
         dayPanel.add(dayLabel, BorderLayout.NORTH);
@@ -133,12 +128,6 @@ public final class LpProductionPanel extends JPanel {
         center.add(dayPanel, BorderLayout.CENTER);
         add(center, BorderLayout.CENTER);
         selectDay(null);
-    }
-
-    private static TableRowSorter<LpGainsTableModel> sortedBy(LpGainsTableModel model) {
-        TableRowSorter<LpGainsTableModel> sorter = new TableRowSorter<>(model);
-        ColumnSorting.install(sorter, model);
-        return sorter;
     }
 
     private void apply(Loaded result) {

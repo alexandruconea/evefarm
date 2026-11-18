@@ -18,7 +18,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
-import javax.swing.SwingWorker;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.BorderLayout;
@@ -30,12 +29,8 @@ import java.awt.Window;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 final class LpPaymentsDialog extends JDialog {
-
-    private static final Logger LOG = Logger.getLogger(LpPaymentsDialog.class.getName());
 
     private final AppContext appContext;
     private final Runnable onChanged;
@@ -142,25 +137,11 @@ final class LpPaymentsDialog extends JDialog {
     }
 
     private void load() {
-        new SwingWorker<List<PendingPayment>, Void>() {
-            @Override
-            protected List<PendingPayment> doInBackground() {
-                return appContext.lpPurchaseService.pendingPayments();
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    payments = new ArrayList<>(get());
-                } catch (Exception e) {
-                    Throwable cause = e.getCause() != null ? e.getCause() : e;
-                    LOG.log(Level.WARNING, "Couldn't load the LP Store payments", cause);
-                    statusLabel.setText("Couldn't look up the payments: " + cause.getMessage());
-                    return;
-                }
-                showPayments();
-            }
-        }.execute();
+        BackgroundLoader.load(appContext.lpPurchaseService::pendingPayments, loaded -> {
+            payments = new ArrayList<>(loaded);
+            showPayments();
+        }, "the LP Store payments", failure -> statusLabel.setText("Couldn't look up the payments: "
+                + failure.getMessage()));
     }
 
     private void showPayments() {

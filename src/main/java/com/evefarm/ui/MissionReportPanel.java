@@ -7,9 +7,7 @@ import com.evefarm.service.MissionIncome;
 import com.evefarm.service.MissionIncome.Payment;
 import com.evefarm.service.MissionIncome.Period;
 import com.evefarm.service.MissionIncome.Report;
-import com.evefarm.ui.column.ColumnSorting;
 import com.evefarm.ui.column.ColumnTableModel;
-import com.evefarm.ui.column.ColumnVisibilitySupport;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -17,17 +15,12 @@ import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
-import javax.swing.JFileChooser;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.SwingUtilities;
-import javax.swing.SwingWorker;
-import javax.swing.filechooser.FileNameExtensionFilter;
-import javax.swing.table.TableRowSorter;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -36,10 +29,6 @@ import java.awt.FontMetrics;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.io.File;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -54,13 +43,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Stream;
 
-public final class MissionReportPanel extends JPanel {
+public final class MissionReportPanel extends TabPanel {
 
-    private static final Logger LOG = Logger.getLogger(MissionReportPanel.class.getName());
     private static final String ALL_CHARACTERS = "All characters";
     private static final String SAVE_TITLE = "Save Mission Report";
     private static final DateTimeFormatter SINCE = DateTimeFormatter.ofPattern("MMM d, HH:mm", Locale.US);
@@ -120,7 +106,7 @@ public final class MissionReportPanel extends JPanel {
                         appContext.loyaltyPointService.gains(), appContext.loyaltyPointService.firstRecorded(),
                         appContext.settingsDao.getDouble(SettingsDao.LP_STORE_TARGET_ISK_PER_LP,
                                 SettingsDao.DEFAULT_LP_STORE_TARGET_ISK_PER_LP)),
-                this::apply, "the mission report", () -> {
+                this::apply, "the mission report", failure -> {
                     summaryGrid.removeAll();
                     summaryGrid.add(new JLabel("Couldn't load the mission report - see the log."));
                     summaryGrid.revalidate();
@@ -201,11 +187,7 @@ public final class MissionReportPanel extends JPanel {
     }
 
     private <T> void installTable(JTable table, ColumnTableModel<T> model, String key) {
-        TableRowSorter<ColumnTableModel<T>> sorter = new TableRowSorter<>(model);
-        ColumnSorting.install(sorter, model);
-        table.setRowSorter(sorter);
-        TableStyler.style(table);
-        ColumnVisibilitySupport.install(table, model, key, appContext.tableColumnStateDao);
+        SortableTables.withColumnChooser(table, model, key, appContext.tableColumnStateDao);
         TableStyler.sizeColumnsFromSamples(table, MissionReportPanel::columnSample);
     }
 
@@ -364,44 +346,9 @@ public final class MissionReportPanel extends JPanel {
         List<String> savedNotes = notes;
         String characters = Optional.ofNullable(selectedCharacter()).orElse(ALL_CHARACTERS);
         double targetIskPerLp = loaded.targetIskPerLp();
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle(SAVE_TITLE);
-        chooser.setSelectedFile(new File("mission-report-" + savedPeriod.name().toLowerCase(Locale.ROOT) + "-"
-                + saved.from() + ".txt"));
-        chooser.setFileFilter(new FileNameExtensionFilter("Text file (*.txt)", "txt"));
-        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
-            return;
-        }
-        File chosen = chooser.getSelectedFile();
-        Path file = chosen.getName().toLowerCase(Locale.ROOT).endsWith(".txt") ? chosen.toPath()
-                : chosen.toPath().resolveSibling(chosen.getName() + ".txt");
-        if (Files.exists(file) && JOptionPane.showConfirmDialog(this, file.getFileName()
-                + " already exists. Replace it?", SAVE_TITLE, JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) {
-            return;
-        }
-        saveButton.setEnabled(false);
-        new SwingWorker<Void, Void>() {
-            @Override
-            protected Void doInBackground() throws Exception {
-                Files.write(file, MissionReport.lines(saved, savedPeriod, characters, targetIskPerLp, savedNotes,
-                        Instant.now()), StandardCharsets.UTF_8);
-                return null;
-            }
-
-            @Override
-            protected void done() {
-                saveButton.setEnabled(true);
-                try {
-                    get();
-                    JOptionPane.showMessageDialog(MissionReportPanel.this, "Report saved to:\n" + file,
-                            SAVE_TITLE, JOptionPane.INFORMATION_MESSAGE);
-                } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Failed to save the mission report", e);
-                    Throwable cause = e.getCause() == null ? e : e.getCause();
-                    JOptionPane.showMessageDialog(MissionReportPanel.this, "Couldn't save the report: "
-                            + cause.getMessage(), SAVE_TITLE, JOptionPane.ERROR_MESSAGE);
-                }
-            }
-        }.execute();
+        TextReportSaver.save(this, SAVE_TITLE, "mission-report-" + savedPeriod.name().toLowerCase(Locale.ROOT) + "-"
+                        + saved.from() + ".txt",
+                () -> MissionReport.lines(saved, savedPeriod, characters, targetIskPerLp, savedNotes, Instant.now()),
+                busy -> saveButton.setEnabled(!busy));
     }
 }

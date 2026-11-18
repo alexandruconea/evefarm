@@ -27,7 +27,6 @@ import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.SpinnerNumberModel;
-import javax.swing.SwingWorker;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -37,12 +36,9 @@ import java.awt.Insets;
 import java.awt.Window;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 final class LpSeveralTimesDialog extends JDialog {
 
-    private static final Logger LOG = Logger.getLogger(LpSeveralTimesDialog.class.getName());
     private static final int MAX_TIMES = 100_000;
     private static final int SCREEN_MARGIN_PX = 40;
 
@@ -231,33 +227,19 @@ final class LpSeveralTimesDialog extends JDialog {
     private void load() {
         refreshButton.setEnabled(false);
         statusLabel.setText("Reading the orders in Jita 4-4...");
-        new SwingWorker<Loaded, Void>() {
-            @Override
-            protected Loaded doInBackground() {
-                return new Loaded(appContext.lpOfferDepthService.read(offer),
-                        appContext.typeNameCacheService.resolveType(offer.outputTypeId()).name());
-            }
-
-            @Override
-            protected void done() {
-                refreshButton.setEnabled(true);
-                Loaded loaded;
-                try {
-                    loaded = get();
-                } catch (Exception e) {
-                    Throwable cause = e.getCause() != null ? e.getCause() : e;
-                    LOG.log(Level.WARNING, "Couldn't read the Jita 4-4 orders for " + offer.itemName(), cause);
-                    statusLabel.setText("Couldn't read the orders in Jita 4-4: " + cause.getMessage());
-                    return;
-                }
-                orders = loaded.orders();
-                outputName = loaded.outputName();
-                perOfferLabel.setText(perOfferText(offer, outputName));
-                statusLabel.setText("Orders in Jita 4-4 read at " + DateUtil.formatWithSeconds(orders.readAt())
-                        + ". Click Refresh to read them again.");
-                recalculate();
-            }
-        }.execute();
+        BackgroundLoader.load(() -> new Loaded(appContext.lpOfferDepthService.read(offer),
+                appContext.typeNameCacheService.resolveType(offer.outputTypeId()).name()), loaded -> {
+                    refreshButton.setEnabled(true);
+                    orders = loaded.orders();
+                    outputName = loaded.outputName();
+                    perOfferLabel.setText(perOfferText(offer, outputName));
+                    statusLabel.setText("Orders in Jita 4-4 read at " + DateUtil.formatWithSeconds(orders.readAt())
+                            + ". Click Refresh to read them again.");
+                    recalculate();
+                }, "the Jita 4-4 orders for " + offer.itemName(), failure -> {
+                    refreshButton.setEnabled(true);
+                    statusLabel.setText("Couldn't read the orders in Jita 4-4: " + failure.getMessage());
+                });
     }
 
     private void recalculate() {

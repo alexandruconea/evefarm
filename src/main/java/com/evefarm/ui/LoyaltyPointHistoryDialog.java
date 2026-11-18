@@ -3,9 +3,7 @@ package com.evefarm.ui;
 import com.evefarm.AppContext;
 import com.evefarm.model.LoyaltyPointHistoryRow;
 import com.evefarm.ui.column.ColumnDef;
-import com.evefarm.ui.column.ColumnSorting;
 import com.evefarm.ui.column.ColumnTableModel;
-import com.evefarm.ui.column.ColumnWidthMemory;
 import com.evefarm.util.DateUtil;
 import com.evefarm.util.Text;
 
@@ -18,19 +16,15 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.RowFilter;
-import javax.swing.SwingWorker;
 import javax.swing.table.TableRowSorter;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Window;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 final class LoyaltyPointHistoryDialog extends JDialog {
 
-    private static final Logger LOG = Logger.getLogger(LoyaltyPointHistoryDialog.class.getName());
     private static final String ALL_CHARACTERS = "All characters";
 
     private static final List<ColumnDef<LoyaltyPointHistoryRow>> COLUMNS = List.of(
@@ -48,7 +42,7 @@ final class LoyaltyPointHistoryDialog extends JDialog {
     private final AppContext appContext;
     private final ColumnTableModel<LoyaltyPointHistoryRow> tableModel = new ColumnTableModel<>(COLUMNS);
     private final JTable table = new JTable(tableModel);
-    private final TableRowSorter<ColumnTableModel<LoyaltyPointHistoryRow>> sorter = new TableRowSorter<>(tableModel);
+    private TableRowSorter<ColumnTableModel<LoyaltyPointHistoryRow>> sorter;
     private final JComboBox<String> characterCombo = new JComboBox<>();
     private final JLabel countLabel = new JLabel("Loading...");
 
@@ -74,10 +68,7 @@ final class LoyaltyPointHistoryDialog extends JDialog {
     }
 
     private void buildUi() {
-        ColumnSorting.install(sorter, tableModel);
-        table.setRowSorter(sorter);
-        TableStyler.style(table);
-        ColumnWidthMemory.install(table, "lpHistory", appContext.tableColumnStateDao);
+        sorter = SortableTables.withWidths(table, tableModel, "lpHistory", appContext.tableColumnStateDao);
         JScrollPane scroll = new JScrollPane(table);
         scroll.setPreferredSize(new Dimension(720, 380));
 
@@ -102,22 +93,8 @@ final class LoyaltyPointHistoryDialog extends JDialog {
     }
 
     private void load() {
-        new SwingWorker<List<LoyaltyPointHistoryRow>, Void>() {
-            @Override
-            protected List<LoyaltyPointHistoryRow> doInBackground() {
-                return appContext.loyaltyPointService.getHistory();
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    show(get());
-                } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Failed to load the LP history", e);
-                    countLabel.setText("Couldn't load the LP history - see the log");
-                }
-            }
-        }.execute();
+        BackgroundLoader.load(appContext.loyaltyPointService::getHistory, this::show, "the LP history",
+                failure -> countLabel.setText("Couldn't load the LP history - see the log"));
     }
 
     private void show(List<LoyaltyPointHistoryRow> rows) {

@@ -13,7 +13,6 @@ import com.evefarm.model.SellingFees;
 import com.evefarm.service.ItemIconService;
 import com.evefarm.service.SellingFeesService;
 import com.evefarm.ui.column.ColumnCopySupport;
-import com.evefarm.ui.column.ColumnSorting;
 import com.evefarm.ui.column.ColumnVisibilitySupport;
 import com.evefarm.ui.filter.FilterBarPanel;
 import com.evefarm.util.IskFormatter;
@@ -52,7 +51,7 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public final class LpStorePanel extends JPanel {
+public final class LpStorePanel extends TabPanel {
 
     private static final Logger LOG = Logger.getLogger(LpStorePanel.class.getName());
     private static final String PANEL_KEY = "lpStore";
@@ -62,30 +61,26 @@ public final class LpStorePanel extends JPanel {
     private FilterBarPanel filterBarPanel;
     private TableRowSorter<LpStoreTableModel> sorter;
 
-    private List<EveCharacter> characters = List.of();
     private List<NpcCorporationRow> allCorporations = List.of();
     private long selectedCorporationId = -1;
     private int offerCount = 0;
     private double targetIskPerLp;
     private long yourLp = 0;
-    private String mainCharacterName;
     private SellingFees sellingFees;
 
     private record PricedOffers(List<LpOfferRow> rows, SellingFees fees) {
     }
 
     public LpStorePanel(AppContext appContext) {
-        initComponents();
         this.appContext = appContext;
+        initComponents();
         this.tableModel = new LpStoreTableModel(appContext.itemIconService);
         postInit();
     }
 
     private void postInit() {
         table.setModel(tableModel);
-        sorter = new TableRowSorter<>(tableModel);
-        ColumnSorting.install(sorter, tableModel);
-        table.setRowSorter(sorter);
+        sorter = SortableTables.install(table, tableModel);
         TableStyler.style(table);
         table.setRowHeight(Math.max(table.getRowHeight(), ItemIconService.RENDER_SIZE + 6));
         installIskPerLpRenderer();
@@ -103,8 +98,6 @@ public final class LpStorePanel extends JPanel {
 
         characterCombo.addActionListener(e -> updateYourLpLabel());
         appContext.loyaltyPointService.addChangeListener(() -> SwingUtilities.invokeLater(this::updateYourLpLabel));
-        characterCombo.setRenderer(MainCharacterMarks.comboRenderer(() -> mainCharacterName));
-        ComboSizing.names(characterCombo);
         ComboSizing.names(corporationCombo);
         corporationCombo.addActionListener(e -> onCorporationSelected());
         favoriteCheckBox.addActionListener(e -> onFavoriteToggled());
@@ -213,11 +206,7 @@ public final class LpStorePanel extends JPanel {
     }
 
     private void reloadCharacters(boolean selectMain) {
-        characters = appContext.characterService.listCharactersMainFirst();
-        mainCharacterName = MainCharacterMarks.mainName(characters,
-                appContext.characterService.mainCharacterId().orElse(null));
-        MainCharacterMarks.fill(characterCombo, characters,
-                selectMain ? null : (String) characterCombo.getSelectedItem());
+        characterCombo.reload(selectMain);
         updateYourLpLabel();
     }
 
@@ -346,10 +335,7 @@ public final class LpStorePanel extends JPanel {
     }
 
     private void updateYourLpLabel() {
-        String selectedCharacterName = (String) characterCombo.getSelectedItem();
-        EveCharacter character = characters.stream()
-                .filter(c -> c.characterName().equals(selectedCharacterName))
-                .findFirst().orElse(null);
+        EveCharacter character = characterCombo.selectedCharacter();
         if (character == null || selectedCorporationId < 0) {
             yourLp = 0;
             yourLpLabel.setText("Your LP: -");
@@ -371,10 +357,7 @@ public final class LpStorePanel extends JPanel {
 
     private void recordPurchase() {
         int viewRow = table.getSelectedRow();
-        String selectedCharacterName = (String) characterCombo.getSelectedItem();
-        EveCharacter character = characters.stream()
-                .filter(c -> c.characterName().equals(selectedCharacterName))
-                .findFirst().orElse(null);
+        EveCharacter character = characterCombo.selectedCharacter();
         if (viewRow < 0 || character == null || selectedCorporationId < 0) {
             return;
         }
@@ -443,7 +426,7 @@ public final class LpStorePanel extends JPanel {
         filterBarPanel.setRowCounts(table.getRowCount(), tableModel.getRowCount());
     }
 
-    private JComboBox<String> characterCombo;
+    private CharacterCombo characterCombo;
     private JLabel characterLabel;
     private JComboBox<String> corporationCombo;
     private JLabel corporationLabel;
@@ -463,7 +446,7 @@ public final class LpStorePanel extends JPanel {
     private void initComponents() {
 
         characterLabel = new JLabel();
-        characterCombo = new JComboBox<>();
+        characterCombo = new CharacterCombo(appContext.characterService);
         corporationLabel = new JLabel();
         corporationCombo = new JComboBox<>();
         favoriteCheckBox = new JCheckBox();

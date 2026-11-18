@@ -92,7 +92,7 @@ public final class AbyssPanel extends TabPanel {
 
     private final AppContext appContext;
     private final BiConsumer<String, String> notifier;
-    private final JComboBox<String> characterCombo = new JComboBox<>();
+    private final CharacterCombo characterCombo;
     private final JComboBox<AbyssTier> tierCombo = new JComboBox<>(AbyssTier.values());
     private final JComboBox<AbyssWeather> weatherCombo = new JComboBox<>(AbyssWeather.values());
     private final JComboBox<AbyssFleet> fleetCombo = new JComboBox<>(AbyssFleet.values());
@@ -125,8 +125,6 @@ public final class AbyssPanel extends TabPanel {
     private final ColumnTableModel<AbyssStats.Summary> statsModel = new ColumnTableModel<>(STATS_COLUMNS);
     private final JTable statsTable = new JTable(statsModel);
     private final Timer clock = new Timer(1000, e -> updateTimer());
-    private List<EveCharacter> characters = List.of();
-    private String mainCharacterName;
     private AbyssTrackerService.Status trackerStatus;
     private AbyssRunDialog lootDialog;
     private boolean stoppingByUser;
@@ -138,13 +136,13 @@ public final class AbyssPanel extends TabPanel {
     public AbyssPanel(AppContext appContext, BiConsumer<String, String> notifier) {
         this.appContext = appContext;
         this.notifier = notifier;
+        this.characterCombo = new CharacterCombo(appContext.characterService);
         this.voicePanel = new AbyssVoicePanel(appContext);
         initComponents();
         postInit();
     }
 
     private void postInit() {
-        characterCombo.setRenderer(MainCharacterMarks.comboRenderer(() -> mainCharacterName));
         characterCombo.addActionListener(e -> updateTrackerUi());
         appContext.settingsDao.getEnum(SettingsDao.ABYSS_TIER, AbyssTier.class).ifPresent(tierCombo::setSelectedItem);
         appContext.settingsDao.getEnum(SettingsDao.ABYSS_WEATHER, AbyssWeather.class)
@@ -206,11 +204,8 @@ public final class AbyssPanel extends TabPanel {
     }
 
     private void reloadCharacters() {
-        characters = appContext.characterService.listCharactersMainFirst();
-        mainCharacterName = MainCharacterMarks.mainName(characters,
-                appContext.characterService.mainCharacterId().orElse(null));
         boolean tracking = trackerStatus != null && trackerStatus.phase() != AbyssTrackerService.Phase.STOPPED;
-        MainCharacterMarks.fill(characterCombo, characters, tracking ? trackerStatus.characterName() : null);
+        characterCombo.reload(tracking ? trackerStatus.characterName() : null);
         updateTrackerUi();
     }
 
@@ -231,9 +226,7 @@ public final class AbyssPanel extends TabPanel {
     }
 
     private EveCharacter selectedCharacter() {
-        String name = (String) characterCombo.getSelectedItem();
-        return characters.stream().filter(character -> character.characterName().equals(name)).findFirst()
-                .orElse(null);
+        return characterCombo.selectedCharacter();
     }
 
     private boolean tracking() {
@@ -467,8 +460,7 @@ public final class AbyssPanel extends TabPanel {
     private EveCharacter cargoCharacter() {
         if (tracking() && trackerStatus.characterId() != null) {
             long id = trackerStatus.characterId();
-            return characters.stream().filter(character -> character.characterId() == id).findFirst()
-                    .orElse(selectedCharacter());
+            return characterCombo.find(id).orElse(selectedCharacter());
         }
         return selectedCharacter();
     }
@@ -629,7 +621,6 @@ public final class AbyssPanel extends TabPanel {
         timerLabel.setFont(timerLabel.getFont().deriveFont(Font.BOLD, timerLabel.getFont().getSize2D() * 1.8f));
         JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         controls.add(new JLabel("Character:"));
-        ComboSizing.names(characterCombo);
         ComboSizing.options(tierCombo);
         ComboSizing.options(weatherCombo);
         ComboSizing.options(fleetCombo);

@@ -4,8 +4,6 @@ import com.evefarm.AppContext;
 import com.evefarm.service.LpPurchaseService;
 import com.evefarm.service.LpPurchaseService.Holding;
 import com.evefarm.service.LpPurchaseService.Lot;
-import com.evefarm.ui.column.ColumnSorting;
-import com.evefarm.ui.column.ColumnVisibilitySupport;
 import com.evefarm.util.IskFormatter;
 import com.formdev.flatlaf.FlatLaf;
 
@@ -20,9 +18,7 @@ import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
-import javax.swing.SwingWorker;
 import javax.swing.table.TableCellRenderer;
-import javax.swing.table.TableRowSorter;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -30,12 +26,8 @@ import java.awt.FlowLayout;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
-public final class LpPurchasesPanel extends JPanel {
-
-    private static final Logger LOG = Logger.getLogger(LpPurchasesPanel.class.getName());
+public final class LpPurchasesPanel extends TabPanel {
 
     private record Loaded(List<Lot> lots, int pendingPayments) {
     }
@@ -81,25 +73,17 @@ public final class LpPurchasesPanel extends JPanel {
         add(toolbar, BorderLayout.NORTH);
 
         holdingsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        TableRowSorter<LpHoldingsTableModel> holdingsSorter = new TableRowSorter<>(holdingsModel);
-        ColumnSorting.install(holdingsSorter, holdingsModel);
-        holdingsTable.setRowSorter(holdingsSorter);
+        SortableTables.withColumnChooser(holdingsTable, holdingsModel, "lpHoldings", appContext.tableColumnStateDao);
         holdingsTable.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 showLots();
             }
         });
-        TableStyler.style(holdingsTable);
-        ColumnVisibilitySupport.install(holdingsTable, holdingsModel, "lpHoldings", appContext.tableColumnStateDao);
         installSellNowColors();
 
         lotsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        TableRowSorter<LpLotsTableModel> lotsSorter = new TableRowSorter<>(lotsModel);
-        ColumnSorting.install(lotsSorter, lotsModel);
-        lotsTable.setRowSorter(lotsSorter);
+        SortableTables.withColumnChooser(lotsTable, lotsModel, "lpLots", appContext.tableColumnStateDao);
         lotsTable.getSelectionModel().addListSelectionListener(e -> updateButtons());
-        TableStyler.style(lotsTable);
-        ColumnVisibilitySupport.install(lotsTable, lotsModel, "lpLots", appContext.tableColumnStateDao);
 
         JPanel lotsPanel = new JPanel(new BorderLayout(0, 4));
         JLabel lotsTitle = new JLabel("Purchases");
@@ -148,32 +132,16 @@ public final class LpPurchasesPanel extends JPanel {
     }
 
     private void reload() {
-        int current = generation.incrementAndGet();
         summaryLabel.setText("Loading...");
-        new SwingWorker<Loaded, Void>() {
-            @Override
-            protected Loaded doInBackground() {
-                int pendingPayments = appContext.lpPurchaseService.pendingPaymentCount();
-                return new Loaded(appContext.lpPurchaseService.lots(), pendingPayments);
-            }
-
-            @Override
-            protected void done() {
-                if (current != generation.get()) {
-                    return;
-                }
-                try {
-                    Loaded loaded = get();
-                    lots = loaded.lots();
-                    reviewButton.setText(reviewText(loaded.pendingPayments()));
-                    show(lots);
-                } catch (Exception e) {
-                    Throwable cause = e.getCause() != null ? e.getCause() : e;
-                    LOG.log(Level.WARNING, "Couldn't load the LP Store purchases", cause);
-                    summaryLabel.setText("Couldn't load the purchases: " + cause.getMessage());
-                }
-            }
-        }.execute();
+        BackgroundLoader.load(generation, () -> {
+            int pendingPayments = appContext.lpPurchaseService.pendingPaymentCount();
+            return new Loaded(appContext.lpPurchaseService.lots(), pendingPayments);
+        }, loaded -> {
+            lots = loaded.lots();
+            reviewButton.setText(reviewText(loaded.pendingPayments()));
+            show(lots);
+        }, "the LP Store purchases", failure -> summaryLabel.setText("Couldn't load the purchases: "
+                + failure.getMessage()));
     }
 
     static String reviewText(int pendingPayments) {

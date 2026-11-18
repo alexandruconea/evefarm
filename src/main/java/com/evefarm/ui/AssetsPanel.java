@@ -81,7 +81,7 @@ public final class AssetsPanel extends TabPanel {
             filteredTable.showRows(loaded.rows());
             totalLabel.setText((month == null ? "Total: " : "Total in " + monthName(month) + ": ")
                     + IskFormatter.format(tableModel.totalValue()));
-        }, "assets", () -> totalLabel.setText("Couldn't load assets - see the log"));
+        }, "assets", failure -> totalLabel.setText("Couldn't load assets - see the log"));
     }
 
     private void showSnapshots(List<AssetDao.ArchivedMonth> months, String selectedMonth) {

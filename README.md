@@ -32,7 +32,7 @@ Everything stays on your computer, in `%USERPROFILE%\.evefarm` on Windows and `~
 - `backups` holds automatic daily backups (the last 7 days and one per month for a year);
 - `logs` holds the log files.
 
-EVE only shows the last 30 to 90 days of most history, so EVE Farm saves it as it updates and keeps it for as long as you keep the app: wallet journal and transactions, closed market orders (**Show closed orders** in the Market Orders tab), finished contracts with their items, finished industry jobs, everything you mined (**Mining** tab), every change in your loyalty points (**LP History...** in the LP Store tab), and your whole asset list as it was at the end of each month (**Show** at the bottom of the Assets tab).
+EVE only shows the last 30 to 90 days of most history, so EVE Farm saves it as it updates and keeps it for as long as you keep the app: wallet journal and transactions, closed market orders (**Show closed orders** in **Wallet > Market Orders**), finished contracts with their items, finished industry jobs, everything you mined (**Industry > Mining**), every change in your loyalty points (**LP History...** in the LP Store tab), and your whole asset list as it was at the end of each month (**Show** at the bottom of **Values > Assets**).
 
 **Options → Settings...** can copy every automatic backup to a second folder, such as a cloud-synced one. **Options → Backup Data...** and **Restore Data...** create or restore a backup by hand.
 
@@ -88,6 +88,8 @@ Only `EVEFarm.exe` is signed, and only when it is built from this repository by 
 ## License
 
 EVE Farm's own code is released under the [MIT License](LICENSE). The license doesn't cover EVE Online's names, images or game data, which belong to their owners (see Trademarks below).
+
+The tab and menu icons are from [Phosphor Icons](https://phosphoricons.com), also under the MIT License ([copy](src/main/resources/icons/phosphor/LICENSE.txt)).
 
 ## Trademarks
 

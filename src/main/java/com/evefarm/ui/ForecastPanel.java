@@ -1,8 +1,8 @@
 package com.evefarm.ui;
 
+import com.evefarm.service.TrackerCombination;
 import com.evefarm.service.WalletLpProjection.Point;
 import com.evefarm.service.WalletLpProjection.Projection;
-import com.formdev.flatlaf.FlatLaf;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.annotations.XYTextAnnotation;
@@ -10,7 +10,6 @@ import org.jfree.chart.axis.DateAxis;
 import org.jfree.chart.axis.DateTickUnit;
 import org.jfree.chart.axis.DateTickUnitType;
 import org.jfree.chart.axis.NumberAxis;
-import org.jfree.chart.axis.ValueAxis;
 import org.jfree.chart.labels.StandardXYToolTipGenerator;
 import org.jfree.chart.plot.ValueMarker;
 import org.jfree.chart.plot.XYPlot;
@@ -25,13 +24,15 @@ import org.jfree.data.xy.YIntervalSeries;
 import org.jfree.data.xy.YIntervalSeriesCollection;
 
 import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.UIManager;
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Stroke;
 import java.text.SimpleDateFormat;
@@ -43,8 +44,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Consumer;
 
-final class WalletLpProjectionPanel extends JPanel {
+final class ForecastPanel extends JPanel {
 
     private static final DateTimeFormatter LAST_DAY = DateTimeFormatter.ofPattern("MMM d", Locale.US);
     private static final String TOOLTIP_FORMAT = "{1}: {2} ISK";
@@ -53,32 +55,47 @@ final class WalletLpProjectionPanel extends JPanel {
             BasicStroke.JOIN_ROUND, 10f, new float[]{6f, 5f}, 0f);
     private static final Stroke MARKER_STROKE = new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL,
             0f, new float[]{2f, 3f}, 0f);
-    private static final Stroke GRIDLINE_STROKE = new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL,
-            0f, new float[]{2f, 2f}, 0f);
     private static final float BAND_ALPHA = 0.16f;
-    private static final String RULES = "Wallet balance plus the LP with your favorite corporation in the LP Store, "
-            + "at your ISK/LP target. ISK moved from or to a corporation wallet and donations count as moved, "
-            + "not produced. The pace is the trend line of the last 30 days; the band is the pace of the slowest "
-            + "and the fastest week in them.";
+    private static final String PACE_RULES = "The pace is the trend line of the last 30 days of Tracker snapshots; "
+            + "the band is the pace of the slowest and the fastest week in them.";
+    private static final String TRANSFER_RULES = " ISK moved from or to a corporation wallet and donations count "
+            + "as moved, not produced.";
 
     private final ZoneId zone = ZoneId.systemDefault();
     private final JLabel titleLabel = new JLabel(" ");
+    private final JComboBox<String> combinationCombo = new JComboBox<>();
+    private final JButton editButton = new JButton("Edit...");
+    private boolean fillingCombinations;
     private final JLabel headlineLabel = new JLabel(" ");
     private final JLabel detailLabel = new JLabel(" ");
     private final ChartPanel chartPanel = new ChartPanel(null, false);
 
-    WalletLpProjectionPanel() {
+    ForecastPanel(Consumer<String> onCombinationChosen, Runnable onEdit) {
         super(new BorderLayout(0, 8));
         setOpaque(false);
         titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, titleLabel.getFont().getSize2D() + 3f));
         titleLabel.setBorder(BorderFactory.createEmptyBorder(0, 2, 0, 0));
-        add(titleLabel, BorderLayout.NORTH);
+        combinationCombo.setToolTipText("What the forecast adds up. Edit... chooses what each combination adds up.");
+        ComboSizing.names(combinationCombo);
+        combinationCombo.addActionListener(e -> {
+            if (!fillingCombinations && combinationCombo.getSelectedItem() != null) {
+                onCombinationChosen.accept(combinationCombo.getSelectedItem().toString());
+            }
+        });
+        editButton.addActionListener(e -> onEdit.run());
+        JPanel combination = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        combination.setOpaque(false);
+        combination.add(new JLabel("Adds up:"));
+        combination.add(combinationCombo);
+        combination.add(editButton);
+        JPanel header = new JPanel(new BorderLayout(12, 0));
+        header.setOpaque(false);
+        header.add(titleLabel, BorderLayout.WEST);
+        header.add(combination, BorderLayout.EAST);
+        add(header, BorderLayout.NORTH);
 
         headlineLabel.setFont(headlineLabel.getFont().deriveFont(Font.BOLD, headlineLabel.getFont().getSize2D() + 2f));
         detailLabel.setForeground(UiColors.muted());
-        for (JLabel label : List.of(headlineLabel, detailLabel)) {
-            label.setToolTipText(RULES);
-        }
         JPanel text = new JPanel(new BorderLayout(0, 3));
         text.setOpaque(false);
         text.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
@@ -101,13 +118,39 @@ final class WalletLpProjectionPanel extends JPanel {
         add(card, BorderLayout.CENTER);
     }
 
-    void setProjection(String characterName, Projection projection) {
+    String combinationName() {
+        Object selected = combinationCombo.getSelectedItem();
+        return selected == null ? null : selected.toString();
+    }
+
+    void setCombinations(List<String> names, String selected) {
+        fillingCombinations = true;
+        try {
+            combinationCombo.removeAllItems();
+            names.forEach(combinationCombo::addItem);
+            if (!names.contains(selected)) {
+                combinationCombo.addItem(selected);
+            }
+            combinationCombo.setSelectedItem(selected);
+        } finally {
+            fillingCombinations = false;
+        }
+    }
+
+    void setProjection(String characterName, TrackerCombination combination, Projection projection) {
         LocalDate lastDay = LocalDate.ofInstant(projection.end().minusSeconds(1), zone);
+        boolean wallet = combination.includes(TrackerCombination.WALLET);
+        String rules = combination.name() + " adds up " + String.join(", ", combination.parts()) + ". "
+                + PACE_RULES + (wallet ? TRANSFER_RULES : "");
+        for (JLabel label : List.of(headlineLabel, detailLabel)) {
+            label.setToolTipText(rules);
+        }
         titleLabel.setText("Forecast for Favorite Character");
-        titleLabel.setToolTipText(characterName + "'s wallet and LP, projected to " + LAST_DAY.format(lastDay));
+        titleLabel.setToolTipText(characterName + "'s " + combination.name() + ", projected to "
+                + LAST_DAY.format(lastDay));
         if (projection.isEmpty()) {
             headlineLabel.setText("No Tracker snapshots yet");
-            detailLabel.setText("EVE Farm saves the wallet and LP of " + characterName
+            detailLabel.setText("EVE Farm saves the values of " + characterName
                     + " each time it updates, and projects them once it has a few days of them.");
             chartPanel.setChart(null);
             chartPanel.setVisible(false);
@@ -115,7 +158,7 @@ final class WalletLpProjectionPanel extends JPanel {
         }
         chartPanel.setVisible(true);
         if (projection.pace() == null) {
-            headlineLabel.setText(compact(projection.latest().total()) + " ISK in wallet and LP");
+            headlineLabel.setText(compact(projection.latest().total()) + " ISK in " + combination.name());
             detailLabel.setText("The projection to " + LAST_DAY.format(lastDay)
                     + " needs at least 3 days of Tracker snapshots.");
         } else {
@@ -127,29 +170,18 @@ final class WalletLpProjectionPanel extends JPanel {
                 detail += " Between " + compact(projection.low()) + " and " + compact(projection.high())
                         + " at the pace of the slowest and the fastest week.";
             }
-            detailLabel.setText(detail + " Corporation wallet transfers and donations don't count.");
+            detailLabel.setText(detail + (wallet ? " Corporation wallet transfers and donations don't count." : ""));
         }
-        chartPanel.setChart(chart(projection));
+        chartPanel.setChart(chart(combination.name(), projection));
     }
 
-    private static JFreeChart chart(Projection projection) {
-        boolean dark = FlatLaf.isLafDark();
-        Color line = TrackerChartFactory.colorFor("Total", dark);
-        Color background = UIManager.getColor("Table.background");
-        if (background == null) {
-            background = dark ? new Color(43, 43, 43) : Color.WHITE;
-        }
-        Color gridline = dark ? new Color(60, 60, 58) : new Color(0xe1, 0xe0, 0xd9);
-        Color secondaryInk = dark ? new Color(0xc3, 0xc2, 0xb7) : new Color(0x52, 0x51, 0x4e);
-        Color mutedInk = new Color(0x89, 0x87, 0x81);
-        Color baseline = dark ? new Color(0x38, 0x38, 0x35) : new Color(0xc3, 0xc2, 0xb7);
-        Font uiFont = UIManager.getFont("Label.font");
-        if (uiFont == null) {
-            uiFont = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
-        }
-        Font axisFont = uiFont.deriveFont(Font.PLAIN, uiFont.getSize2D() - 1f);
+    private static JFreeChart chart(String name, Projection projection) {
+        ChartStyle style = ChartStyle.current("Table.background");
+        Color line = TrackerChartFactory.colorFor("Total", style.dark());
+        Color mutedInk = style.mutedInk();
+        Font axisFont = style.axisFont();
 
-        XYSeries actual = new XYSeries("Wallet + LP", true, false);
+        XYSeries actual = new XYSeries(name, true, false);
         for (Point point : projection.history()) {
             actual.add(point.at().toEpochMilli(), point.total());
         }
@@ -186,7 +218,7 @@ final class WalletLpProjectionPanel extends JPanel {
             XYTextAnnotation label = new XYTextAnnotation(compact(projection.expected()), endMillis,
                     projection.expected());
             label.setTextAnchor(TextAnchor.BOTTOM_RIGHT);
-            label.setFont(uiFont.deriveFont(Font.BOLD));
+            label.setFont(style.uiFont().deriveFont(Font.BOLD));
             label.setPaint(line);
             plot.addAnnotation(label);
 
@@ -213,25 +245,9 @@ final class WalletLpProjectionPanel extends JPanel {
         domainAxis.setRange(Date.from(first), Date.from(last));
         domainAxis.setTickUnit(tickUnit(Duration.between(first, last)));
 
-        plot.setBackgroundPaint(background);
-        plot.setOutlineVisible(false);
-        plot.setDomainGridlinePaint(gridline);
-        plot.setRangeGridlinePaint(gridline);
-        plot.setDomainGridlineStroke(GRIDLINE_STROKE);
-        plot.setRangeGridlineStroke(GRIDLINE_STROKE);
         plot.setAxisOffset(RectangleInsets.ZERO_INSETS);
-        for (ValueAxis axis : List.of(domainAxis, rangeAxis)) {
-            axis.setTickLabelFont(axisFont);
-            axis.setTickLabelPaint(secondaryInk);
-            axis.setTickMarksVisible(false);
-        }
-        domainAxis.setAxisLinePaint(baseline);
-        rangeAxis.setAxisLineVisible(false);
-
         JFreeChart chart = new JFreeChart(null, JFreeChart.DEFAULT_TITLE_FONT, plot, false);
-        chart.setBackgroundPaint(background);
-        chart.setAntiAlias(true);
-        chart.setTextAntiAlias(true);
+        style.apply(chart, plot, domainAxis, rangeAxis);
         chart.setPadding(new RectangleInsets(4, 0, 8, 4));
         return chart;
     }

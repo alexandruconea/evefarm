@@ -1,16 +1,15 @@
 package com.evefarm.ui;
 
 import com.evefarm.model.TrackerSnapshot;
+import com.evefarm.service.SnapshotRuns;
 import org.jfree.data.time.Minute;
 import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesCollection;
 
 import java.awt.Color;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -28,23 +27,6 @@ public final class TrackerChartFactory {
             "Contracts", "Skill Points", "LP Value"
     );
 
-    static final Duration RUN_GAP = Duration.ofMinutes(2);
-    static final Duration RUN_MAX_LENGTH = Duration.ofMinutes(15);
-
-    private static final Map<String, ToDoubleFunction<TrackerSnapshot>> TOTAL_COMPONENTS = new LinkedHashMap<>();
-
-    static {
-        TOTAL_COMPONENTS.put("Wallet Balance", TrackerSnapshot::walletBalance);
-        TOTAL_COMPONENTS.put("Assets", TrackerSnapshot::assetsValue);
-        TOTAL_COMPONENTS.put("Implants", TrackerSnapshot::implantsValue);
-        TOTAL_COMPONENTS.put("Sell Orders", TrackerSnapshot::sellOrdersValue);
-        TOTAL_COMPONENTS.put("Escrows", TrackerSnapshot::escrowValue);
-        TOTAL_COMPONENTS.put("Manufacturing", TrackerSnapshot::manufacturingValue);
-        TOTAL_COMPONENTS.put("Contract Collateral", TrackerSnapshot::contractCollateralValue);
-        TOTAL_COMPONENTS.put("Contracts", TrackerSnapshot::contractsValue);
-        TOTAL_COMPONENTS.put("Skill Points", TrackerSnapshot::skillPointValue);
-        TOTAL_COMPONENTS.put("LP Value", TrackerSnapshot::lpValue);
-    }
 
     private static final Map<String, Color> SERIES_COLORS_LIGHT = Map.ofEntries(
             entry("Total", new Color(0x2a, 0x78, 0xd6)),
@@ -90,30 +72,10 @@ public final class TrackerChartFactory {
 
     public static List<TrackerSnapshot> snapshotsAtPoint(List<TrackerSnapshot> snapshots, Instant point) {
         Instant minute = point.truncatedTo(ChronoUnit.MINUTES);
-        return captureRuns(snapshots).stream()
+        return SnapshotRuns.of(snapshots).stream()
                 .filter(run -> run.getFirst().capturedAt().truncatedTo(ChronoUnit.MINUTES).equals(minute))
                 .findFirst()
                 .orElse(List.of());
-    }
-
-    static List<List<TrackerSnapshot>> captureRuns(List<TrackerSnapshot> snapshots) {
-        List<TrackerSnapshot> sorted = snapshots.stream()
-                .sorted(Comparator.comparing(TrackerSnapshot::capturedAt))
-                .toList();
-        List<List<TrackerSnapshot>> runs = new ArrayList<>();
-        List<TrackerSnapshot> run = new ArrayList<>();
-        for (TrackerSnapshot snapshot : sorted) {
-            if (!run.isEmpty() && (snapshot.capturedAt().isAfter(run.getLast().capturedAt().plus(RUN_GAP))
-                    || snapshot.capturedAt().isAfter(run.getFirst().capturedAt().plus(RUN_MAX_LENGTH)))) {
-                runs.add(run);
-                run = new ArrayList<>();
-            }
-            run.add(snapshot);
-        }
-        if (!run.isEmpty()) {
-            runs.add(run);
-        }
-        return runs;
     }
 
     public TimeSeriesCollection buildDataset(List<TrackerSnapshot> snapshots, Set<String> visibleSeriesNames) {
@@ -125,7 +87,7 @@ public final class TrackerChartFactory {
         }
 
         Map<Long, TrackerSnapshot> latestPerCharacter = new LinkedHashMap<>();
-        for (List<TrackerSnapshot> run : captureRuns(snapshots)) {
+        for (List<TrackerSnapshot> run : SnapshotRuns.of(snapshots)) {
             for (TrackerSnapshot snapshot : run) {
                 latestPerCharacter.put(snapshot.characterId(), snapshot);
             }
@@ -147,7 +109,7 @@ public final class TrackerChartFactory {
             TimeSeries totalSeries = series.get("Total");
             if (totalSeries != null) {
                 double sum = pointSnapshots.stream().mapToDouble(snapshot ->
-                        TOTAL_COMPONENTS.entrySet().stream()
+                        TrackerSnapshot.VALUE_PARTS.entrySet().stream()
                                 .filter(e -> visibleSeriesNames.contains(e.getKey()))
                                 .mapToDouble(e -> e.getValue().applyAsDouble(snapshot))
                                 .sum()

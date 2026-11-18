@@ -26,7 +26,6 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
-import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
@@ -68,7 +67,7 @@ public final class SkillsPanel extends TabPanel {
     private static final int DEFAULT_DIVIDER = 230;
 
     private final AppContext appContext;
-    private final JComboBox<String> characterCombo = new JComboBox<>();
+    private final CharacterCombo characterCombo;
     private final JLabel attributesLabel = new JLabel(" ");
     private final JLabel spLabel = new JLabel(" ");
     private final JLabel acceleratorLabel = new JLabel(" ");
@@ -98,8 +97,6 @@ public final class SkillsPanel extends TabPanel {
     private final AtomicInteger loadGeneration = new AtomicInteger();
     private final AtomicInteger costsGeneration = new AtomicInteger();
 
-    private List<EveCharacter> characters = List.of();
-    private String mainCharacterName;
     private Map<Integer, SkillInfo> catalog = Map.of();
     private CharacterSkills skills;
     private CharacterAttributes attributes = CharacterAttributes.NONE;
@@ -113,6 +110,7 @@ public final class SkillsPanel extends TabPanel {
 
     public SkillsPanel(AppContext appContext) {
         this.appContext = appContext;
+        characterCombo = new CharacterCombo(appContext.characterService);
         buildUi();
         postInit();
     }
@@ -124,7 +122,6 @@ public final class SkillsPanel extends TabPanel {
         ColumnCopySupport.install(table, tableModel);
         table.getSelectionModel().addListSelectionListener(e -> updateButtons());
 
-        characterCombo.setRenderer(MainCharacterMarks.comboRenderer(() -> mainCharacterName));
         characterCombo.addActionListener(e -> {
             if (!updatingCharacters) {
                 loadCharacter();
@@ -170,13 +167,9 @@ public final class SkillsPanel extends TabPanel {
     }
 
     private void reloadCharacters(boolean selectMain) {
-        characters = appContext.characterService.listCharactersMainFirst();
-        mainCharacterName = MainCharacterMarks.mainName(characters,
-                appContext.characterService.mainCharacterId().orElse(null));
-        String previous = selectMain ? null : (String) characterCombo.getSelectedItem();
         updatingCharacters = true;
         try {
-            MainCharacterMarks.fill(characterCombo, characters, previous);
+            characterCombo.reload(selectMain);
         } finally {
             updatingCharacters = false;
         }
@@ -184,9 +177,7 @@ public final class SkillsPanel extends TabPanel {
     }
 
     private EveCharacter selectedCharacter() {
-        Object name = characterCombo.getSelectedItem();
-        return characters.stream().filter(character -> character.characterName().equals(name))
-                .findFirst().orElse(null);
+        return characterCombo.selectedCharacter();
     }
 
     private record Loaded(Map<Integer, SkillInfo> catalog, CharacterSkills skills, CharacterAccelerator accelerator,
@@ -195,27 +186,9 @@ public final class SkillsPanel extends TabPanel {
 
     private void loadCharacter() {
         EveCharacter character = selectedCharacter();
-        int generation = loadGeneration.incrementAndGet();
         Long previousPlan = plan == null ? null : plan.planId();
-        new SwingWorker<Loaded, Void>() {
-            @Override
-            protected Loaded doInBackground() {
-                return loadData(character);
-            }
-
-            @Override
-            protected void done() {
-                if (generation != loadGeneration.get()) {
-                    return;
-                }
-                try {
-                    apply(get(), previousPlan);
-                } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Failed to load the skills tab", e);
-                    hintLabel.setText("Couldn't load the skills - see the log");
-                }
-            }
-        }.execute();
+        BackgroundLoader.load(loadGeneration, () -> loadData(character), loaded -> apply(loaded, previousPlan),
+                "the skills tab", failure -> hintLabel.setText("Couldn't load the skills - see the log"));
     }
 
     private Loaded loadData(EveCharacter character) {
@@ -399,23 +372,11 @@ public final class SkillsPanel extends TabPanel {
         entries.stream().map(SkillPlanEntry::skillId).filter(id -> !owned.containsKey(id)).forEach(toBuy::add);
         long trainedSp = skills == null ? 0 : skills.totalSp();
         long unallocatedSp = skills == null ? 0 : skills.unallocatedSp();
-        int generation = costsGeneration.incrementAndGet();
         booksLabel.setText(toBuy.isEmpty() ? "No skill books to buy."
                 : "Skill books to buy: " + toBuy.size() + " (pricing...)");
         injectorsLabel.setText(skills == null ? " " : "Skill injectors to finish it now: pricing...");
-        new SwingWorker<PlanCosts, Void>() {
-            @Override
-            protected PlanCosts doInBackground() {
-                return PlanCosts.estimate(appContext.priceService, toBuy, planSp, trainedSp, unallocatedSp);
-            }
-
-            @Override
-            protected void done() {
-                if (generation != costsGeneration.get()) {
-                    return;
-                }
-                try {
-                    PlanCosts costs = get();
+        BackgroundLoader.load(costsGeneration,
+                () -> PlanCosts.estimate(appContext.priceService, toBuy, planSp, trainedSp, unallocatedSp), costs -> {
                     if (!toBuy.isEmpty()) {
                         booksLabel.setText("Skill books to buy: " + toBuy.size() + " ("
                                 + IskFormatter.format(costs.skillBooks()) + ")");
@@ -423,14 +384,11 @@ public final class SkillsPanel extends TabPanel {
                     if (skills != null) {
                         injectorsLabel.setText(injectorText(costs));
                     }
-                } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Failed to price the skill plan", e);
+                }, "the skill plan prices", failure -> {
                     booksLabel.setText(toBuy.isEmpty() ? "No skill books to buy."
                             : "Skill books to buy: " + toBuy.size() + " (price unknown)");
                     injectorsLabel.setText(" ");
-                }
-            }
-        }.execute();
+                });
     }
 
     private static String injectorText(PlanCosts costs) {
@@ -760,7 +718,6 @@ public final class SkillsPanel extends TabPanel {
 
         JPanel characterRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         characterRow.add(new JLabel("Character:"));
-        ComboSizing.names(characterCombo);
         characterRow.add(characterCombo);
         characterRow.add(Box.createHorizontalStrut(12));
         characterRow.add(attributesLabel);

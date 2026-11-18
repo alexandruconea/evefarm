@@ -141,11 +141,29 @@ public final class Icons {
         g.draw(line(6.5, 9, 9.5, 9));
     });
 
-    public static final Icon COIN = icon(Tone.NEUTRAL, g -> {
-        g.draw(closed(8, 1.8, 13.8, 5, 13.8, 11, 8, 14.2, 2.2, 11, 2.2, 5));
-        g.draw(path(2.2, 5, 8, 8.2, 13.8, 5));
-        g.draw(line(8, 8.2, 8, 14.2));
-    });
+    public static final Icon DROPDOWN = new Icon() {
+        @Override
+        public void paintIcon(Component c, Graphics g, int x, int y) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
+            g2.translate(x, y);
+            g2.setColor(Tone.NEUTRAL.color());
+            g2.setStroke(new BasicStroke(STROKE, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.draw(path(1, 6.5, 4, 9.5, 7, 6.5));
+            g2.dispose();
+        }
+
+        @Override
+        public int getIconWidth() {
+            return 8;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return SIZE;
+        }
+    };
 
     public static final Icon CHART = icon(Tone.NEUTRAL, g -> {
         g.draw(path(2.5, 2.5, 2.5, 13.5, 13.5, 13.5));
@@ -180,36 +198,11 @@ public final class Icons {
         g.draw(line(5.75, 11, 10.5, 11));
     });
 
-    public static final Icon FACTORY = icon(Tone.NEUTRAL, g -> {
-        g.draw(closed(2, 13.75, 2, 7.5, 5.5, 9.75, 5.5, 7.5, 9, 9.75, 9, 2.5, 12.75, 2.5, 12.75, 13.75));
-        g.draw(line(4.25, 11.75, 5.25, 11.75));
-        g.draw(line(7.25, 11.75, 8.25, 11.75));
-    });
-
-    public static final Icon VALUE = icon(Tone.NEUTRAL, g -> {
-        g.draw(new RoundRectangle2D.Double(2.25, 8.5, 3, 5.25, 1.5, 1.5));
-        g.draw(new RoundRectangle2D.Double(6.5, 2.75, 3, 11, 1.5, 1.5));
-        g.draw(new RoundRectangle2D.Double(10.75, 6, 3, 7.75, 1.5, 1.5));
-    });
-
-    public static final Icon LP = icon(Tone.NEUTRAL, g -> g.draw(star(6.5, 2.9)));
-
     public static final Icon PACKAGE = icon(Tone.NEUTRAL, g -> {
         g.draw(closed(2.5, 5.5, 13.5, 5.5, 13.5, 13.5, 2.5, 13.5));
         g.draw(path(2.5, 5.5, 4.5, 2.5, 11.5, 2.5, 13.5, 5.5));
         g.draw(line(8, 2.5, 8, 5.5));
         g.draw(line(6, 8.5, 10, 8.5));
-    });
-
-    public static final Icon CALENDAR = icon(Tone.NEUTRAL, g -> {
-        g.draw(new RoundRectangle2D.Double(2.5, 3.5, 11, 10, 2.5, 2.5));
-        g.draw(line(2.5, 6.5, 13.5, 6.5));
-        g.draw(line(5.5, 2, 5.5, 4.5));
-        g.draw(line(10.5, 2, 10.5, 4.5));
-        for (double x : new double[]{5.5, 8, 10.5}) {
-            g.fill(new Ellipse2D.Double(x - 0.8, 8.4, 1.6, 1.6));
-            g.fill(new Ellipse2D.Double(x - 0.8, 10.9, 1.6, 1.6));
-        }
     });
 
     public static final Icon MAIN = icon(Tone.FAVORITE, g -> {
@@ -220,19 +213,6 @@ public final class Icons {
     });
 
     public static final Icon BLANK = icon(Tone.NEUTRAL, g -> {
-    });
-
-    public static final Icon CROSSHAIR = icon(Tone.NEUTRAL, g -> {
-        g.draw(new Ellipse2D.Double(2.5, 2.5, 11, 11));
-        g.draw(line(8, 1, 8, 4.75));
-        g.draw(line(8, 11.25, 8, 15));
-        g.draw(line(1, 8, 4.75, 8));
-        g.draw(line(11.25, 8, 15, 8));
-    });
-
-    public static final Icon MEDAL = icon(Tone.NEUTRAL, g -> {
-        g.draw(new Ellipse2D.Double(4, 1.5, 8, 8));
-        g.draw(path(5.8, 8.6, 4.5, 14.5, 8, 12.8, 11.5, 14.5, 10.2, 8.6));
     });
 
     public static final Icon KILLBOARD = icon(Tone.DANGER, g -> {
@@ -249,31 +229,6 @@ public final class Icons {
         g.draw(new Ellipse2D.Double(1.75, 1.75, 12.5, 12.5));
         g.draw(line(8, 7.25, 8, 11.5));
         g.fill(new Ellipse2D.Double(7.05, 3.9, 1.9, 1.9));
-    });
-
-    public static final Icon ABYSS = icon(Tone.NEUTRAL, g -> {
-        g.draw(new Arc2D.Double(1.75, 1.75, 12.5, 12.5, 90, 270, Arc2D.OPEN));
-        g.draw(new Arc2D.Double(4.5, 4.5, 7, 7, 270, 270, Arc2D.OPEN));
-        g.fill(new Ellipse2D.Double(6.9, 6.9, 2.2, 2.2));
-    });
-
-    public static final Icon MINING = icon(Tone.NEUTRAL, g -> {
-        g.draw(closed(2.5, 9, 4.5, 4.25, 9, 2.5, 13, 5, 13.75, 10, 10.5, 13.5, 5, 13.25));
-        g.draw(path(4.5, 4.25, 7.5, 7.5, 13, 5));
-        g.draw(line(7.5, 7.5, 7, 13.35));
-    });
-
-    public static final Icon STANDINGS = icon(Tone.NEUTRAL, g -> {
-        g.draw(line(8, 2.5, 8, 13.5));
-        g.draw(line(5, 13.5, 11, 13.5));
-        g.draw(line(3, 4.5, 13, 4.5));
-        g.draw(closed(3, 4.5, 1.5, 9, 4.5, 9));
-        g.draw(closed(13, 4.5, 11.5, 9, 14.5, 9));
-    });
-
-    public static final Icon SKILLS = icon(Tone.NEUTRAL, g -> {
-        g.draw(closed(8, 4, 2, 2.5, 2, 12, 8, 13.5));
-        g.draw(closed(8, 4, 14, 2.5, 14, 12, 8, 13.5));
     });
 
     public static final Icon CALCULATOR = icon(Tone.NEUTRAL, g -> {

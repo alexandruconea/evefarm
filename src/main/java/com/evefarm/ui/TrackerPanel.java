@@ -46,12 +46,12 @@ import javax.swing.SwingWorker;
 import javax.swing.UIManager;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
+
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.awt.GradientPaint;
 import java.awt.Graphics2D;
 import java.awt.Stroke;
@@ -139,49 +139,16 @@ public final class TrackerPanel extends TabPanel {
         rangeAxis.setAutoRangeIncludesZero(false);
         rangeAxis.setNumberFormatOverride(new CompactIskNumberFormat());
 
-        boolean dark = FlatLaf.isLafDark();
-        Color background = UIManager.getColor("Panel.background");
-        if (background == null) {
-            background = dark ? new Color(43, 43, 43) : Color.WHITE;
-        }
+        ChartStyle style = ChartStyle.current("Panel.background");
+        Color background = style.background();
         Color foreground = UIManager.getColor("Label.foreground");
         if (foreground == null) {
-            foreground = dark ? Color.LIGHT_GRAY : Color.BLACK;
+            foreground = style.dark() ? Color.LIGHT_GRAY : Color.BLACK;
         }
-        Color gridlineColor = dark ? new Color(60, 60, 58) : new Color(0xe1, 0xe0, 0xd9);
-        Stroke gridlineStroke = new BasicStroke(
-                1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0f, new float[]{2f, 2f}, 0f);
-
-        chart.setBackgroundPaint(background);
-        chart.setAntiAlias(true);
-        chart.setTextAntiAlias(true);
-        plot.setBackgroundPaint(background);
-        plot.setOutlineVisible(false);
-        plot.setDomainGridlinePaint(gridlineColor);
-        plot.setRangeGridlinePaint(gridlineColor);
-        plot.setDomainGridlineStroke(gridlineStroke);
-        plot.setRangeGridlineStroke(gridlineStroke);
+        style.apply(chart, plot, plot.getDomainAxis(), rangeAxis);
         XYLineAndShapeRenderer lines = new XYLineAndShapeRenderer(true, false);
         lines.setDrawSeriesLineAsPath(true);
         plot.setRenderer(1, lines);
-
-        Color secondaryInk = dark ? new Color(0xc3, 0xc2, 0xb7) : new Color(0x52, 0x51, 0x4e);
-        Color mutedInk = new Color(0x89, 0x87, 0x81);
-        Color baselineColor = dark ? new Color(0x38, 0x38, 0x35) : new Color(0xc3, 0xc2, 0xb7);
-        Font uiFont = UIManager.getFont("Label.font");
-        if (uiFont == null) {
-            uiFont = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
-        }
-        Font axisFont = uiFont.deriveFont(Font.PLAIN, uiFont.getSize2D() - 1f);
-        for (ValueAxis axis : List.of(plot.getDomainAxis(), rangeAxis)) {
-            axis.setTickLabelFont(axisFont);
-            axis.setTickLabelPaint(secondaryInk);
-            axis.setLabelFont(axisFont);
-            axis.setLabelPaint(mutedInk);
-            axis.setTickMarksVisible(false);
-        }
-        plot.getDomainAxis().setAxisLinePaint(baselineColor);
-        rangeAxis.setAxisLineVisible(false);
         if (chart.getLegend() != null) {
             chart.getLegend().setBackgroundPaint(background);
             chart.getLegend().setItemPaint(foreground);
@@ -297,30 +264,12 @@ public final class TrackerPanel extends TabPanel {
         if (chartPanel == null) {
             return;
         }
-        int generation = reloadGeneration.incrementAndGet();
         Set<Long> characterIds = characters.selectedIds();
         Set<String> visibleSeries = visibleSeriesNames();
         Instant from = dates.from();
         Instant to = dates.to();
-
-        new SwingWorker<List<TrackerSnapshot>, Void>() {
-            @Override
-            protected List<TrackerSnapshot> doInBackground() {
-                return appContext.snapshotDao.listBetween(characterIds, from, to);
-            }
-
-            @Override
-            protected void done() {
-                if (generation != reloadGeneration.get()) {
-                    return;
-                }
-                try {
-                    applyDataset(get(), visibleSeries);
-                } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Failed to reload tracker chart", e);
-                }
-            }
-        }.execute();
+        BackgroundLoader.load(reloadGeneration, () -> appContext.snapshotDao.listBetween(characterIds, from, to),
+                snapshots -> applyDataset(snapshots, visibleSeries), "the tracker chart");
     }
 
     private static final Ellipse2D POINT_MARKER = new Ellipse2D.Double(-3, -3, 6, 6);

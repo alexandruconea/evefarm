@@ -31,7 +31,6 @@ import java.util.Locale;
 public final class MiningPanel extends TabPanel {
 
     private static final String PANEL_KEY = "mining";
-    private static final double DEFAULT_REFINE_RATE = 90.6;
 
     private final AppContext appContext;
     private final MiningTableModel tableModel;
@@ -51,7 +50,7 @@ public final class MiningPanel extends TabPanel {
     private final JComboBox<MiningService.Period> periodCombo = new JComboBox<>(MiningService.Period.values());
     private final JComboBox<MiningService.Valuation> valuationCombo =
             new JComboBox<>(MiningService.Valuation.values());
-    private final JSpinner rateSpinner = new JSpinner(new SpinnerNumberModel(DEFAULT_REFINE_RATE, 0.0, 100.0, 0.1));
+    private final JSpinner rateSpinner = new JSpinner(new SpinnerNumberModel(MiningService.DEFAULT_REFINE_RATE, 0.0, 100.0, 0.1));
     private final JLabel rateLabel = new JLabel("Refining yield (%):");
     private final JLabel overallLabel = new JLabel(" ");
     private final JComboBox<MiningStats.GroupBy> groupByCombo = new JComboBox<>(MiningStats.GroupBy.values());
@@ -59,7 +58,7 @@ public final class MiningPanel extends TabPanel {
     private final JTable statsTable = new JTable(statsModel);
     private volatile MiningService.Period period = MiningService.Period.MONTH;
     private volatile MiningService.Valuation valuation = MiningService.Valuation.ORE;
-    private volatile double refineRate = DEFAULT_REFINE_RATE;
+    private volatile double refineRate = MiningService.DEFAULT_REFINE_RATE;
     private DataTablePanelSupport<MiningRow> support;
 
     public MiningPanel(AppContext appContext) {
@@ -116,7 +115,7 @@ public final class MiningPanel extends TabPanel {
     }
 
     private double savedRefineRate() {
-        double rate = appContext.settingsDao.getDouble(SettingsDao.MINING_REFINE_RATE, DEFAULT_REFINE_RATE);
+        double rate = appContext.settingsDao.getDouble(SettingsDao.MINING_REFINE_RATE, MiningService.DEFAULT_REFINE_RATE);
         return Math.clamp(rate, 0, 100);
     }
 

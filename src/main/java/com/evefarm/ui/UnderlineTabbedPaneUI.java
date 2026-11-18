@@ -14,7 +14,6 @@ import java.awt.RenderingHints;
 
 public final class UnderlineTabbedPaneUI extends BasicTabbedPaneUI {
 
-    static final String TRAILING_SPACE = "EveFarm.tabTrailingSpace";
     private static final int UNDERLINE_HEIGHT = 3;
 
     public static ComponentUI createUI(JComponent c) {
@@ -34,15 +33,6 @@ public final class UnderlineTabbedPaneUI extends BasicTabbedPaneUI {
         contentBorderInsets = new Insets(1, 0, 0, 0);
         tabRunOverlay = 0;
         textIconGap = 6;
-    }
-
-    @Override
-    protected Insets getTabAreaInsets(int tabPlacement) {
-        Insets insets = super.getTabAreaInsets(tabPlacement);
-        if (tabPane.getClientProperty(TRAILING_SPACE) instanceof Integer space) {
-            return new Insets(insets.top, insets.left, insets.bottom, insets.right + space);
-        }
-        return insets;
     }
 
     private Color separator() {

@@ -2,10 +2,8 @@ package com.evefarm.ui;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
-import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JMenuBar;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
@@ -19,7 +17,6 @@ import java.awt.Frame;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GraphicsConfiguration;
-import java.awt.Image;
 import java.awt.Insets;
 import java.awt.Point;
 import java.awt.Rectangle;
@@ -51,13 +48,7 @@ final class WindowChrome {
         Color edge = UIManager.getColor("controlShadow");
         frame.getRootPane().setBorder(BorderFactory.createLineBorder(edge == null ? Color.GRAY : edge));
 
-        Image appIcon = frame.getIconImage();
-        if (appIcon != null) {
-            JLabel icon = new JLabel(new ImageIcon(appIcon.getScaledInstance(16, 16, Image.SCALE_SMOOTH)));
-            icon.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 6));
-            menuBar.add(icon, 0);
-            addDragSupport(frame, icon);
-        }
+        menuBar.add(Box.createHorizontalStrut(6), 0);
         menuBar.add(Box.createHorizontalStrut(8));
         menuBar.add(new CaptionButton(CaptionButton.Kind.MINIMIZE,
                 () -> frame.setExtendedState(frame.getExtendedState() | Frame.ICONIFIED)));

@@ -17,7 +17,6 @@ import javax.swing.JSpinner;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerNumberModel;
-import javax.swing.SwingWorker;
 import javax.swing.Timer;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -25,15 +24,9 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Window;
-import java.util.List;
-import java.util.OptionalDouble;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 final class AddDropDialog extends JDialog {
-
-    private static final Logger LOG = Logger.getLogger(AddDropDialog.class.getName());
 
     record Result(ItemType item, int quantity, double unitPrice) {
     }
@@ -136,22 +129,9 @@ final class AddDropDialog extends JDialog {
 
     private void runSearch() {
         String text = searchField.getText().trim();
-        int generation = searchGeneration.incrementAndGet();
-        new SwingWorker<List<ItemType>, Void>() {
-            @Override
-            protected List<ItemType> doInBackground() {
-                return text.isEmpty()
-                        ? appContext.officerService.suggestedDrops(officerName)
-                        : appContext.officerService.searchItems(text);
-            }
-
-            @Override
-            protected void done() {
-                if (generation != searchGeneration.get()) {
-                    return;
-                }
-                try {
-                    List<ItemType> items = get();
+        BackgroundLoader.load(searchGeneration, () -> text.isEmpty()
+                ? appContext.officerService.suggestedDrops(officerName)
+                : appContext.officerService.searchItems(text), items -> {
                     itemModel.clear();
                     items.forEach(itemModel::addElement);
                     if (items.isEmpty()) {
@@ -163,11 +143,7 @@ final class AddDropDialog extends JDialog {
                                 ? officerName + "'s modules - type to search every item"
                                 : items.size() + " matching items (officer modules first)");
                     }
-                } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Item search failed", e);
-                }
-            }
-        }.execute();
+                }, "the items matching \"" + text + "\"");
     }
 
     private void onItemSelected(ItemType item) {
@@ -175,34 +151,16 @@ final class AddDropDialog extends JDialog {
         if (item == null) {
             return;
         }
-        int generation = priceGeneration.incrementAndGet();
         priceHint.setText("Looking up the market price...");
-        new SwingWorker<OptionalDouble, Void>() {
-            @Override
-            protected OptionalDouble doInBackground() {
-                return appContext.officerService.currentPrice(item.typeId());
+        BackgroundLoader.load(priceGeneration, () -> appContext.officerService.currentPrice(item.typeId()), price -> {
+            if (price.isPresent()) {
+                priceField.setText(IskFormatter.formatPlain(price.getAsDouble()));
+                priceHint.setText(" ");
+            } else {
+                priceField.setText("");
+                priceHint.setText("No market price for this item - type one in.");
             }
-
-            @Override
-            protected void done() {
-                if (generation != priceGeneration.get()) {
-                    return;
-                }
-                try {
-                    OptionalDouble price = get();
-                    if (price.isPresent()) {
-                        priceField.setText(IskFormatter.formatPlain(price.getAsDouble()));
-                        priceHint.setText(" ");
-                    } else {
-                        priceField.setText("");
-                        priceHint.setText("No market price for this item - type one in.");
-                    }
-                } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Price lookup failed for " + item.typeName(), e);
-                    priceHint.setText("Couldn't look up a price - type one in.");
-                }
-            }
-        }.execute();
+        }, "the price of " + item.typeName(), failure -> priceHint.setText("Couldn't look up a price - type one in."));
     }
 
     private void confirm() {

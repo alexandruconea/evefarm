@@ -25,6 +25,8 @@ import java.util.function.Function;
 
 public final class MiningService {
 
+    public static final double DEFAULT_REFINE_RATE = 90.6;
+
     public enum Valuation {
         ORE("Ore price"),
         COMPRESSED("Compressed ore price"),

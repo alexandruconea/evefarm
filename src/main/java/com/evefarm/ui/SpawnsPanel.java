@@ -2,7 +2,6 @@ package com.evefarm.ui;
 
 import com.evefarm.AppContext;
 import com.evefarm.model.CharacterContribution;
-import com.evefarm.model.SpawnMember;
 import com.evefarm.model.SpawnRow;
 import com.evefarm.ui.column.ColumnWidthMemory;
 import com.evefarm.util.DateUtil;
@@ -12,34 +11,22 @@ import com.evefarm.util.Text;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
-import javax.swing.JFileChooser;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
-import javax.swing.SwingWorker;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Font;
-import java.io.File;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
-public final class SpawnsPanel extends JPanel {
+public final class SpawnsPanel extends TabPanel {
 
-    private static final Logger LOG = Logger.getLogger(SpawnsPanel.class.getName());
     private static final String PANEL_KEY = "spawns";
     private static final String SAVE_TITLE = "Save Spawns Report";
 
@@ -142,45 +129,10 @@ public final class SpawnsPanel extends JPanel {
         if (spawns.isEmpty()) {
             return;
         }
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle(SAVE_TITLE);
-        chooser.setSelectedFile(new File("spawns-" + LocalDate.now() + ".txt"));
-        chooser.setFileFilter(new FileNameExtensionFilter("Text file (*.txt)", "txt"));
-        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
-            return;
-        }
-        File chosen = chooser.getSelectedFile();
-        Path target = chosen.getName().toLowerCase(Locale.ROOT).endsWith(".txt") ? chosen.toPath()
-                : chosen.toPath().resolveSibling(chosen.getName() + ".txt");
-        if (Files.exists(target) && JOptionPane.showConfirmDialog(this, target.getFileName()
-                + " already exists. Replace it?", SAVE_TITLE, JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) {
-            return;
-        }
-        saveButton.setEnabled(false);
-        new SwingWorker<Void, Void>() {
-            @Override
-            protected Void doInBackground() throws Exception {
-                Files.write(target, SpawnReport.lines(spawns,
-                        spawn -> appContext.officerService.listSpawn(spawn.encounterIds()), Instant.now()),
-                        StandardCharsets.UTF_8);
-                return null;
-            }
-
-            @Override
-            protected void done() {
-                saveButton.setEnabled(table.getRowCount() > 0);
-                try {
-                    get();
-                    JOptionPane.showMessageDialog(SpawnsPanel.this, "Report saved to:\n" + target, SAVE_TITLE,
-                            JOptionPane.INFORMATION_MESSAGE);
-                } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Failed to save the spawns report", e);
-                    Throwable cause = e.getCause() == null ? e : e.getCause();
-                    JOptionPane.showMessageDialog(SpawnsPanel.this, "Couldn't save the report: "
-                            + cause.getMessage(), SAVE_TITLE, JOptionPane.ERROR_MESSAGE);
-                }
-            }
-        }.execute();
+        TextReportSaver.save(this, SAVE_TITLE, "spawns-" + LocalDate.now() + ".txt",
+                () -> SpawnReport.lines(spawns, spawn -> appContext.officerService.listSpawn(spawn.encounterIds()),
+                        Instant.now()),
+                busy -> saveButton.setEnabled(!busy && table.getRowCount() > 0));
     }
 
     private SpawnRow selectedRow() {
@@ -199,24 +151,10 @@ public final class SpawnsPanel extends JPanel {
         fightersLabel.setText(fightersDescription(spawn.contributions()));
         fightersLabel.setVisible(spawn.contributions().size() > 1);
         detailHeader.setText(headline(spawn));
-        new SwingWorker<List<SpawnMember>, Void>() {
-            @Override
-            protected List<SpawnMember> doInBackground() {
-                return appContext.officerService.listSpawn(spawn.encounterIds());
-            }
-
-            @Override
-            protected void done() {
-                if (generation != detailGeneration.get()) {
-                    return;
-                }
-                try {
-                    detailModel.setRows(get());
+        BackgroundLoader.load(generation, detailGeneration,
+                () -> appContext.officerService.listSpawn(spawn.encounterIds()), members -> {
+                    detailModel.setRows(members);
                     TableStyler.packColumns(detailTable);
-                } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Failed to load the NPCs of a spawn", e);
-                }
-            }
-        }.execute();
+                }, "the NPCs of a spawn");
     }
 }

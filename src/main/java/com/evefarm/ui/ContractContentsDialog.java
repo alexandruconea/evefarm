@@ -22,7 +22,6 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
-import javax.swing.SwingWorker;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -35,12 +34,8 @@ import java.awt.Window;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 final class ContractContentsDialog extends JDialog {
-
-    private static final Logger LOG = Logger.getLogger(ContractContentsDialog.class.getName());
 
     private final AppContext appContext;
     private final ContractRow contract;
@@ -189,27 +184,13 @@ final class ContractContentsDialog extends JDialog {
     }
 
     private void loadItems() {
-        new SwingWorker<List<ContractItem>, Void>() {
-            @Override
-            protected List<ContractItem> doInBackground() {
-                return appContext.contractService.listContractItems(contract.characterId(), contract.contractId());
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    showItems(get());
-                } catch (Exception e) {
-                    Throwable cause = e.getCause() != null ? e.getCause() : e;
-                    LOG.log(Level.WARNING, "Failed to load the items of contract " + contract.contractId(), cause);
-                    status.setText(cause instanceof EsiException esi
-                            && (esi.statusCode() == 403 || esi.statusCode() == 404)
-                            ? "EVE doesn't show the items of this contract any more - it may have expired or "
-                            + "been deleted."
-                            : "Couldn't load the items from EVE: " + cause.getMessage());
-                }
-            }
-        }.execute();
+        BackgroundLoader.load(
+                () -> appContext.contractService.listContractItems(contract.characterId(), contract.contractId()),
+                this::showItems, "the items of contract " + contract.contractId(), failure -> status.setText(
+                        failure instanceof EsiException esi && (esi.statusCode() == 403 || esi.statusCode() == 404)
+                                ? "EVE doesn't show the items of this contract any more - it may have expired or "
+                                + "been deleted."
+                                : "Couldn't load the items from EVE: " + failure.getMessage()));
     }
 
     private void showItems(List<ContractItem> items) {

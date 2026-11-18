@@ -11,6 +11,8 @@ import com.evefarm.util.Browser;
 import com.evefarm.util.Platform;
 import com.evefarm.util.Text;
 import com.evefarm.util.WrongPasswordException;
+import com.evefarm.ui.PhosphorIcons.Hue;
+import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.FlatLaf;
 
 import javax.imageio.ImageIO;
@@ -29,7 +31,6 @@ import javax.swing.JPasswordField;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
-import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
@@ -50,7 +51,6 @@ import java.awt.PopupMenu;
 import java.awt.SystemTray;
 import java.awt.Taskbar;
 import java.awt.TrayIcon;
-import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -71,7 +71,15 @@ public final class MainFrame extends JFrame {
 
     private static final Logger LOG = Logger.getLogger(MainFrame.class.getName());
 
-    private record TabSpec(String label, Icon icon, TabPanel panel) {
+    private record TabGroup(String key, String label, Icon icon, TabPanel panel, List<SubTabs.Page> pages) {
+
+        boolean hasSubTabs() {
+            return pages.size() > 1;
+        }
+
+        List<String> pageKeys() {
+            return pages.stream().map(SubTabs.Page::key).toList();
+        }
     }
 
     private enum UpdateCheck { MENU, STARTUP, DAILY }
@@ -81,11 +89,12 @@ public final class MainFrame extends JFrame {
     private static final int NOTIFICATION_TRAY_MILLIS = 20_000;
 
     private final AppContext appContext;
-    private final Map<String, TabSpec> tabSpecs = new LinkedHashMap<>();
+    private final Map<String, TabGroup> tabGroups = new LinkedHashMap<>();
     private final JButton updateAvailableButton = new JButton();
     private ReleaseInfo availableRelease;
     private TrayIcon trayIcon;
     private MarketOrdersPanel marketOrdersPanel;
+    private final MainTabs mainTabs = new MainTabs(TabPanel::onShown, this::showTabMenu);
     private DataUpdater dataUpdater;
 
     public MainFrame(AppContext appContext) {
@@ -98,6 +107,9 @@ public final class MainFrame extends JFrame {
         setTitle(AppInfo.NAME + " " + AppInfo.version());
         Image appIcon = loadAppIcon();
         setupTrayIcon(appIcon);
+        fileMenu.setIcon(PhosphorIcons.bar("folder-simple", Hue.NEUTRAL));
+        updateMenu.setIcon(PhosphorIcons.bar("arrows-clockwise", Hue.NEUTRAL));
+        optionsMenu.setIcon(PhosphorIcons.bar("gear-six", Hue.NEUTRAL));
         charactersItem.setIcon(Icons.PERSON);
         updateItem.setIcon(Icons.REFRESH);
         settingsItem.setIcon(Icons.GEAR);
@@ -107,44 +119,37 @@ public final class MainFrame extends JFrame {
         exitItem.setIcon(Icons.DOOR);
 
         marketOrdersPanel = new MarketOrdersPanel(appContext);
-        tabSpecs.put("assets", new TabSpec("Assets", Icons.COIN, new AssetsPanel(appContext)));
-        tabSpecs.put("tracker", new TabSpec("Tracker", Icons.CHART, new TrackerPanel(appContext)));
-        tabSpecs.put("journal", new TabSpec("Journal", Icons.NOTEBOOK, new DataTablePanel<>(appContext, "journal",
-                new JournalTableModel(), "entries", appContext.journalService::getJournalRows)));
-        tabSpecs.put("marketOrders", new TabSpec("Market Orders", Icons.CLIPBOARD, marketOrdersPanel));
-        tabSpecs.put("transactions", new TabSpec("Transactions", Icons.SWAP, new DataTablePanel<>(appContext,
-                "transactions", new TransactionsTableModel(), "transactions",
-                appContext.transactionService::getTransactionRows)));
-        tabSpecs.put("contracts", new TabSpec("Contracts", Icons.DOCUMENT, new ContractsPanel(appContext)));
-        tabSpecs.put("industryJobs", new TabSpec("Industry Jobs", Icons.FACTORY, new DataTablePanel<>(appContext,
-                "industryJobs", new IndustryJobsTableModel(), "jobs",
-                () -> appContext.industryJobService.getJobRows(null))));
-        tabSpecs.put("values", new TabSpec("Values", Icons.VALUE, new ValuesPanel(appContext)));
-        tabSpecs.put("lpStore", new TabSpec("LP Store", Icons.LP, new LpStoreTabs(appContext)));
-        tabSpecs.put("kills", new TabSpec("NPC Kills", Icons.CROSSHAIR, new NpcKillsPanel(appContext)));
-        tabSpecs.put("abyss", new TabSpec("Abyss", Icons.ABYSS, new AbyssPanel(appContext, this::showTrayNotification)));
-        tabSpecs.put("mining", new TabSpec("Mining", Icons.MINING, new MiningPanel(appContext)));
-        tabSpecs.put("agents", new TabSpec("Agents", Icons.MEDAL, new AgentsPanel(appContext)));
-        tabSpecs.put("standings", new TabSpec("Standings", Icons.STANDINGS, new StandingsPanel(appContext)));
-        tabSpecs.put("skills", new TabSpec("Skills", Icons.SKILLS, new SkillsPanel(appContext)));
-        tabSpecs.put("industry", new TabSpec("Industry Calculator", Icons.CALCULATOR, new IndustryPanel(appContext)));
+        group("group.values", "Values", "chart-bar", Hue.BLUE,
+                page("values", "Values", "chart-pie-slice", Hue.BLUE, new ValuesPanel(appContext)),
+                page("tracker", "Tracker", "chart-line-up", Hue.BLUE, new TrackerPanel(appContext)),
+                page("assets", "Assets", "package", Hue.BLUE, new AssetsPanel(appContext)));
+        group("group.wallet", "Wallet", "wallet", Hue.GREEN,
+                page("journal", "Journal", "notebook", Hue.GREEN, new DataTablePanel<>(appContext, "journal",
+                        new JournalTableModel(), "entries", appContext.journalService::getJournalRows)),
+                page("transactions", "Transactions", "arrows-left-right", Hue.GREEN, new DataTablePanel<>(appContext,
+                        "transactions", new TransactionsTableModel(), "transactions",
+                        appContext.transactionService::getTransactionRows)),
+                page("marketOrders", "Market Orders", "tag", Hue.GREEN, marketOrdersPanel),
+                page("contracts", "Contracts", "handshake", Hue.GREEN, new ContractsPanel(appContext)));
+        tab("lpStore", "LP Store", "star", Hue.AMBER, new LpStoreTabs(appContext));
+        tab("kills", "NPC Kills", "crosshair", Hue.RED, new NpcKillsPanel(appContext));
+        tab("abyss", "Abyss", "hurricane", Hue.VIOLET, new AbyssPanel(appContext, this::showTrayNotification));
+        group("group.industry", "Industry", "factory", Hue.ORANGE,
+                page("industry", "Calculator", "calculator", Hue.ORANGE, new IndustryPanel(appContext)),
+                page("industryJobs", "Jobs", "hammer", Hue.ORANGE, new DataTablePanel<>(appContext, "industryJobs",
+                        new IndustryJobsTableModel(), "jobs", () -> appContext.industryJobService.getJobRows(null))),
+                page("mining", "Mining", "diamond", Hue.ORANGE, new MiningPanel(appContext)));
+        group("group.standings", "Standings", "scales", Hue.TEAL,
+                page("standings", "Standings", "ranking", Hue.TEAL, new StandingsPanel(appContext)),
+                page("agents", "Agents", "identification-badge", Hue.TEAL, new AgentsPanel(appContext)));
+        tab("skills", "Skills", "brain", Hue.PINK, new SkillsPanel(appContext));
 
         rebuildTabs();
-        installTabMenu();
         dataUpdater = new DataUpdater(appContext);
         dataUpdater.addFinishedListener(result -> {
             onDataUpdated();
             showUpdateFailures(result);
         });
-        getContentPane().remove(tabbedPane);
-        getContentPane().add(TabBarOverlay.wrap(tabbedPane, new UpdateButton(dataUpdater)), BorderLayout.CENTER);
-
-        tabbedPane.addChangeListener(e -> {
-            if (tabbedPane.getSelectedComponent() instanceof TabPanel tab) {
-                tab.onShown();
-            }
-        });
-
         restoreWindowState();
 
         addWindowListener(new WindowAdapter() {
@@ -180,7 +185,7 @@ public final class MainFrame extends JFrame {
         appContext.notificationService.addListener(notification -> SwingUtilities.invokeLater(
                 () -> showTrayNotification(notification.caption(), notification.text())));
         appContext.marketWatchService.addListener(() -> SwingUtilities.invokeLater(() -> {
-            if (tabbedPane.getSelectedComponent() == marketOrdersPanel) {
+            if (marketOrdersPanel.isShowing()) {
                 marketOrdersPanel.onShown();
             }
         }));
@@ -239,12 +244,20 @@ public final class MainFrame extends JFrame {
 
     private void setupUpdates() {
         JMenu helpMenu = new JMenu("Help");
+        helpMenu.setIcon(PhosphorIcons.bar("question", Hue.NEUTRAL));
         JMenuItem checkItem = new JMenuItem("Check for Updates...", Icons.REFRESH);
         checkItem.addActionListener(e -> checkForUpdates(UpdateCheck.MENU));
         JMenuItem aboutItem = new JMenuItem("About " + AppInfo.NAME, Icons.DOCUMENT);
         aboutItem.addActionListener(e -> showAbout());
         helpMenu.add(checkItem);
         helpMenu.add(aboutItem);
+        jMenuBar1.remove(updateMenu);
+        jMenuBar1.remove(optionsMenu);
+        jMenuBar1.add(Box.createHorizontalStrut(12));
+        jMenuBar1.add(mainTabs.strip());
+        jMenuBar1.add(Box.createHorizontalStrut(12));
+        jMenuBar1.add(updateMenu);
+        jMenuBar1.add(optionsMenu);
         jMenuBar1.add(helpMenu);
 
         updateAvailableButton.putClientProperty("JButton.buttonType", "toolBarButton");
@@ -262,6 +275,9 @@ public final class MainFrame extends JFrame {
         });
         jMenuBar1.add(Box.createHorizontalGlue());
         jMenuBar1.add(updateAvailableButton);
+        jMenuBar1.add(new UpdateButton(dataUpdater));
+        getRootPane().putClientProperty(FlatClientProperties.TITLE_BAR_SHOW_TITLE, false);
+        getRootPane().putClientProperty(FlatClientProperties.TITLE_BAR_SHOW_ICON, false);
         if (!(UIManager.getLookAndFeel() instanceof FlatLaf)) {
             WindowChrome.install(this, jMenuBar1);
         }
@@ -460,99 +476,70 @@ public final class MainFrame extends JFrame {
     }
 
     private void rebuildTabs() {
-        Component previouslySelected = tabbedPane.getTabCount() > 0 ? tabbedPane.getSelectedComponent() : null;
-
-        tabbedPane.removeAll();
         Set<String> hidden = TabVisibility.readHidden(appContext.settingsDao);
-        for (Map.Entry<String, TabSpec> entry : orderedTabSpecs().entrySet()) {
-            if (!hidden.contains(entry.getKey())) {
-                TabSpec spec = entry.getValue();
-                tabbedPane.addTab(spec.label(), spec.icon(), spec.panel());
+        List<MainTabs.Tab> shown = new ArrayList<>();
+        for (TabGroup group : orderedGroups()) {
+            boolean visible = group.hasSubTabs() && group.panel() instanceof SubTabs subTabs
+                    ? subTabs.showPages(hidden) : !hidden.contains(group.key());
+            if (visible) {
+                shown.add(new MainTabs.Tab(group.label(), group.icon(), group.panel()));
             }
         }
-
-        if (previouslySelected != null) {
-            for (int i = 0; i < tabbedPane.getTabCount(); i++) {
-                if (tabbedPane.getComponentAt(i) == previouslySelected) {
-                    tabbedPane.setSelectedIndex(i);
-                    break;
-                }
-            }
-        }
+        mainTabs.setTabs(shown);
     }
 
-    private void installTabMenu() {
-        tabbedPane.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent e) {
-                showTabMenu(e);
-            }
-
-            @Override
-            public void mouseReleased(MouseEvent e) {
-                showTabMenu(e);
-            }
-        });
+    private void showTabMenu(TabPanel panel, MouseEvent e) {
+        tabGroups.values().stream().filter(group -> group.panel() == panel).findFirst()
+                .ifPresent(group -> showTabMenu(e, group.pageKeys()));
     }
 
-    private void showTabMenu(MouseEvent e) {
-        if (!e.isPopupTrigger()) {
-            return;
-        }
-        int index = tabbedPane.indexAtLocation(e.getX(), e.getY());
-        String key = index < 0 ? null : tabKey(tabbedPane.getComponentAt(index));
-        if (key == null) {
-            return;
-        }
+    private void showTabMenu(MouseEvent e, List<String> pageKeys) {
+        Set<String> hidden = TabVisibility.readHidden(appContext.settingsDao);
+        boolean othersShown = tabGroups.values().stream().flatMap(group -> group.pageKeys().stream())
+                .anyMatch(key -> !hidden.contains(key) && !pageKeys.contains(key));
         JPopupMenu menu = new JPopupMenu();
         JMenuItem close = new JMenuItem("Close Tab", Icons.CANCEL);
-        close.setEnabled(tabbedPane.getTabCount() > 1);
-        close.addActionListener(event -> closeTab(key));
+        close.setEnabled(othersShown);
+        close.addActionListener(event -> closeTab(pageKeys));
         JMenuItem showTabs = new JMenuItem("Show Tabs...", Icons.EYE);
         showTabs.addActionListener(event -> showTabVisibility());
         menu.add(close);
         menu.addSeparator();
         menu.add(showTabs);
-        menu.show(tabbedPane, e.getX(), e.getY());
+        menu.show(e.getComponent(), e.getX(), e.getY());
     }
 
-    private String tabKey(Component component) {
-        for (Map.Entry<String, TabSpec> entry : tabSpecs.entrySet()) {
-            if (entry.getValue().panel() == component) {
-                return entry.getKey();
-            }
-        }
-        return null;
-    }
-
-    private void closeTab(String key) {
+    private void closeTab(List<String> pageKeys) {
         Set<String> hidden = TabVisibility.readHidden(appContext.settingsDao);
-        hidden.add(key);
+        hidden.addAll(pageKeys);
         TabVisibility.writeHidden(appContext.settingsDao, hidden);
         rebuildTabs();
     }
 
-    private void onCharactersChanged() {
-        tabSpecs.values().forEach(spec -> spec.panel().refreshCharacterFilter());
+    private void group(String key, String label, String icon, Hue hue, SubTabs.Page... pages) {
+        tabGroups.put(key, new TabGroup(key, label, PhosphorIcons.bar(icon, hue),
+                new SubTabs(appContext.settingsDao, key, pages), List.of(pages)));
     }
 
-    private Map<String, TabSpec> orderedTabSpecs() {
-        List<String> order = new ArrayList<>();
-        for (String key : TabVisibility.readOrder(appContext.settingsDao)) {
-            if (tabSpecs.containsKey(key) && !order.contains(key)) {
-                order.add(key);
-            }
-        }
-        String previous = null;
-        for (String key : tabSpecs.keySet()) {
-            if (!order.contains(key)) {
-                order.add(previous == null ? 0 : order.indexOf(previous) + 1, key);
-            }
-            previous = key;
-        }
-        Map<String, TabSpec> ordered = new LinkedHashMap<>();
-        order.forEach(key -> ordered.put(key, tabSpecs.get(key)));
-        return ordered;
+    private void tab(String key, String label, String icon, Hue hue, TabPanel panel) {
+        Icon barIcon = PhosphorIcons.bar(icon, hue);
+        tabGroups.put(key, new TabGroup(key, label, barIcon, panel,
+                List.of(new SubTabs.Page(key, label, barIcon, panel))));
+    }
+
+    private static SubTabs.Page page(String key, String title, String icon, Hue hue, TabPanel panel) {
+        return new SubTabs.Page(key, title, PhosphorIcons.menu(icon, hue), panel);
+    }
+
+    private void onCharactersChanged() {
+        tabGroups.values().forEach(group -> group.panel().refreshCharacterFilter());
+    }
+
+    private List<TabGroup> orderedGroups() {
+        Map<String, List<String>> pageKeys = new LinkedHashMap<>();
+        tabGroups.forEach((key, group) -> pageKeys.put(key, group.pageKeys()));
+        return TabVisibility.orderGroups(TabVisibility.readOrder(appContext.settingsDao), pageKeys).stream()
+                .map(tabGroups::get).toList();
     }
 
     private JMenuItem charactersItem;
@@ -566,14 +553,11 @@ public final class MainFrame extends JFrame {
     private JSeparator jSeparator2;
     private JMenuItem backupItem;
     private JMenuItem restoreItem;
-    private JTabbedPane tabbedPane;
     private JMenu updateMenu;
     private JMenuItem updateItem;
 
     private void initComponents() {
 
-        tabbedPane = new JTabbedPane();
-        tabbedPane.putClientProperty("FlatLaf.styleClass", "mainTabs");
         jMenuBar1 = new JMenuBar();
         fileMenu = new JMenu();
         charactersItem = new JMenuItem();
@@ -636,9 +620,9 @@ public final class MainFrame extends JFrame {
 
         setJMenuBar(jMenuBar1);
 
-        tabbedPane.setPreferredSize(new Dimension(1000, 650));
+        mainTabs.content().setPreferredSize(new Dimension(1000, 650));
         getContentPane().setLayout(new BorderLayout());
-        getContentPane().add(tabbedPane, BorderLayout.CENTER);
+        getContentPane().add(mainTabs.content(), BorderLayout.CENTER);
         getContentPane().add(LegalFooter.create(), BorderLayout.SOUTH);
 
         pack();
@@ -655,11 +639,11 @@ public final class MainFrame extends JFrame {
     }
 
     private void showTabVisibility() {
-        Map<String, String> labels = new LinkedHashMap<>();
-        for (Map.Entry<String, TabSpec> entry : orderedTabSpecs().entrySet()) {
-            labels.put(entry.getKey(), entry.getValue().label());
-        }
-        TabVisibilityDialog dialog = new TabVisibilityDialog(this, appContext.settingsDao, labels, this::rebuildTabs);
+        List<TabVisibilityDialog.Group> groups = orderedGroups().stream()
+                .map(group -> new TabVisibilityDialog.Group(group.key(), group.label(), group.pages().stream()
+                        .map(page -> new TabVisibilityDialog.Page(page.key(), page.title())).toList()))
+                .toList();
+        TabVisibilityDialog dialog = new TabVisibilityDialog(this, appContext.settingsDao, groups, this::rebuildTabs);
         dialog.setVisible(true);
     }
 
@@ -891,7 +875,7 @@ public final class MainFrame extends JFrame {
     }
 
     private void onDataUpdated() {
-        Component selected = tabbedPane.getSelectedComponent();
-        tabSpecs.values().forEach(spec -> spec.panel().onDataUpdated(spec.panel() == selected));
+        TabPanel selected = mainTabs.selected();
+        tabGroups.values().forEach(group -> group.panel().onDataUpdated(group.panel() == selected));
     }
 }
