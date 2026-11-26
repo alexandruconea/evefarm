@@ -169,11 +169,13 @@ public final class LpStorePanel extends TabPanel {
         return dark ? new Color(127, 29, 29) : new Color(255, 205, 210);
     }
 
+    @Override
     public void onShown() {
         reloadCharacters(false);
         updateSellingFees();
     }
 
+    @Override
     public void refreshCharacterFilter() {
         reloadCharacters(true);
         updateSellingFees();

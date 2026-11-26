@@ -2,6 +2,7 @@ package com.evefarm.ui;
 
 import com.evefarm.model.SpawnMember;
 import com.evefarm.model.SpawnRow;
+import com.evefarm.ui.column.Isk;
 import com.evefarm.util.DateUtil;
 import com.evefarm.util.IskFormatter;
 import com.evefarm.util.Text;
@@ -57,7 +58,7 @@ final class SpawnReport {
         String[][] cells = new String[model.getRowCount()][columns];
         int[] widths = new int[columns];
         for (int column = 0; column < columns; column++) {
-            widths[column] = model.getColumnName(column).length();
+            widths[column] = header(model, column).length();
         }
         for (int row = 0; row < cells.length; row++) {
             for (int column = 0; column < columns; column++) {
@@ -69,8 +70,8 @@ final class SpawnReport {
         String[] header = new String[columns];
         String[] rule = new String[columns];
         for (int column = 0; column < columns; column++) {
-            right[column] = alignRight(model, cells, column);
-            header[column] = model.getColumnName(column);
+            right[column] = alignRight(model, column);
+            header[column] = header(model, column);
             rule[column] = "-".repeat(widths[column]);
         }
         List<String> lines = new ArrayList<>();
@@ -82,6 +83,11 @@ final class SpawnReport {
         return lines;
     }
 
+    private static String header(TableModel model, int column) {
+        String name = model.getColumnName(column);
+        return model.getColumnClass(column) == Isk.class ? Isk.withUnit(name) : name;
+    }
+
     private static String text(Object value) {
         if (value instanceof Integer || value instanceof Long) {
             return Text.count(((Number) value).longValue());
@@ -89,20 +95,8 @@ final class SpawnReport {
         return value == null ? "" : value.toString();
     }
 
-    private static boolean alignRight(TableModel model, String[][] cells, int column) {
-        if (Number.class.isAssignableFrom(model.getColumnClass(column))) {
-            return true;
-        }
-        boolean any = false;
-        for (String[] row : cells) {
-            if (!row[column].isEmpty()) {
-                if (!row[column].endsWith(" ISK")) {
-                    return false;
-                }
-                any = true;
-            }
-        }
-        return any;
+    private static boolean alignRight(TableModel model, int column) {
+        return Number.class.isAssignableFrom(model.getColumnClass(column));
     }
 
     private static String line(String[] values, int[] widths, boolean[] right) {

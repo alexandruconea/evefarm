@@ -2,7 +2,6 @@ package com.evefarm.ui;
 
 import com.evefarm.AppContext;
 import com.evefarm.db.dao.SettingsDao;
-import com.evefarm.service.BackupRestoreService;
 import com.evefarm.update.ReleaseInfo;
 import com.evefarm.update.UpdateInstaller;
 import com.evefarm.util.AppInfo;
@@ -10,8 +9,6 @@ import com.evefarm.util.AppPaths;
 import com.evefarm.util.Browser;
 import com.evefarm.util.Platform;
 import com.evefarm.util.Text;
-import com.evefarm.util.WrongPasswordException;
-import com.evefarm.ui.PhosphorIcons.Hue;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.FlatLaf;
 
@@ -19,7 +16,6 @@ import javax.imageio.ImageIO;
 import javax.swing.Box;
 import javax.swing.Icon;
 import javax.swing.JButton;
-import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
@@ -27,7 +23,6 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JPasswordField;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
@@ -37,9 +32,6 @@ import javax.swing.SwingWorker;
 import javax.swing.Timer;
 import javax.swing.UIManager;
 import javax.swing.WindowConstants;
-import javax.swing.event.AncestorEvent;
-import javax.swing.event.AncestorListener;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.AWTException;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -51,12 +43,12 @@ import java.awt.PopupMenu;
 import java.awt.SystemTray;
 import java.awt.Taskbar;
 import java.awt.TrayIcon;
+import java.awt.Window;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.InputStream;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -87,6 +79,8 @@ public final class MainFrame extends JFrame {
     private static final int FIRST_UPDATE_CHECK_DELAY_MILLIS = 3_000;
     private static final int UPDATE_CHECK_INTERVAL_MILLIS = 24 * 60 * 60 * 1000;
     private static final int NOTIFICATION_TRAY_MILLIS = 20_000;
+    private static final String STANDINGS_GROUP = "group.standings";
+    private static final String STANDINGS_PAGE = "standings";
 
     private final AppContext appContext;
     private final Map<String, TabGroup> tabGroups = new LinkedHashMap<>();
@@ -94,8 +88,10 @@ public final class MainFrame extends JFrame {
     private ReleaseInfo availableRelease;
     private TrayIcon trayIcon;
     private MarketOrdersPanel marketOrdersPanel;
+    private StandingsPanel standingsPanel;
     private final MainTabs mainTabs = new MainTabs(TabPanel::onShown, this::showTabMenu);
     private DataUpdater dataUpdater;
+    private BackupRestoreFlow backupRestoreFlow;
 
     public MainFrame(AppContext appContext) {
         initComponents();
@@ -107,42 +103,48 @@ public final class MainFrame extends JFrame {
         setTitle(AppInfo.NAME + " " + AppInfo.version());
         Image appIcon = loadAppIcon();
         setupTrayIcon(appIcon);
-        fileMenu.setIcon(PhosphorIcons.bar("folder-simple", Hue.NEUTRAL));
-        updateMenu.setIcon(PhosphorIcons.bar("arrows-clockwise", Hue.NEUTRAL));
-        optionsMenu.setIcon(PhosphorIcons.bar("gear-six", Hue.NEUTRAL));
-        charactersItem.setIcon(Icons.PERSON);
-        updateItem.setIcon(Icons.REFRESH);
-        settingsItem.setIcon(Icons.GEAR);
-        showTabsItem.setIcon(Icons.EYE);
-        backupItem.setIcon(Icons.ARCHIVE);
-        restoreItem.setIcon(Icons.LOAD);
-        exitItem.setIcon(Icons.DOOR);
+        fileMenu.setIcon(FontAwesome.bar("folder"));
+        updateMenu.setIcon(FontAwesome.bar("arrows-rotate"));
+        optionsMenu.setIcon(FontAwesome.bar("gear"));
+        charactersItem.setIcon(FontAwesome.menu("user"));
+        updateItem.setIcon(FontAwesome.menu("arrows-rotate"));
+        settingsItem.setIcon(FontAwesome.menu("gear"));
+        showTabsItem.setIcon(FontAwesome.menu("eye"));
+        backupItem.setIcon(FontAwesome.menu("box-archive"));
+        restoreItem.setIcon(FontAwesome.menu("folder-open"));
+        exitItem.setIcon(FontAwesome.menu("door-open"));
+        backupRestoreFlow = new BackupRestoreFlow(this, appContext, enabled -> {
+            backupItem.setEnabled(enabled);
+            restoreItem.setEnabled(enabled);
+        }, this::exitApplication);
+        loadCharacterPortraits();
 
         marketOrdersPanel = new MarketOrdersPanel(appContext);
-        group("group.values", "Values", "chart-bar", Hue.BLUE,
-                page("values", "Values", "chart-pie-slice", Hue.BLUE, new ValuesPanel(appContext)),
-                page("tracker", "Tracker", "chart-line-up", Hue.BLUE, new TrackerPanel(appContext)),
-                page("assets", "Assets", "package", Hue.BLUE, new AssetsPanel(appContext)));
-        group("group.wallet", "Wallet", "wallet", Hue.GREEN,
-                page("journal", "Journal", "notebook", Hue.GREEN, new DataTablePanel<>(appContext, "journal",
+        group("group.values", "Values", "chart-column",
+                page("values", "Values", "chart-pie", new ValuesPanel(appContext)),
+                page("tracker", "Tracker", "chart-line", new TrackerPanel(appContext)),
+                page("assets", "Assets", "box", new AssetsPanel(appContext)));
+        group("group.wallet", "Wallet", "wallet",
+                page("journal", "Journal", "book", new DataTablePanel<>(appContext, "journal",
                         new JournalTableModel(), "entries", appContext.journalService::getJournalRows)),
-                page("transactions", "Transactions", "arrows-left-right", Hue.GREEN, new DataTablePanel<>(appContext,
+                page("transactions", "Transactions", "right-left", new DataTablePanel<>(appContext,
                         "transactions", new TransactionsTableModel(), "transactions",
                         appContext.transactionService::getTransactionRows)),
-                page("marketOrders", "Market Orders", "tag", Hue.GREEN, marketOrdersPanel),
-                page("contracts", "Contracts", "handshake", Hue.GREEN, new ContractsPanel(appContext)));
-        tab("lpStore", "LP Store", "star", Hue.AMBER, new LpStoreTabs(appContext));
-        tab("kills", "NPC Kills", "crosshair", Hue.RED, new NpcKillsPanel(appContext));
-        tab("abyss", "Abyss", "hurricane", Hue.VIOLET, new AbyssPanel(appContext, this::showTrayNotification));
-        group("group.industry", "Industry", "factory", Hue.ORANGE,
-                page("industry", "Calculator", "calculator", Hue.ORANGE, new IndustryPanel(appContext)),
-                page("industryJobs", "Jobs", "hammer", Hue.ORANGE, new DataTablePanel<>(appContext, "industryJobs",
+                page("marketOrders", "Market Orders", "tag", marketOrdersPanel),
+                page("contracts", "Contracts", "handshake", new ContractsPanel(appContext)));
+        standingsPanel = new StandingsPanel(appContext);
+        tab("lpStore", "LP Store", "star", new LpStoreTabs(appContext, this::showStandings));
+        tab("kills", "NPC Kills", "crosshairs", new NpcKillsPanel(appContext));
+        tab("abyss", "Abyss", "hurricane", new AbyssPanel(appContext, this::showTrayNotification));
+        group("group.industry", "Industry", "industry",
+                page("industry", "Calculator", "calculator", new IndustryPanel(appContext)),
+                page("industryJobs", "Jobs", "hammer", new DataTablePanel<>(appContext, "industryJobs",
                         new IndustryJobsTableModel(), "jobs", () -> appContext.industryJobService.getJobRows(null))),
-                page("mining", "Mining", "diamond", Hue.ORANGE, new MiningPanel(appContext)));
-        group("group.standings", "Standings", "scales", Hue.TEAL,
-                page("standings", "Standings", "ranking", Hue.TEAL, new StandingsPanel(appContext)),
-                page("agents", "Agents", "identification-badge", Hue.TEAL, new AgentsPanel(appContext)));
-        tab("skills", "Skills", "brain", Hue.PINK, new SkillsPanel(appContext));
+                page("mining", "Mining", "gem", new MiningPanel(appContext)));
+        group(STANDINGS_GROUP, "Standings", "scale-balanced",
+                page(STANDINGS_PAGE, "Standings", "ranking-star", standingsPanel),
+                page("agents", "Agents", "id-badge", new AgentsPanel(appContext)));
+        tab("skills", "Skills", "brain", new SkillsPanel(appContext));
 
         rebuildTabs();
         dataUpdater = new DataUpdater(appContext);
@@ -244,10 +246,10 @@ public final class MainFrame extends JFrame {
 
     private void setupUpdates() {
         JMenu helpMenu = new JMenu("Help");
-        helpMenu.setIcon(PhosphorIcons.bar("question", Hue.NEUTRAL));
-        JMenuItem checkItem = new JMenuItem("Check for Updates...", Icons.REFRESH);
+        helpMenu.setIcon(FontAwesome.bar("circle-question"));
+        JMenuItem checkItem = new JMenuItem("Check for Updates...", FontAwesome.menu("arrows-rotate"));
         checkItem.addActionListener(e -> checkForUpdates(UpdateCheck.MENU));
-        JMenuItem aboutItem = new JMenuItem("About " + AppInfo.NAME, Icons.DOCUMENT);
+        JMenuItem aboutItem = new JMenuItem("About " + AppInfo.NAME, FontAwesome.menu("file-lines"));
         aboutItem.addActionListener(e -> showAbout());
         helpMenu.add(checkItem);
         helpMenu.add(aboutItem);
@@ -498,15 +500,32 @@ public final class MainFrame extends JFrame {
         boolean othersShown = tabGroups.values().stream().flatMap(group -> group.pageKeys().stream())
                 .anyMatch(key -> !hidden.contains(key) && !pageKeys.contains(key));
         JPopupMenu menu = new JPopupMenu();
-        JMenuItem close = new JMenuItem("Close Tab", Icons.CANCEL);
+        JMenuItem close = new JMenuItem("Close Tab", FontAwesome.menu("xmark"));
         close.setEnabled(othersShown);
         close.addActionListener(event -> closeTab(pageKeys));
-        JMenuItem showTabs = new JMenuItem("Show Tabs...", Icons.EYE);
+        JMenuItem showTabs = new JMenuItem("Show Tabs...", FontAwesome.menu("eye"));
         showTabs.addActionListener(event -> showTabVisibility());
         menu.add(close);
         menu.addSeparator();
         menu.add(showTabs);
         menu.show(e.getComponent(), e.getX(), e.getY());
+    }
+
+    private void showStandings(StandingTarget target) {
+        Set<String> hidden = TabVisibility.readHidden(appContext.settingsDao);
+        if (hidden.remove(STANDINGS_PAGE)) {
+            TabVisibility.writeHidden(appContext.settingsDao, hidden);
+            rebuildTabs();
+        }
+        if (!(tabGroups.get(STANDINGS_GROUP).panel() instanceof SubTabs subTabs)) {
+            return;
+        }
+        mainTabs.select(subTabs);
+        subTabs.pages().stream()
+                .filter(page -> page.key().equals(STANDINGS_PAGE))
+                .findFirst()
+                .ifPresent(subTabs::select);
+        standingsPanel.reveal(target);
     }
 
     private void closeTab(List<String> pageKeys) {
@@ -516,23 +535,32 @@ public final class MainFrame extends JFrame {
         rebuildTabs();
     }
 
-    private void group(String key, String label, String icon, Hue hue, SubTabs.Page... pages) {
-        tabGroups.put(key, new TabGroup(key, label, PhosphorIcons.bar(icon, hue),
+    private void group(String key, String label, String icon, SubTabs.Page... pages) {
+        tabGroups.put(key, new TabGroup(key, label, FontAwesome.bar(icon),
                 new SubTabs(appContext.settingsDao, key, pages), List.of(pages)));
     }
 
-    private void tab(String key, String label, String icon, Hue hue, TabPanel panel) {
-        Icon barIcon = PhosphorIcons.bar(icon, hue);
+    private void tab(String key, String label, String icon, TabPanel panel) {
+        Icon barIcon = FontAwesome.bar(icon);
         tabGroups.put(key, new TabGroup(key, label, barIcon, panel,
                 List.of(new SubTabs.Page(key, label, barIcon, panel))));
     }
 
-    private static SubTabs.Page page(String key, String title, String icon, Hue hue, TabPanel panel) {
-        return new SubTabs.Page(key, title, PhosphorIcons.menu(icon, hue), panel);
+    private static SubTabs.Page page(String key, String title, String icon, TabPanel panel) {
+        return new SubTabs.Page(key, title, FontAwesome.menu(icon), panel);
     }
 
     private void onCharactersChanged() {
+        loadCharacterPortraits();
         tabGroups.values().forEach(group -> group.panel().refreshCharacterFilter());
+    }
+
+    private void loadCharacterPortraits() {
+        appContext.characterPortraits.reload(() -> {
+            for (Window window : Window.getWindows()) {
+                window.repaint();
+            }
+        });
     }
 
     private List<TabGroup> orderedGroups() {
@@ -609,11 +637,11 @@ public final class MainFrame extends JFrame {
         optionsMenu.add(jSeparator2);
 
         backupItem.setText("Backup Data...");
-        backupItem.addActionListener(e -> backupData());
+        backupItem.addActionListener(e -> backupRestoreFlow.backup());
         optionsMenu.add(backupItem);
 
         restoreItem.setText("Restore Data...");
-        restoreItem.addActionListener(e -> restoreData());
+        restoreItem.addActionListener(e -> backupRestoreFlow.restore());
         optionsMenu.add(restoreItem);
 
         jMenuBar1.add(optionsMenu);
@@ -645,187 +673,6 @@ public final class MainFrame extends JFrame {
                 .toList();
         TabVisibilityDialog dialog = new TabVisibilityDialog(this, appContext.settingsDao, groups, this::rebuildTabs);
         dialog.setVisible(true);
-    }
-
-    private void backupData() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Backup Data");
-        chooser.setSelectedFile(new File(BackupRestoreService.defaultBackupFileName()));
-        chooser.setFileFilter(new FileNameExtensionFilter("EVE Farm database (*.db)", "db"));
-        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
-            return;
-        }
-        File target = chooser.getSelectedFile();
-        if (!target.getName().toLowerCase(Locale.ROOT).endsWith(".db")) {
-            target = new File(target.getParentFile(), target.getName() + ".db");
-        }
-        Path destination = target.toPath();
-        setBackupAndRestoreEnabled(false);
-        new SwingWorker<Void, Void>() {
-            @Override
-            protected Void doInBackground() throws Exception {
-                appContext.backupRestoreService.backupTo(destination);
-                return null;
-            }
-
-            @Override
-            protected void done() {
-                setBackupAndRestoreEnabled(true);
-                try {
-                    get();
-                    JOptionPane.showMessageDialog(MainFrame.this, "Backup saved to:\n" + destination,
-                            "Backup Data", JOptionPane.INFORMATION_MESSAGE);
-                } catch (Exception e) {
-                    Throwable cause = e.getCause() == null ? e : e.getCause();
-                    JOptionPane.showMessageDialog(MainFrame.this, "Backup failed: " + cause.getMessage(),
-                            "Backup Data", JOptionPane.ERROR_MESSAGE);
-                }
-            }
-        }.execute();
-    }
-
-    private void setBackupAndRestoreEnabled(boolean enabled) {
-        backupItem.setEnabled(enabled);
-        restoreItem.setEnabled(enabled);
-    }
-
-    private void restoreData() {
-        int confirm = JOptionPane.showConfirmDialog(this,
-                "Restoring will replace ALL current data with the chosen backup, and the app will "
-                        + "close so the restore can be applied on next launch.\n\n"
-                        + "Your current data is backed up automatically before the swap.\n\n"
-                        + "Continue?",
-                "Restore Data", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-        if (confirm != JOptionPane.YES_OPTION) {
-            return;
-        }
-
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Restore Data");
-        chooser.setFileFilter(new FileNameExtensionFilter("EVE Farm database (*.db)", "db"));
-        File autoBackups = AppPaths.backupDir().toFile();
-        if (autoBackups.isDirectory()) {
-            chooser.setCurrentDirectory(autoBackups);
-        }
-        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
-            return;
-        }
-        Path source = chooser.getSelectedFile().toPath();
-        setBackupAndRestoreEnabled(false);
-        new SwingWorker<RestoreCheck, Void>() {
-            @Override
-            protected RestoreCheck doInBackground() {
-                String error = appContext.backupRestoreService.validateBackupFile(source);
-                return error != null ? new RestoreCheck(error, null)
-                        : new RestoreCheck(null, appContext.backupRestoreService.passwordNeeds(source));
-            }
-
-            @Override
-            protected void done() {
-                RestoreCheck check;
-                try {
-                    check = get();
-                } catch (Exception e) {
-                    restoreFailed(e);
-                    return;
-                }
-                if (check.error() != null) {
-                    setBackupAndRestoreEnabled(true);
-                    JOptionPane.showMessageDialog(MainFrame.this, "Can't restore this file:\n" + check.error(),
-                            "Restore Data", JOptionPane.ERROR_MESSAGE);
-                } else if (check.needs().any()) {
-                    askBackupPassword(source, check.needs(), false);
-                } else {
-                    stageRestore(source, null, check.needs());
-                }
-            }
-        }.execute();
-    }
-
-    private record RestoreCheck(String error, BackupRestoreService.PasswordNeeds needs) {
-    }
-
-    private void askBackupPassword(Path source, BackupRestoreService.PasswordNeeds needs, boolean wrongBefore) {
-        List<String> kept = new ArrayList<>();
-        if (!needs.characters().isEmpty()) {
-            kept.add("the logins of " + String.join(", ", needs.characters()));
-        }
-        if (needs.janiceKey()) {
-            kept.add("the Janice API key");
-        }
-        String text = (wrongBefore ? "That password doesn't open this backup's logins. " : "")
-                + "This backup keeps " + String.join(" and ", kept) + " protected with a backup password. Type "
-                + "it to restore them, or restore without them and add those characters again later.";
-        JPasswordField password = new JPasswordField(24);
-        password.addAncestorListener(new AncestorListener() {
-            @Override
-            public void ancestorAdded(AncestorEvent event) {
-                SwingUtilities.invokeLater(password::requestFocusInWindow);
-            }
-
-            @Override
-            public void ancestorRemoved(AncestorEvent event) {
-            }
-
-            @Override
-            public void ancestorMoved(AncestorEvent event) {
-            }
-        });
-        JPanel panel = new JPanel(new BorderLayout(0, 8));
-        panel.add(new JLabel("<html><body style=\"width: 340px\">" + Text.escapeHtml(text) + "</body></html>"),
-                BorderLayout.NORTH);
-        panel.add(password, BorderLayout.CENTER);
-        Object[] options = {"Restore Logins", "Restore Without Them", "Cancel"};
-        int choice = JOptionPane.showOptionDialog(this, panel, "Restore Data", JOptionPane.DEFAULT_OPTION,
-                wrongBefore ? JOptionPane.WARNING_MESSAGE : JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
-        if (choice == 0 && password.getPassword().length > 0) {
-            stageRestore(source, new String(password.getPassword()), needs);
-        } else if (choice == 0) {
-            askBackupPassword(source, needs, false);
-        } else if (choice == 1) {
-            stageRestore(source, null, needs);
-        } else {
-            setBackupAndRestoreEnabled(true);
-        }
-    }
-
-    private void stageRestore(Path source, String password, BackupRestoreService.PasswordNeeds needs) {
-        new SwingWorker<List<String>, Void>() {
-            @Override
-            protected List<String> doInBackground() throws Exception {
-                return appContext.backupRestoreService.stageRestore(source, password);
-            }
-
-            @Override
-            protected void done() {
-                List<String> toAddAgain;
-                try {
-                    toAddAgain = get();
-                } catch (Exception e) {
-                    if (e.getCause() instanceof WrongPasswordException) {
-                        askBackupPassword(source, needs, true);
-                    } else {
-                        restoreFailed(e);
-                    }
-                    return;
-                }
-                setBackupAndRestoreEnabled(true);
-                String addAgain = toAddAgain.isEmpty() ? ""
-                        : "\n\nAfter it opens, add these characters again (File > Characters... > Add Character...): "
-                        + String.join(", ", toAddAgain) + ". Their history is kept.";
-                JOptionPane.showMessageDialog(MainFrame.this,
-                        "Restore staged. The app will now close - reopen it to finish the restore." + addAgain,
-                        "Restore Data", JOptionPane.INFORMATION_MESSAGE);
-                exitApplication();
-            }
-        }.execute();
-    }
-
-    private void restoreFailed(Exception e) {
-        setBackupAndRestoreEnabled(true);
-        Throwable cause = e.getCause() == null ? e : e.getCause();
-        JOptionPane.showMessageDialog(this, "Failed to stage the restore: " + cause.getMessage(),
-                "Restore Data", JOptionPane.ERROR_MESSAGE);
     }
 
     private void exitApplication() {

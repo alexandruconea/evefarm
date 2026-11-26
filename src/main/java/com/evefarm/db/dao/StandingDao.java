@@ -1,6 +1,7 @@
 package com.evefarm.db.dao;
 
 import com.evefarm.db.Database;
+import com.evefarm.db.JdbcUtil;
 import com.evefarm.model.StandingEntry;
 import com.evefarm.model.StandingRow;
 
@@ -49,7 +50,11 @@ public final class StandingDao {
         String sql = """
                 SELECT s.character_id, c.character_name, s.from_id, s.from_type, s.standing,
                        COALESCE(a.agent_name, n.name, '#' || s.from_id) AS name,
-                       a.corporation_name,
+                       a.corporation_id, a.corporation_name,
+                       CASE WHEN s.from_type = 'faction' THEN NULL
+                            ELSE COALESCE(a.faction_id, (SELECT x.faction_id FROM sde_agent x
+                                WHERE x.corporation_id = s.from_id AND x.faction_id IS NOT NULL LIMIT 1))
+                       END AS faction_id,
                        CASE WHEN s.from_type = 'faction' THEN NULL
                             ELSE COALESCE(a.faction_name, (SELECT x.faction_name FROM sde_agent x
                                 WHERE x.corporation_id = s.from_id AND x.faction_name IS NOT NULL LIMIT 1))
@@ -78,7 +83,9 @@ public final class StandingDao {
                             rs.getString("from_type"),
                             rs.getString("name"),
                             rs.getDouble("standing"),
+                            JdbcUtil.getNullableLong(rs, "corporation_id"),
                             rs.getString("corporation_name"),
+                            JdbcUtil.getNullableLong(rs, "faction_id"),
                             rs.getString("faction_name"),
                             level,
                             rs.getString("division_name"),

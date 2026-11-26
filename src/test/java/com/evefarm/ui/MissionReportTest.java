@@ -35,6 +35,16 @@ class MissionReportTest {
                 LocalDate.of(2026, 12, 28), LocalDate.of(2027, 1, 3)));
         assertEquals("October 2026", MissionReport.periodName(Period.MONTH, LocalDate.of(2026, 10, 1),
                 LocalDate.of(2026, 10, 31)));
+        assertEquals("October to December 2026", MissionReport.periodName(Period.THREE_MONTHS,
+                LocalDate.of(2026, 10, 1), LocalDate.of(2026, 12, 31)));
+        assertEquals("January to June 2026", MissionReport.periodName(Period.SIX_MONTHS, LocalDate.of(2026, 1, 1),
+                LocalDate.of(2026, 6, 30)));
+        assertEquals("2026", MissionReport.periodName(Period.YEAR, LocalDate.of(2026, 1, 1),
+                LocalDate.of(2026, 12, 31)));
+        assertEquals("Sep 30, 2025 to Nov 26, 2026", MissionReport.periodName(Period.ALL_TIME,
+                LocalDate.of(2025, 9, 30), LocalDate.of(2026, 11, 26)));
+        assertEquals("Nov 26, 2026", MissionReport.periodName(Period.ALL_TIME, LocalDate.of(2026, 11, 26),
+                LocalDate.of(2026, 11, 26)));
     }
 
     @Test

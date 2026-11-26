@@ -30,7 +30,7 @@ final class ZkillboardLinks {
                 setIcon(value instanceof ZkillboardLink link && link.linked() ? Icons.KILLBOARD : null);
                 setIconTextGap(ICON_TEXT_GAP);
                 if (!isSelected) {
-                    setBackground(row % 2 == 0 ? t.getBackground() : TableStyler.stripeColor(t));
+                    setBackground(TableStyler.rowBackground(t, row));
                 }
                 return this;
             }

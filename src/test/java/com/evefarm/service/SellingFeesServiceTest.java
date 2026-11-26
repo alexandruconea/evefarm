@@ -92,6 +92,7 @@ class SellingFeesServiceTest {
     }
 
     private static StandingRow standing(long characterId, long fromId, double standing) {
-        return new StandingRow(characterId, "", fromId, "npc_corp", "", standing, null, null, null, null, null);
+        return new StandingRow(characterId, "", fromId, "npc_corp", "", standing, null, null, null, null, null, null,
+                null);
     }
 }

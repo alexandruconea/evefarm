@@ -13,12 +13,20 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public final class AgentImportService {
+
+    private static final Logger LOG = Logger.getLogger(AgentImportService.class.getName());
 
     private final FuzzworkApi fuzzworkApi;
     private final AgentDao agentDao;
     private final SettingsDao settingsDao;
+    private final List<Runnable> importListeners = new CopyOnWriteArrayList<>();
+    private final AtomicBoolean missingImportTried = new AtomicBoolean();
 
     public AgentImportService(FuzzworkApi fuzzworkApi, AgentDao agentDao, SettingsDao settingsDao) {
         this.fuzzworkApi = fuzzworkApi;
@@ -37,6 +45,27 @@ public final class AgentImportService {
     }
 
     record RawSolarSystem(int solarSystemId, String name, Double security, int constellationId, int regionId) {
+    }
+
+    public void addImportListener(Runnable listener) {
+        importListeners.add(listener);
+    }
+
+    public void importInBackgroundIfMissing() {
+        if (!missingImportTried.compareAndSet(false, true)) {
+            return;
+        }
+        Thread thread = new Thread(() -> {
+            try {
+                if (agentDao.isEmpty()) {
+                    importAgents();
+                }
+            } catch (RuntimeException e) {
+                LOG.log(Level.WARNING, "Couldn't import the agent list", e);
+            }
+        }, "agent-import");
+        thread.setDaemon(true);
+        thread.start();
     }
 
     public int importAgents() {
@@ -68,6 +97,7 @@ public final class AgentImportService {
 
         agentDao.replaceAll(rows);
         settingsDao.set(SettingsDao.AGENTS_LAST_IMPORTED_AT, Instant.now().toString());
+        importListeners.forEach(Runnable::run);
         return rows.size();
     }
 

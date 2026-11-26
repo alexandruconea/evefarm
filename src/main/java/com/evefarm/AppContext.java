@@ -64,6 +64,7 @@ import com.evefarm.service.AggroWatchService;
 import com.evefarm.service.AssetService;
 import com.evefarm.service.BackupRestoreService;
 import com.evefarm.service.BeltKillMilestoneService;
+import com.evefarm.service.CharacterPortraits;
 import com.evefarm.service.CharacterService;
 import com.evefarm.service.ContractService;
 import com.evefarm.service.EntityNameCacheService;
@@ -167,6 +168,7 @@ public final class AppContext {
     public final MarketHistoryService marketHistoryService;
     public final LpPurchaseService lpPurchaseService;
     public final ItemIconService itemIconService;
+    public final CharacterPortraits characterPortraits;
     public final ValueSummaryService valueSummaryService;
     public final TrackerCombinationService trackerCombinationService;
     public final NotificationService notificationService;
@@ -250,6 +252,7 @@ public final class AppContext {
                 typeNameCacheService, priceService, marketHistoryService);
         this.lpOfferDepthService = new LpOfferDepthService(marketsApi, universeApi);
         this.itemIconService = new ItemIconService();
+        this.characterPortraits = new CharacterPortraits(characterService, itemIconService);
         this.trackerSnapshotService = new TrackerSnapshotService(authService, walletApi, clonesApi, marketsApi,
                 contractsApi, industryApi, skillsApi, loyaltyPointService, priceService, assetDao,
                 snapshotDao, skillPointFilterDao, settingsDao, industryCatalogService);
@@ -282,7 +285,7 @@ public final class AppContext {
                 walletJournalDao, loyaltyPointDao, npcCatalogService, settingsDao, Clock.systemDefaultZone());
         this.trackerCombinationService = new TrackerCombinationService(snapshotDao, walletJournalDao, miningService,
                 settingsDao, Clock.systemDefaultZone());
-        this.backupRestoreService = new BackupRestoreService(database, settingsDao);
+        this.backupRestoreService = new BackupRestoreService(database, settingsDao, killService::gameLogDirectory);
         this.eveSettingsService = new EveSettingsService(settingsDao);
         this.updateService = new UpdateService(settingsDao);
         this.updateInstaller = new UpdateInstaller(backupRestoreService);

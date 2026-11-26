@@ -3,17 +3,24 @@ package com.evefarm.ui.filter;
 import com.evefarm.ui.ButtonSizing;
 import com.evefarm.ui.ComboSizing;
 
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import java.awt.FlowLayout;
+import java.awt.Dimension;
 import java.util.List;
 
 final class FilterRow extends JPanel {
+
+    private static final int GAP = 4;
+    private static final int MIN_VALUE_WIDTH = 60;
 
     private final JCheckBox enabledBox = new JCheckBox();
     private final JComboBox<FilterCondition.LogicOp> logicCombo =
@@ -26,7 +33,8 @@ final class FilterRow extends JPanel {
     private final JButton removeButton = new JButton("-");
 
     FilterRow(List<String> columnNames, Runnable onChange, Runnable onAdd, Runnable onRemove) {
-        super(new FlowLayout(FlowLayout.LEFT, 4, 2));
+        setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+        setBorder(BorderFactory.createEmptyBorder(GAP / 2, GAP, GAP / 2, GAP));
 
         String[] columns = new String[columnNames.size() + 1];
         columns[0] = FilterCondition.ALL_COLUMNS;
@@ -42,12 +50,19 @@ final class FilterRow extends JPanel {
         ComboSizing.input(removeButton);
 
         enabledBox.setSelected(true);
-        add(enabledBox);
-        add(logicCombo);
-        add(columnCombo);
-        add(operatorCombo);
-        add(valueField);
-        add(ButtonSizing.row(2, addButton, removeButton));
+        List<JComponent> parts = List.of(enabledBox, logicCombo, columnCombo, operatorCombo, valueField,
+                ButtonSizing.row(2, addButton, removeButton));
+        for (JComponent part : parts) {
+            Dimension size = part.getPreferredSize();
+            part.setMinimumSize(part == valueField ? new Dimension(MIN_VALUE_WIDTH, size.height) : size);
+            part.setMaximumSize(size);
+            part.setAlignmentY(CENTER_ALIGNMENT);
+            if (getComponentCount() > 0) {
+                add(Box.createHorizontalStrut(GAP));
+            }
+            add(part);
+        }
+        add(Box.createHorizontalGlue());
 
         enabledBox.addActionListener(e -> onChange.run());
         logicCombo.addActionListener(e -> onChange.run());

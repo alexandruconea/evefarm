@@ -16,8 +16,8 @@ import com.evefarm.service.CargoParser;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
 import com.evefarm.ui.column.ColumnWidthMemory;
+import com.evefarm.ui.column.Isk;
 import com.evefarm.util.DateUtil;
-import com.evefarm.util.IskFormatter;
 import com.formdev.flatlaf.FlatLaf;
 
 import javax.swing.BorderFactory;
@@ -75,19 +75,19 @@ public final class AbyssPanel extends TabPanel {
                     "The tier, filament or fleet, as chosen in Group by"),
             new ColumnDef<>("runs", "Runs", Integer.class, AbyssStats.Summary::runs, "How many runs"),
             new ColumnDef<>("lost", "Lost", Integer.class, AbyssStats.Summary::deaths, "How many ships were lost"),
-            new ColumnDef<>("loot", "Loot", String.class, summary -> IskFormatter.format(summary.loot()),
+            new ColumnDef<>("loot", "Loot", Isk.class, summary -> Isk.of(summary.loot()),
                     "What the loot of all the runs is worth"),
-            new ColumnDef<>("filaments", "Filaments", String.class,
-                    summary -> IskFormatter.format(summary.filamentCost()), "What the filaments cost"),
-            new ColumnDef<>("profit", "Profit", String.class, summary -> IskFormatter.format(summary.profit()),
+            new ColumnDef<>("filaments", "Filaments", Isk.class,
+                    summary -> Isk.of(summary.filamentCost()), "What the filaments cost"),
+            new ColumnDef<>("profit", "Profit", Isk.class, summary -> Isk.signed(summary.profit()),
                     "The loot less the filaments"),
-            new ColumnDef<>("averageProfit", "Avg Profit", String.class,
-                    summary -> IskFormatter.format(summary.averageProfit()), "The profit of an average run"),
+            new ColumnDef<>("averageProfit", "Avg Profit", Isk.class,
+                    summary -> Isk.signed(summary.averageProfit()), "The profit of an average run"),
             new ColumnDef<>("averageTime", "Avg Time", String.class, summary -> summary.averageSeconds() == null ? ""
                     : AbyssRunsTableModel.formatDuration(Math.round(summary.averageSeconds())),
                     "How long an average run takes"),
-            new ColumnDef<>("iskPerHour", "ISK/h", String.class,
-                    summary -> summary.iskPerHour() == null ? "" : IskFormatter.format(summary.iskPerHour()),
+            new ColumnDef<>("iskPerHour", "ISK/h", Isk.class,
+                    summary -> summary.iskPerHour() == null ? Isk.NONE : Isk.of(summary.iskPerHour()),
                     "The profit per hour of run time"));
 
     private final AppContext appContext;
@@ -688,7 +688,7 @@ public final class AbyssPanel extends TabPanel {
                                                        int row, int column) {
             super.getTableCellRendererComponent(t, value, isSelected, hasFocus, row, column);
             if (!isSelected) {
-                setBackground(row % 2 == 0 ? t.getBackground() : TableStyler.stripeColor(t));
+                setBackground(TableStyler.rowBackground(t, row));
                 setForeground(resultColor(t, value));
             }
             return this;

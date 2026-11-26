@@ -1,6 +1,7 @@
 package com.evefarm.ui;
 
 import com.evefarm.model.AgentRow;
+import com.evefarm.ui.EveEntity.Kind;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
 
@@ -10,11 +11,14 @@ import java.util.Locale;
 public final class AgentsTableModel extends ColumnTableModel<AgentRow> {
 
     private static final List<ColumnDef<AgentRow>> COLUMNS = List.of(
-            new ColumnDef<>("agent", "Agent", String.class, AgentRow::agentName,
+            new ColumnDef<>("agent", "Agent", EveEntity.class,
+                    r -> new EveEntity(r.agentName(), Kind.AGENT, r.agentId()),
                     "The agent's name"),
-            new ColumnDef<>("corporation", "Corporation", String.class, r -> nullToEmpty(r.corporationName()),
+            new ColumnDef<>("corporation", "Corporation", EveEntity.class,
+                    r -> new EveEntity(r.corporationName(), Kind.CORPORATION, r.corporationId()),
                     "The NPC corporation the agent works for"),
-            new ColumnDef<>("faction", "Faction", String.class, r -> nullToEmpty(r.factionName()),
+            new ColumnDef<>("faction", "Faction", EveEntity.class,
+                    r -> new EveEntity(r.factionName(), Kind.FACTION, r.factionId()),
                     "The faction of the agent's corporation"),
             new ColumnDef<>("level", "Level", Integer.class, AgentRow::level,
                     "The agent's level, 1 to 5: higher levels give harder missions and bigger rewards"),

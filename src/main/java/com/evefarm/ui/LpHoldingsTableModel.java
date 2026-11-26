@@ -3,7 +3,7 @@ package com.evefarm.ui;
 import com.evefarm.service.LpPurchaseService.Holding;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
-import com.evefarm.util.IskFormatter;
+import com.evefarm.ui.column.Isk;
 import com.evefarm.util.Text;
 
 import java.util.List;
@@ -19,22 +19,22 @@ public final class LpHoldingsTableModel extends ColumnTableModel<Holding> {
                     "How many units you still have: what you bought less what you sold and used"),
             new ColumnDef<>("bought", "Bought", String.class, r -> Text.count(r.bought()),
                     "How many units you bought in all"),
-            new ColumnDef<>("averageCost", "Avg Cost", String.class, r -> IskFormatter.format(r.averageCost()),
+            new ColumnDef<>("averageCost", "Avg Cost", Isk.class, r -> Isk.of(r.averageCost()),
                     "What one unit cost you in ISK on average: the ISK paid and the other items, without the LP"),
-            new ColumnDef<>("breakEven", "Break-even", String.class, r -> IskFormatter.format(r.breakEven()),
+            new ColumnDef<>("breakEven", "Break-even", Isk.class, r -> Isk.of(r.breakEven()),
                     "The lowest sell price that gets your ISK back after the sales tax and broker fee"),
-            new ColumnDef<>("target", "Target Price", String.class, r -> formatIsk(r.targetPrice()),
+            new ColumnDef<>("target", "Target Price", Isk.class, r -> Isk.of(r.targetPrice()),
                     "The sell price at which what is left makes the target ISK/LP of its purchases, counted like "
                             + "the LP Store tab"),
-            new ColumnDef<>(SELL_NOW, "Sell Now", String.class, r -> formatIsk(r.sellNow()),
+            new ColumnDef<>(SELL_NOW, "Sell Now", Isk.class, r -> Isk.of(r.sellNow()),
                     "The lowest sell price right now. Green at or above the Target Price, yellow between the "
                             + "Break-even and the Target Price, red below the Break-even"),
-            new ColumnDef<>("buyNow", "Buy Now", String.class, r -> formatIsk(r.buyNow()),
+            new ColumnDef<>("buyNow", "Buy Now", Isk.class, r -> Isk.of(r.buyNow()),
                     "The highest buy order right now: what you get if you sell at once"),
-            new ColumnDef<>("ifSoldNow", "If Sold Now", String.class, r -> formatIsk(r.profitIfSoldNow()),
+            new ColumnDef<>("ifSoldNow", "If Sold Now", Isk.class, r -> Isk.signed(r.profitIfSoldNow()),
                     "What you would make on what is left, selling at Sell Now after fees, against what it cost "
                             + "you in ISK"),
-            new ColumnDef<>("realized", "Realized", String.class, r -> IskFormatter.format(r.realizedProfit()),
+            new ColumnDef<>("realized", "Realized", Isk.class, r -> Isk.signed(r.realizedProfit()),
                     "What you made on what you already sold, after fees, against what it cost you in ISK"),
             new ColumnDef<>("dailyVolume", "Sold per Day", String.class,
                     r -> LpStoreTableModel.formatPerDay(r.dailyVolume()),

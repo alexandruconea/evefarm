@@ -9,8 +9,10 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.Statement;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -53,7 +55,7 @@ class BackupRestoreServiceTest {
         MigrationRunner.run(database);
         SettingsDao settings = new SettingsDao(database);
         settings.set(SettingsDao.LAF_THEME, "flatlaf-dark");
-        BackupRestoreService service = new BackupRestoreService(database, settings);
+        BackupRestoreService service = new BackupRestoreService(database, settings, () -> null);
         Path file = directory.resolve("evefarm-backup.db");
 
         service.backupTo(file);
@@ -70,7 +72,7 @@ class BackupRestoreServiceTest {
             statement.execute("INSERT INTO schema_version(version, applied_at) VALUES ("
                     + (MigrationRunner.latestVersion() + 1) + ", '2027-01-01')");
         }
-        BackupRestoreService service = new BackupRestoreService(database, new SettingsDao(database));
+        BackupRestoreService service = new BackupRestoreService(database, new SettingsDao(database), () -> null);
         Path file = directory.resolve("from-the-future.db");
         service.backupTo(file);
 
@@ -93,7 +95,8 @@ class BackupRestoreServiceTest {
         Database database = new Database(":memory:");
         MigrationRunner.run(database);
 
-        String error = new BackupRestoreService(database, new SettingsDao(database)).validateBackupFile(file);
+        String error = new BackupRestoreService(database, new SettingsDao(database), () -> null)
+                .validateBackupFile(file);
 
         assertTrue(error != null && error.contains("is missing"), error);
     }
@@ -164,13 +167,13 @@ class BackupRestoreServiceTest {
         MigrationRunner.run(database);
         SettingsDao settings = new SettingsDao(database);
         settings.set(SettingsDao.LAF_THEME, "adwaita");
-        BackupRestoreService service = new BackupRestoreService(database, settings);
+        BackupRestoreService service = new BackupRestoreService(database, settings, () -> null);
         Path source = directory.resolve("evefarm-backup.db");
         Path pending = directory.resolve("pending-restore.db");
         service.backupTo(source);
         Files.writeString(pending, "an earlier choice");
 
-        assertEquals(List.of(), service.stage(source, pending, null));
+        assertEquals(List.of(), service.stage(source, pending, null).toAddAgain());
 
         assertEquals(Set.of("evefarm-backup.db", "pending-restore.db"), Set.of(directory.toFile().list()));
         Database staged = new Database(pending.toString());
@@ -182,10 +185,74 @@ class BackupRestoreServiceTest {
     }
 
     @Test
+    void theGamelogsTravelWithTheBackupToANewComputer(@TempDir Path directory) throws Exception {
+        Path oldLogs = Files.createDirectories(directory.resolve("old").resolve("Gamelogs"));
+        Path today = Files.writeString(oldLogs.resolve("20261126_201500_2124165849.txt"),
+                "[ 2026.11.26 20:15:00 ] (combat) 1250 from Malpais Legate - Dread Guristas Irregular - Hits");
+        Path yesterday = Files.writeString(oldLogs.resolve("20261125_101500_95465499.txt"), "an older session");
+        Files.setLastModifiedTime(yesterday, FileTime.fromMillis(1_764_000_000_000L));
+        Files.writeString(oldLogs.resolve("notes.md"), "not a Gamelog");
+        Database oldComputer = new Database(":memory:");
+        MigrationRunner.run(oldComputer);
+        Path backup = directory.resolve("evefarm-backup.db");
+        BackupRestoreService old = new BackupRestoreService(oldComputer, new SettingsDao(oldComputer), () -> oldLogs);
+        old.backupTo(backup);
+        assertNull(old.validateBackupFile(backup));
+
+        Database newComputer = new Database(":memory:");
+        MigrationRunner.run(newComputer);
+        Path newLogs = directory.resolve("new").resolve("Documents").resolve("EVE").resolve("logs").resolve("Gamelogs");
+        Path pending = directory.resolve("pending-restore.db");
+        BackupRestoreService.Staged staged = new BackupRestoreService(newComputer, new SettingsDao(newComputer),
+                () -> newLogs).stage(backup, pending, null);
+
+        assertEquals(2, staged.gamelogsRestored());
+        assertEquals(newLogs, staged.gamelogDirectory());
+        assertEquals(Files.readString(today), Files.readString(newLogs.resolve(today.getFileName())));
+        assertEquals(1_764_000_000_000L,
+                Files.getLastModifiedTime(newLogs.resolve(yesterday.getFileName())).toMillis());
+        assertFalse(Files.exists(newLogs.resolve("notes.md")), "only Gamelogs are backed up");
+        try (Connection restored = DriverManager.getConnection("jdbc:sqlite:" + pending);
+             Statement statement = restored.createStatement();
+             ResultSet tables = statement.executeQuery("SELECT 1 FROM sqlite_master WHERE name = 'backup_gamelog'")) {
+            assertFalse(tables.next(), "the Gamelogs go back to their folder, not into the restored data");
+        }
+    }
+
+    @Test
+    void aGamelogAlreadyOnThisComputerIsKeptWhenItHasMore(@TempDir Path directory) throws Exception {
+        Path logs = Files.createDirectories(directory.resolve("Gamelogs"));
+        Database database = new Database(":memory:");
+        MigrationRunner.run(database);
+        Files.writeString(logs.resolve("20261126_201500_2124165849.txt"), "short");
+        Path backup = directory.resolve("evefarm-backup.db");
+        new BackupRestoreService(database, new SettingsDao(database), () -> logs).backupTo(backup);
+        Files.writeString(logs.resolve("20261126_201500_2124165849.txt"), "the same session, played further here");
+
+        BackupRestoreService.Staged staged = new BackupRestoreService(database, new SettingsDao(database),
+                () -> logs).stage(backup, directory.resolve("pending-restore.db"), null);
+
+        assertEquals(0, staged.gamelogsRestored());
+        assertEquals("the same session, played further here",
+                Files.readString(logs.resolve("20261126_201500_2124165849.txt")));
+    }
+
+    @Test
+    void aGamelogCannotBeRestoredOutsideTheGamelogsFolder(@TempDir Path directory) throws Exception {
+        Path logs = Files.createDirectories(directory.resolve("Gamelogs"));
+
+        assertFalse(BackupGamelogs.restore(logs, "../evefarm.db.txt", 0, 1, new byte[0]));
+        assertFalse(BackupGamelogs.restore(logs, "..\\startup.txt", 0, 1, new byte[0]));
+        assertFalse(BackupGamelogs.restore(logs, "C:evil.txt", 0, 1, new byte[0]));
+        assertFalse(BackupGamelogs.restore(logs, "settings.ini", 0, 1, new byte[0]));
+        assertEquals(Set.of(), Set.of(directory.resolve("Gamelogs").toFile().list()));
+    }
+
+    @Test
     void aStagingThatFailsLeavesNoPartialCopyBehind(@TempDir Path directory) throws Exception {
         Database database = new Database(":memory:");
         MigrationRunner.run(database);
-        BackupRestoreService service = new BackupRestoreService(database, new SettingsDao(database));
+        BackupRestoreService service = new BackupRestoreService(database, new SettingsDao(database), () -> null);
         Path source = directory.resolve("evefarm-backup.db");
         Path pending = directory.resolve("pending-restore.db");
         service.backupTo(source);

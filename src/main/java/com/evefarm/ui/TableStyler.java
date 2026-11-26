@@ -2,6 +2,7 @@ package com.evefarm.ui;
 
 import com.evefarm.ui.column.ColumnDescriptions;
 import com.evefarm.ui.column.ColumnWidthMemory;
+import com.evefarm.ui.column.Isk;
 import com.formdev.flatlaf.FlatLaf;
 
 import javax.swing.BorderFactory;
@@ -26,7 +27,9 @@ import javax.swing.table.TableColumnModel;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.util.List;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 
 public final class TableStyler {
 
@@ -34,6 +37,8 @@ public final class TableStyler {
     private static final int PACK_MAX_WIDTH_PX = 320;
     private static final int PACK_SAMPLE_ROWS = 300;
     private static final String ICON_COLUMNS_FIXED = "TableStyler.iconColumnsFixed";
+    private static final Pattern NUMBER_TEXT =
+            Pattern.compile("[-+]?[\\d,]*\\.?\\d+(?: ?[%a-zA-Z/][a-zA-Z0-9/]{0,5})?");
 
     public static void style(JTable table) {
         table.setRowHeight(26);
@@ -56,17 +61,34 @@ public final class TableStyler {
             public Component getTableCellRendererComponent(JTable t, Object value, boolean isSelected,
                                                              boolean hasFocus, int row, int column) {
                 Component c = super.getTableCellRendererComponent(t, value, isSelected, hasFocus, row, column);
+                setHorizontalAlignment(looksLikeNumber(value) ? SwingConstants.RIGHT : SwingConstants.LEADING);
                 if (!isSelected) {
-                    c.setBackground(row % 2 == 0 ? t.getBackground() : stripeColor(t));
+                    c.setBackground(rowBackground(t, row));
                 }
                 return c;
             }
         };
         stripedRenderer.putClientProperty("html.disable", Boolean.TRUE);
         table.setDefaultRenderer(Object.class, stripedRenderer);
-        table.setDefaultRenderer(Long.class, stripedRenderer);
-        table.setDefaultRenderer(Integer.class, stripedRenderer);
-        table.setDefaultRenderer(Double.class, stripedRenderer);
+
+        DefaultTableCellRenderer numberRenderer = new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable t, Object value, boolean isSelected,
+                                                             boolean hasFocus, int row, int column) {
+                super.getTableCellRendererComponent(t, value, isSelected, hasFocus, row, column);
+                if (!isSelected) {
+                    setBackground(rowBackground(t, row));
+                    setForeground(value instanceof Isk isk && isk.isGain() ? gainColor()
+                            : value instanceof Isk isk && isk.isLoss() ? lossColor() : t.getForeground());
+                }
+                return this;
+            }
+        };
+        numberRenderer.setHorizontalAlignment(SwingConstants.RIGHT);
+        numberRenderer.putClientProperty("html.disable", Boolean.TRUE);
+        for (Class<?> type : List.of(Long.class, Integer.class, Double.class, Isk.class)) {
+            table.setDefaultRenderer(type, numberRenderer);
+        }
 
         DefaultTableCellRenderer iconRenderer = new DefaultTableCellRenderer() {
             @Override
@@ -74,7 +96,7 @@ public final class TableStyler {
                                                              boolean hasFocus, int row, int column) {
                 super.getTableCellRendererComponent(t, null, false, false, row, column);
                 setIcon(value instanceof Icon icon ? icon : null);
-                setBackground(row % 2 == 0 ? t.getBackground() : stripeColor(t));
+                setBackground(rowBackground(t, row));
                 return this;
             }
         };
@@ -163,13 +185,33 @@ public final class TableStyler {
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
                                                        boolean hasFocus, int row, int column) {
-            Object shown = isIconColumn(table, column) ? "" : value;
+            Object shown = isIconColumn(table, column) ? "" : withUnit(table, column, value);
             Component component = base.getTableCellRendererComponent(table, shown, isSelected, hasFocus, row, column);
             if (component instanceof JComponent described) {
                 described.setToolTipText(columnDescription(table, column));
             }
             return component;
         }
+    }
+
+    static boolean looksLikeNumber(Object value) {
+        return value instanceof String text && NUMBER_TEXT.matcher(text).matches();
+    }
+
+    static Object withUnit(JTable table, int column, Object label) {
+        if (table == null || column < 0 || column >= table.getColumnCount() || label == null) {
+            return label;
+        }
+        Class<?> type = table.getModel().getColumnClass(table.convertColumnIndexToModel(column));
+        return type == Isk.class ? Isk.withUnit(label.toString()) : label;
+    }
+
+    static Color gainColor() {
+        return FlatLaf.isLafDark() ? new Color(110, 200, 120) : new Color(46, 125, 50);
+    }
+
+    static Color lossColor() {
+        return FlatLaf.isLafDark() ? new Color(255, 110, 110) : new Color(198, 40, 40);
     }
 
     public static void installCellPadding() {
@@ -186,6 +228,10 @@ public final class TableStyler {
     static Color gridColor() {
         Color themed = UIManager.getLookAndFeel() instanceof FlatLaf ? UIManager.getColor("Table.gridColor") : null;
         return themed != null ? themed : new Color(196, 200, 206);
+    }
+
+    static Color rowBackground(JTable table, int row) {
+        return row % 2 == 0 ? table.getBackground() : stripeColor(table);
     }
 
     static Color stripeColor(JTable table) {

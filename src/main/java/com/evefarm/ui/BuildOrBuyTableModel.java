@@ -2,7 +2,7 @@ package com.evefarm.ui;
 
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
-import com.evefarm.util.IskFormatter;
+import com.evefarm.ui.column.Isk;
 import com.evefarm.util.Text;
 
 import java.time.Duration;
@@ -27,8 +27,8 @@ public final class BuildOrBuyTableModel extends ColumnTableModel<BuildOrBuyTable
             return buildPrice < marketPrice ? "Build" : "Buy";
         }
 
-        private String saving() {
-            return onMarket() ? IskFormatter.format(Math.abs(marketPrice - buildPrice) * needed) : "";
+        private Isk saving() {
+            return onMarket() ? Isk.of(Math.abs(marketPrice - buildPrice) * needed) : Isk.NONE;
         }
     }
 
@@ -51,11 +51,11 @@ public final class BuildOrBuyTableModel extends ColumnTableModel<BuildOrBuyTable
             new ColumnDef<>("surplus", "Surplus", String.class,
                     r -> r.surplus() > 0 ? Text.count(r.surplus()) : "",
                     "What the job makes beyond what you need, as it makes whole runs"),
-            new ColumnDef<>("market", "Market Price", String.class, r -> IskFormatter.format(r.marketPrice()),
+            new ColumnDef<>("market", "Market Price", Isk.class, r -> Isk.of(r.marketPrice()),
                     "The price of one unit on the market"),
-            new ColumnDef<>("buildCost", "Build Cost", String.class, r -> IskFormatter.format(r.buildPrice()),
+            new ColumnDef<>("buildCost", "Build Cost", Isk.class, r -> Isk.of(r.buildPrice()),
                     "What one unit costs you to make: its materials and the job fee"),
-            new ColumnDef<>("saving", "Saving", String.class, Row::saving,
+            new ColumnDef<>("saving", "Saving", Isk.class, Row::saving,
                     "How much you save on the whole quantity by taking the cheaper way"),
             new ColumnDef<>("time", "Job Time", String.class, r -> PlanTableModel.formatDuration(r.time()),
                     "How long the job takes"),

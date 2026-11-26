@@ -61,6 +61,17 @@ public final class AgentDao {
         });
     }
 
+    public boolean isEmpty() {
+        synchronized (database) {
+            try (PreparedStatement ps = database.connection().prepareStatement("SELECT 1 FROM sde_agent LIMIT 1");
+                 ResultSet rs = ps.executeQuery()) {
+                return !rs.next();
+            } catch (SQLException e) {
+                throw new IllegalStateException("Failed to check the agent catalog", e);
+            }
+        }
+    }
+
     public boolean hasAgentsWithoutLocationIds() {
         String sql = "SELECT 1 FROM sde_agent WHERE solar_system_id IS NULL AND solar_system_name IS NOT NULL LIMIT 1";
         synchronized (database) {

@@ -4,8 +4,8 @@ import com.evefarm.model.KillDayTypeRow;
 import com.evefarm.model.OfficerSighting;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
+import com.evefarm.ui.column.Isk;
 import com.evefarm.util.DateUtil;
-import com.evefarm.util.IskFormatter;
 
 import java.util.List;
 
@@ -30,14 +30,14 @@ public final class OfficersTableModel extends ColumnTableModel<OfficerSighting> 
                     "The asteroid belt it was in"),
             new ColumnDef<>("escort", "Escort Kills", Integer.class, OfficerSighting::escortKills,
                     "How many of its escorts your characters killed"),
-            new ColumnDef<>("bounty", "Officer Bounty", String.class,
-                    r -> r.officerBounty() > 0 ? IskFormatter.format(r.officerBounty()) : "",
+            new ColumnDef<>("bounty", "Officer Bounty", Isk.class,
+                    r -> r.officerBounty() > 0 ? Isk.of(r.officerBounty()) : Isk.NONE,
                     "The officer's bounty"),
-            new ColumnDef<>("drops", "Drops", String.class,
-                    r -> r.dropValue() > 0 ? IskFormatter.format(r.dropValue()) : "",
+            new ColumnDef<>("drops", "Drops", Isk.class,
+                    r -> r.dropValue() > 0 ? Isk.of(r.dropValue()) : Isk.NONE,
                     "What the drops you recorded are worth"),
-            new ColumnDef<>("total", "Total", String.class,
-                    r -> r.totalValue() > 0 ? IskFormatter.format(r.totalValue()) : "",
+            new ColumnDef<>("total", "Total", Isk.class,
+                    r -> r.totalValue() > 0 ? Isk.of(r.totalValue()) : Isk.NONE,
                     "The officer bounty plus the drops"),
             new ColumnDef<>("payout", "Journal", String.class,
                     r -> r.payout() == null ? "" : "✓ " + DateUtil.formatEveClock(r.payout().paidAt()),

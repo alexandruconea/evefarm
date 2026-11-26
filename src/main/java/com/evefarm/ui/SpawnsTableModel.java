@@ -3,8 +3,8 @@ package com.evefarm.ui;
 import com.evefarm.model.SpawnRow;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
+import com.evefarm.ui.column.Isk;
 import com.evefarm.util.DateUtil;
-import com.evefarm.util.IskFormatter;
 
 import java.util.List;
 import java.util.Locale;
@@ -22,8 +22,8 @@ public final class SpawnsTableModel extends ColumnTableModel<SpawnRow> {
                     "The strongest NPC of the spawn: Officer, Commander, Belt rat, Missions or Other"),
             new ColumnDef<>("killed", "Killed", Integer.class, SpawnRow::killed,
                     "How many NPCs your characters killed"),
-            new ColumnDef<>("bounty", "Bounty", String.class,
-                    r -> r.bounty() > 0 ? IskFormatter.format(r.bounty()) : "",
+            new ColumnDef<>("bounty", "Bounty", Isk.class,
+                    r -> r.bounty() > 0 ? Isk.of(r.bounty()) : Isk.NONE,
                     "The bounty of the NPCs killed"),
             new ColumnDef<>("duration", "Duration", String.class, r -> duration(r.durationSeconds()),
                     "How long the fight took, in minutes and seconds"),

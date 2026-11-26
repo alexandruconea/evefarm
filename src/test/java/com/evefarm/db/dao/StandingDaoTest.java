@@ -69,10 +69,14 @@ class StandingDaoTest {
         StandingRow agent = rows.get(2);
 
         assertNull(faction.factionName());
+        assertNull(faction.factionId());
         assertEquals("Caldari State", corporation.factionName());
+        assertEquals(500001L, corporation.factionId());
         assertNull(corporation.level());
         assertEquals("Caldari Navy", agent.corporationName());
+        assertEquals(1000035L, agent.corporationId());
         assertEquals("Caldari State", agent.factionName());
+        assertEquals(500001L, agent.factionId());
         assertEquals(4, agent.level());
         assertEquals("Security", agent.divisionName());
         assertEquals("Josameto", agent.systemName());

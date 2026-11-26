@@ -3,7 +3,7 @@ package com.evefarm.ui;
 import com.evefarm.model.OfficerDrop;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
-import com.evefarm.util.IskFormatter;
+import com.evefarm.ui.column.Isk;
 
 import java.util.List;
 
@@ -14,9 +14,9 @@ public final class DropsTableModel extends ColumnTableModel<OfficerDrop> {
                     "The item the officer dropped"),
             new ColumnDef<>("quantity", "Qty", Integer.class, OfficerDrop::quantity,
                     "How many dropped"),
-            new ColumnDef<>("unitPrice", "Unit Price", String.class, r -> IskFormatter.format(r.unitPrice()),
+            new ColumnDef<>("unitPrice", "Unit Price", Isk.class, r -> Isk.of(r.unitPrice()),
                     "The price of one unit: the market price, or the price you typed"),
-            new ColumnDef<>("total", "Value", String.class, r -> IskFormatter.format(r.totalValue()),
+            new ColumnDef<>("total", "Value", Isk.class, r -> Isk.of(r.totalValue()),
                     "The unit price times the quantity")
     );
 

@@ -4,7 +4,7 @@ import com.evefarm.model.LpOfferRow;
 import com.evefarm.service.ItemIconService;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
-import com.evefarm.util.IskFormatter;
+import com.evefarm.ui.column.Isk;
 
 import javax.swing.ImageIcon;
 import java.util.List;
@@ -24,21 +24,21 @@ public final class LpStoreTableModel extends ColumnTableModel<LpOfferRow> {
                     "How many units the offer gives"),
             new ColumnDef<>("lpCost", "LP Cost", Long.class, LpOfferRow::lpCost,
                     "The loyalty points the offer costs"),
-            new ColumnDef<>("iskCost", "ISK Cost", String.class, r -> IskFormatter.format(r.iskCost()),
+            new ColumnDef<>("iskCost", "ISK Cost", Isk.class, r -> Isk.of(r.iskCost()),
                     "The ISK the offer costs on top of the LP"),
             new ColumnDef<>("otherRequirements", "Other Requirements", String.class, r -> nullToEmpty(r.requiredItemsSummary()),
                     "Other items the offer asks for. Right-click a cell and choose Copy to paste them into Multibuy"),
-            new ColumnDef<>("otherCost", "Other Cost", String.class, r -> formatIsk(r.requiredItemsCost()),
+            new ColumnDef<>("otherCost", "Other Cost", Isk.class, r -> Isk.of(r.requiredItemsCost()),
                     "What the other items cost at the lowest sell price. Right-click an offer and choose Buy "
                             + "Several Times... to price them against all the orders in Jita 4-4"),
             new ColumnDef<>("buildMaterials", "Build Materials", String.class, r -> nullToEmpty(r.buildMaterialsSummary()),
                     "For a blueprint: the materials to build what it makes. Right-click a cell and choose Copy to "
                             + "paste them into Multibuy"),
-            new ColumnDef<>("buildCost", "Build Cost", String.class, r -> formatIsk(r.buildMaterialsCost()),
+            new ColumnDef<>("buildCost", "Build Cost", Isk.class, r -> Isk.of(r.buildMaterialsCost()),
                     "What the build materials cost"),
-            new ColumnDef<>("sellPrice", "Sell Price", String.class, r -> formatIsk(r.sellPricePerUnit()),
+            new ColumnDef<>("sellPrice", "Sell Price", Isk.class, r -> Isk.of(r.sellPricePerUnit()),
                     "The lowest sell price of the item, or of what a blueprint builds"),
-            new ColumnDef<>("buyPrice", "Buy Price", String.class, r -> formatIsk(r.buyPricePerUnit()),
+            new ColumnDef<>("buyPrice", "Buy Price", Isk.class, r -> Isk.of(r.buyPricePerUnit()),
                     "The highest buy order price of the item, or of what a blueprint builds"),
             new ColumnDef<>("dailyVolume", "Sold per Day", String.class, r -> formatPerDay(r.dailyVolume()),
                     "How many units people buy from sell orders per day in The Forge, the region of Jita, estimated "
@@ -60,16 +60,16 @@ public final class LpStoreTableModel extends ColumnTableModel<LpOfferRow> {
                     r -> formatIskPerLp(r.netIskPerLpBuy()),
                     "ISK/LP (Buy) after the sales tax your main character pays. "
                             + "Selling to buy orders has no broker fee"),
-            new ColumnDef<>("profitSell", "Profit (Sell)", String.class, r -> formatIsk(r.profitSell()),
+            new ColumnDef<>("profitSell", "Profit (Sell)", Isk.class, r -> Isk.signed(r.profitSell()),
                     "The ISK you make on the whole offer selling at the lowest sell price"),
-            new ColumnDef<>("profitBuy", "Profit (Buy)", String.class, r -> formatIsk(r.profitBuy()),
+            new ColumnDef<>("profitBuy", "Profit (Buy)", Isk.class, r -> Isk.signed(r.profitBuy()),
                     "The ISK you make on the whole offer selling to the highest buy order"),
-            new ColumnDef<>("netProfitSell", "Net Profit (Sell)", String.class, r -> formatIsk(r.netProfitSell()),
+            new ColumnDef<>("netProfitSell", "Net Profit (Sell)", Isk.class, r -> Isk.signed(r.netProfitSell()),
                     "Profit (Sell) after the sales tax and the broker fee your main character pays in Jita 4-4"),
-            new ColumnDef<>("netProfitBuy", "Net Profit (Buy)", String.class, r -> formatIsk(r.netProfitBuy()),
+            new ColumnDef<>("netProfitBuy", "Net Profit (Buy)", Isk.class, r -> Isk.signed(r.netProfitBuy()),
                     "Profit (Buy) after the sales tax your main character pays. "
                             + "Selling to buy orders has no broker fee"),
-            new ColumnDef<>("akCost", "AK Cost", String.class, false, r -> r.akCost() > 0 ? IskFormatter.format(r.akCost()) : "",
+            new ColumnDef<>("akCost", "AK Cost", Isk.class, false, r -> r.akCost() > 0 ? Isk.of(r.akCost()) : Isk.NONE,
                     "The Analysis Kredits the offer costs, in the stores that ask for them"),
             new ColumnDef<>("typeId", "Type ID", Integer.class, false, LpOfferRow::typeId,
                     "EVE's ID of the item type"),

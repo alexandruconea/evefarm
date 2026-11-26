@@ -3,10 +3,14 @@ package com.evefarm.ui;
 import com.evefarm.AppContext;
 import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.model.LpGain;
+import com.evefarm.model.MissionAgent;
 import com.evefarm.service.MissionIncome;
+import com.evefarm.service.MissionIncome.Grouping;
 import com.evefarm.service.MissionIncome.Payment;
 import com.evefarm.service.MissionIncome.Period;
 import com.evefarm.service.MissionIncome.Report;
+import com.evefarm.ui.EveEntity.Kind;
+import com.evefarm.ui.MissionAgentsTableModel.Row;
 import com.evefarm.ui.column.ColumnTableModel;
 
 import javax.swing.BorderFactory;
@@ -43,6 +47,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public final class MissionReportPanel extends TabPanel {
@@ -59,10 +65,11 @@ public final class MissionReportPanel extends TabPanel {
     private static final int SUMMARY_INSET = 6;
 
     private record Loaded(List<Payment> payments, List<LpGain> gains, Map<Long, Instant> lpFirstRecorded,
-                          double targetIskPerLp) {
+                          double targetIskPerLp, Map<String, MissionAgent> agents) {
     }
 
     private final AppContext appContext;
+    private final Consumer<StandingTarget> showStandings;
     private final ZoneId zone = ZoneId.systemDefault();
     private final DayOfWeek firstDayOfWeek = WeekFields.of(Locale.getDefault()).getFirstDayOfWeek();
     private final JComboBox<Period> periodCombo = new JComboBox<>(Period.values());
@@ -73,12 +80,13 @@ public final class MissionReportPanel extends TabPanel {
     private final JComboBox<String> characterCombo = new JComboBox<>();
     private final JButton saveButton = new JButton("Save Report...", Icons.SAVE);
     private final JPanel summaryGrid = new JPanel(new GridBagLayout());
+    private final JLabel daysTitle = new JLabel("By day");
     private final MissionDaysTableModel daysModel = new MissionDaysTableModel();
     private final JTable daysTable = new JTable(daysModel);
     private final MissionAgentsTableModel agentsModel = new MissionAgentsTableModel();
     private final JTable agentsTable = new JTable(agentsModel);
     private final AtomicInteger generation = new AtomicInteger();
-    private Loaded loaded = new Loaded(List.of(), List.of(), Map.of(), 0);
+    private Loaded loaded = new Loaded(List.of(), List.of(), Map.of(), 0, Map.of());
     private Period period;
     private LocalDate from;
     private Report report;
@@ -86,9 +94,10 @@ public final class MissionReportPanel extends TabPanel {
     private boolean updatingFilters;
     private int contentWidth;
 
-    public MissionReportPanel(AppContext appContext) {
+    public MissionReportPanel(AppContext appContext, Consumer<StandingTarget> showStandings) {
         super(new BorderLayout());
         this.appContext = appContext;
+        this.showStandings = showStandings;
         period = appContext.settingsDao.getEnum(SettingsDao.MISSION_REPORT_PERIOD, Period.class).orElse(Period.WEEK);
         from = period.start(LocalDate.now(zone), firstDayOfWeek);
         buildUi();
@@ -97,15 +106,23 @@ public final class MissionReportPanel extends TabPanel {
                 onShown();
             }
         }));
+        appContext.agentImportService.addImportListener(() -> SwingUtilities.invokeLater(() -> {
+            if (isShowing()) {
+                onShown();
+            }
+        }));
     }
 
     public void onShown() {
+        appContext.agentImportService.importInBackgroundIfMissing();
         BackgroundLoader.load(generation, () -> new Loaded(
                         MissionIncome.classify(appContext.walletJournalDao.findMissionIncome(),
                                 appContext.npcCatalogService.catalog()::isMissionNpc),
                         appContext.loyaltyPointService.gains(), appContext.loyaltyPointService.firstRecorded(),
                         appContext.settingsDao.getDouble(SettingsDao.LP_STORE_TARGET_ISK_PER_LP,
-                                SettingsDao.DEFAULT_LP_STORE_TARGET_ISK_PER_LP)),
+                                SettingsDao.DEFAULT_LP_STORE_TARGET_ISK_PER_LP),
+                        appContext.walletJournalDao.findMissionAgents().stream().collect(Collectors.toMap(
+                                MissionAgent::agentName, agent -> agent, (first, second) -> first))),
                 this::apply, "the mission report", failure -> {
                     summaryGrid.removeAll();
                     summaryGrid.add(new JLabel("Couldn't load the mission report - see the log."));
@@ -170,8 +187,11 @@ public final class MissionReportPanel extends TabPanel {
 
         installTable(daysTable, daysModel, "missionDays");
         installTable(agentsTable, agentsModel, "missionAgents");
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, titled("By day", daysTable),
-                titled("By agent", agentsTable));
+        EveEntityCells.install(agentsTable, appContext.itemIconService);
+        EveEntityCells.installStandingsLinks(agentsTable, this::showInStandings);
+        JPanel agents = titled(new JLabel("By agent"), agentsTable);
+        agents.setBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0));
+        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, titled(daysTitle, daysTable), agents);
         split.setResizeWeight(DEFAULT_DIVIDER);
         split.setBorder(BorderFactory.createEmptyBorder(8, 0, 8, 8));
         DividerMemory.install(split, appContext.settingsDao, SettingsDao.MISSION_REPORT_DIVIDER, DEFAULT_DIVIDER);
@@ -193,17 +213,18 @@ public final class MissionReportPanel extends TabPanel {
 
     private static String columnSample(Object key) {
         return switch (String.valueOf(key)) {
-            case "day" -> "0000-00-00 Wed";
-            case "agent" -> "Mmmmmmmm Mmmmmmmm";
+            case "day" -> "Week of 0000-00-00";
+            case "agent", "corporation" -> "Mmmmmmmm Mmmmmmmmmmmm";
+            case "faction" -> "Mmmmmmmm Mmmmmmmmm";
             case "missions" -> "0000";
             case "lp" -> "0,000,000";
             default -> WIDEST_ISK;
         };
     }
 
-    private static JPanel titled(String title, JTable table) {
+    private static JPanel titled(JLabel title, JTable table) {
         JPanel panel = new JPanel(new BorderLayout(0, 4));
-        panel.add(new JLabel(title), BorderLayout.NORTH);
+        panel.add(title, BorderLayout.NORTH);
         panel.add(new JScrollPane(table), BorderLayout.CENTER);
         return panel;
     }
@@ -232,7 +253,7 @@ public final class MissionReportPanel extends TabPanel {
             return;
         }
         LocalDate today = LocalDate.now(zone);
-        LocalDate anchor = !today.isBefore(from) && !today.isAfter(period.end(from)) ? today : from;
+        LocalDate anchor = !today.isBefore(from) && !today.isAfter(end(today)) ? today : from;
         period = chosen;
         from = period.start(anchor, firstDayOfWeek);
         appContext.settingsDao.set(SettingsDao.MISSION_REPORT_PERIOD, period.name());
@@ -252,26 +273,54 @@ public final class MissionReportPanel extends TabPanel {
         List<LpGain> gains = loaded.gains().stream()
                 .filter(gain -> character == null || character.equals(gain.characterName()))
                 .toList();
-        LocalDate to = period.end(from);
-        report = MissionIncome.report(payments, gains, from, to, zone);
-        notes = notes(report, lpFirstRecorded(character, gains));
-
         LocalDate today = LocalDate.now(zone);
         Optional<LocalDate> firstData = Stream.concat(payments.stream().map(Payment::paidAt),
                         gains.stream().map(LpGain::seenAt))
                 .min(Comparator.naturalOrder())
                 .map(instant -> instant.atZone(zone).toLocalDate());
+        boolean calendar = period.followsCalendar();
+        if (!calendar) {
+            from = firstData.filter(first -> first.isBefore(today)).orElse(today);
+        }
+        LocalDate to = end(today);
+        report = MissionIncome.report(payments, gains, from, to, zone);
+        notes = notes(report, lpFirstRecorded(character, gains));
+
+        String noun = period.toString().toLowerCase(Locale.ROOT);
         periodLabel.setText(MissionReport.periodName(period, from, to));
-        previousButton.setEnabled(firstData.map(first -> first.isBefore(from)).orElse(false));
-        previousButton.setToolTipText("The " + period.toString().toLowerCase(Locale.ROOT) + " before");
-        nextButton.setEnabled(to.isBefore(today));
-        nextButton.setToolTipText("The " + period.toString().toLowerCase(Locale.ROOT) + " after");
-        todayButton.setEnabled(today.isBefore(from) || today.isAfter(to));
-        todayButton.setToolTipText("Go back to the " + period.toString().toLowerCase(Locale.ROOT) + " of today");
+        previousButton.setEnabled(calendar && firstData.map(first -> first.isBefore(from)).orElse(false));
+        previousButton.setToolTipText(calendar ? "The " + noun + " before" : null);
+        nextButton.setEnabled(calendar && to.isBefore(today));
+        nextButton.setToolTipText(calendar ? "The " + noun + " after" : null);
+        todayButton.setEnabled(calendar && (today.isBefore(from) || today.isAfter(to)));
+        todayButton.setToolTipText(calendar ? "Go back to the " + noun + " of today" : null);
 
         showSummary(report, loaded.targetIskPerLp());
-        daysModel.setRows(report.days());
-        agentsModel.setRows(report.agents());
+        Grouping grouping = period.grouping();
+        daysTitle.setText(MissionDaysTableModel.title(grouping));
+        daysModel.setRows(MissionIncome.group(report.days(), grouping, firstDayOfWeek).stream()
+                .map(day -> new MissionDaysTableModel.Row(day, grouping))
+                .toList());
+        List<Row> agentRows = report.agents().stream()
+                .map(agent -> new Row(agent, agent.agentName() == null ? null
+                        : loaded.agents().get(agent.agentName())))
+                .toList();
+        agentsModel.setRows(agentRows);
+        EveEntityCells.loadImages(agentRows.stream().flatMap(Row::links), appContext.itemIconService,
+                agentsTable::repaint);
+    }
+
+    private void showInStandings(EveEntity entity) {
+        MissionAgent agent = loaded.agents().values().stream()
+                .filter(candidate -> entity.kind() == Kind.AGENT ? entity.id() == candidate.agentId()
+                        : entity.id().equals(candidate.corporationId()))
+                .findFirst()
+                .orElse(null);
+        showStandings.accept(StandingTarget.of(entity, agent, selectedCharacter()));
+    }
+
+    private LocalDate end(LocalDate today) {
+        return period.followsCalendar() ? period.end(from) : today;
     }
 
     private String selectedCharacter() {
@@ -346,8 +395,9 @@ public final class MissionReportPanel extends TabPanel {
         List<String> savedNotes = notes;
         String characters = Optional.ofNullable(selectedCharacter()).orElse(ALL_CHARACTERS);
         double targetIskPerLp = loaded.targetIskPerLp();
-        TextReportSaver.save(this, SAVE_TITLE, "mission-report-" + savedPeriod.name().toLowerCase(Locale.ROOT) + "-"
-                        + saved.from() + ".txt",
+        String fileName = "mission-report-" + savedPeriod.toString().toLowerCase(Locale.ROOT).replace(' ', '-') + "-"
+                + saved.from() + ".txt";
+        TextReportSaver.save(this, SAVE_TITLE, fileName,
                 () -> MissionReport.lines(saved, savedPeriod, characters, targetIskPerLp, savedNotes, Instant.now()),
                 busy -> saveButton.setEnabled(!busy));
     }

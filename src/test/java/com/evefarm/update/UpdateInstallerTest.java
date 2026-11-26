@@ -53,7 +53,7 @@ class UpdateInstallerTest {
 
         Database database = new Database(":memory:");
         MigrationRunner.run(database);
-        backups = new BackupRestoreService(database, new SettingsDao(database));
+        backups = new BackupRestoreService(database, new SettingsDao(database), () -> null);
 
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/", exchange -> {

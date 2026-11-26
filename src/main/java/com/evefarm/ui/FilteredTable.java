@@ -36,6 +36,8 @@ final class FilteredTable<R> {
         this.onFiltered = onFiltered;
         table.setModel(tableModel);
         sorter = SortableTables.withColumnChooser(table, tableModel, panelKey, appContext.tableColumnStateDao);
+        EveEntityCells.install(table, appContext.itemIconService);
+        EveEntityCells.loadImagesOfShownRows(table, appContext.itemIconService);
         ColumnCopySupport.install(table, tableModel);
 
         filterBarPanel = new FilterBarPanel(panelKey, tableModel.columnNames(), appContext.savedFilterDao);

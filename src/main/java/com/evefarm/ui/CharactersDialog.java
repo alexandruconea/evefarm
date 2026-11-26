@@ -54,6 +54,7 @@ public final class CharactersDialog extends JDialog {
         table = new JTable(tableModel);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         TableStyler.style(table);
+        table.setRowHeight(MainCharacterMarks.LARGE_PORTRAIT_SIZE + 8);
         ColumnWidthMemory.install(table, "characters", appContext.tableColumnStateDao);
         DefaultTableCellRenderer nameRenderer = new DefaultTableCellRenderer() {
             @Override
@@ -61,9 +62,12 @@ public final class CharactersDialog extends JDialog {
                                                            boolean hasFocus, int row, int column) {
                 super.getTableCellRendererComponent(t, value, isSelected, hasFocus, row, column);
                 EveCharacter character = tableModel.rowAt(t.convertRowIndexToModel(row));
-                setIcon(MainCharacterMarks.iconFor(tableModel.mainCharacterId, character.characterId()));
+                setIcon(IconRow.of(MainCharacterMarks.iconFor(tableModel.mainCharacterId, character.characterId()),
+                        appContext.characterPortraits.portrait(character.characterId(),
+                                MainCharacterMarks.LARGE_PORTRAIT_SIZE)));
+                setIconTextGap(8);
                 if (!isSelected) {
-                    setBackground(row % 2 == 0 ? t.getBackground() : TableStyler.stripeColor(t));
+                    setBackground(TableStyler.rowBackground(t, row));
                 }
                 return this;
             }

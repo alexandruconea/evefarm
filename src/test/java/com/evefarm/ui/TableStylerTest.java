@@ -2,11 +2,13 @@ package com.evefarm.ui;
 
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
+import com.evefarm.ui.column.Isk;
 import org.junit.jupiter.api.Test;
 
 import javax.swing.Icon;
 import javax.swing.JLabel;
 import javax.swing.JTable;
+import javax.swing.SwingConstants;
 import javax.swing.plaf.basic.BasicHTML;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
@@ -48,6 +50,37 @@ class TableStylerTest {
         assertFalse(table.isCellSelected(1, 0));
         assertFalse(table.isCellSelected(1, 1));
         assertEquals(1, table.getSelectedRow(), "code that asks for the selected row still gets it");
+    }
+
+    @Test
+    void amountsStandRightWithTheUnitInTheHeaderAndGainsAndLossesInColor() {
+        ColumnTableModel<Double> model = new ColumnTableModel<>(List.of(
+                new ColumnDef<>("what", "What", String.class, value -> "Bounty Prizes", "What it was"),
+                new ColumnDef<>("amount", "Amount", Isk.class, Isk::signed, "The ISK that came in or went out")));
+        model.setRows(List.of(26_378_176.31, -88_695.0));
+        JTable table = new JTable(model);
+        TableStyler.style(table);
+
+        JLabel gain = (JLabel) table.prepareRenderer(table.getCellRenderer(0, 1), 0, 1);
+        assertEquals("26,378,176.31", gain.getText());
+        assertEquals(SwingConstants.RIGHT, gain.getHorizontalAlignment());
+        assertEquals(TableStyler.gainColor(), gain.getForeground());
+        JLabel loss = (JLabel) table.prepareRenderer(table.getCellRenderer(1, 1), 1, 1);
+        assertEquals(TableStyler.lossColor(), loss.getForeground());
+        JLabel text = (JLabel) table.prepareRenderer(table.getCellRenderer(0, 0), 0, 0);
+        assertEquals(SwingConstants.LEADING, text.getHorizontalAlignment());
+        assertEquals("Amount (ISK)", TableStyler.withUnit(table, 1, "Amount"));
+        assertEquals("What", TableStyler.withUnit(table, 0, "What"));
+    }
+
+    @Test
+    void textThatIsANumberStandsRightToo() {
+        for (String number : List.of("1,234", "234,000.00 m3", "5.2%", "-0.23", "12,000 LP", "4,000 ISK/LP")) {
+            assertTrue(TableStyler.looksLikeNumber(number), number);
+        }
+        for (String text : List.of("2026-10-01 Thu", "Malpais Legate", "T3 Fierce", "1h 20m", "", "Yes")) {
+            assertFalse(TableStyler.looksLikeNumber(text), text);
+        }
     }
 
     @Test

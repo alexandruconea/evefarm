@@ -23,6 +23,7 @@ import java.time.Instant;
 final class UpdateButton extends JButton {
 
     private static final int ICON_SIZE = 20;
+    private static final Icon IDLE = FontAwesome.icon("arrows-rotate", FontAwesome::neutral, ICON_SIZE);
     private static final Dimension SIZE = new Dimension(34, 30);
 
     private final DataUpdater updater;
@@ -108,8 +109,7 @@ final class UpdateButton extends JButton {
                 g2.setColor(accent);
                 g2.draw(new Arc2D.Double(2.5, 2.5, 15, 15, 90 - angle, 110, Arc2D.OPEN));
             } else {
-                g2.scale(ICON_SIZE / 16.0, ICON_SIZE / 16.0);
-                Icons.REFRESH.paintIcon(c, g2, 0, 0);
+                IDLE.paintIcon(c, g2, 0, 0);
             }
             g2.dispose();
         }

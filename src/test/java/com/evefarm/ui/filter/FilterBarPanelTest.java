@@ -1,11 +1,14 @@
 package com.evefarm.ui.filter;
 
+import com.evefarm.ui.column.Isk;
 import org.junit.jupiter.api.Test;
 
+import javax.swing.ImageIcon;
 import javax.swing.RowFilter;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FilterBarPanelTest {
@@ -73,5 +76,30 @@ class FilterBarPanelTest {
                 FilterCondition.Operator.CONTAINS, "legate"), COLUMNS));
         assertFalse(FilterBarPanel.matches(row, condition(FilterCondition.ALL_COLUMNS,
                 FilterCondition.Operator.CONTAINS, "preda"), COLUMNS));
+    }
+
+    @Test
+    void theSearchLooksInEveryColumnWithoutCaringForCase() {
+        RowFilter.Entry<Object, Integer> row = row("Malpais Legate", Isk.of(26_378_176.31));
+
+        assertTrue(FilterBarPanel.matches(row, FilterBarPanel.search("  LEGATE "), COLUMNS));
+        assertTrue(FilterBarPanel.matches(row, FilterBarPanel.search("26,378,176"), COLUMNS));
+        assertFalse(FilterBarPanel.matches(row, FilterBarPanel.search("Barset"), COLUMNS));
+    }
+
+    @Test
+    void iconsAndEmptyCellsAreNotFoundAsText() {
+        RowFilter.Entry<Object, Integer> row = row(new ImageIcon(new byte[0]), null);
+
+        for (String text : List.of("con", "ima", "javax", "null", "@")) {
+            assertFalse(FilterBarPanel.matches(row, FilterBarPanel.search(text), COLUMNS), text);
+        }
+        assertFalse(FilterBarPanel.matches(row, condition(FilterCondition.ALL_COLUMNS,
+                FilterCondition.Operator.GREATER_THAN, "0"), COLUMNS), "an icon has no number");
+    }
+
+    @Test
+    void theSearchAndTheFiltersStartEmpty() {
+        assertNull(new FilterBarPanel("journal", COLUMNS, null).buildRowFilter());
     }
 }

@@ -3,6 +3,7 @@ package com.evefarm.ui;
 import com.evefarm.model.ContractRow;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
+import com.evefarm.ui.column.Isk;
 import com.evefarm.util.DateUtil;
 import com.evefarm.util.Text;
 
@@ -19,7 +20,8 @@ public final class ContractsTableModel extends ColumnTableModel<ContractRow> {
     private static final List<ColumnDef<ContractRow>> COLUMNS = List.of(
             new ColumnDef<>(INFO_COLUMN, "Info", Icon.class, r -> Icons.INFO,
                     "Click the icon to see the items in the contract and what they are worth"),
-            new ColumnDef<>("character", "Character", String.class, ContractRow::characterName,
+            new ColumnDef<>("character", "Character", EveEntity.class,
+                    r -> EveEntity.character(r.characterName(), r.characterId()),
                     "The character the contract belongs to"),
             new ColumnDef<>("type", "Type", String.class, r -> Text.titleCase(r.type()),
                     "Item Exchange, Auction or Courier"),
@@ -37,11 +39,11 @@ public final class ContractsTableModel extends ColumnTableModel<ContractRow> {
                     "Where the items are"),
             new ColumnDef<>("endLocation", "End Location", String.class, r -> nullToEmpty(r.endLocationName()),
                     "Where a courier contract delivers to"),
-            new ColumnDef<>("price", "Price", String.class, r -> formatIsk(r.price()),
+            new ColumnDef<>("price", "Price", Isk.class, r -> Isk.of(r.price()),
                     "What the buyer pays in an item exchange, or the starting bid of an auction"),
-            new ColumnDef<>("reward", "Reward", String.class, r -> formatIsk(r.reward()),
+            new ColumnDef<>("reward", "Reward", Isk.class, r -> Isk.of(r.reward()),
                     "What a courier contract pays for the delivery"),
-            new ColumnDef<>("collateral", "Collateral", String.class, r -> formatIsk(r.collateral()),
+            new ColumnDef<>("collateral", "Collateral", Isk.class, r -> Isk.of(r.collateral()),
                     "What the courier puts up, and loses if the delivery fails"),
             new ColumnDef<>("volume", "Volume", String.class, r -> r.volume() == null ? "" : String.format(Locale.US, "%,.2f m3", r.volume()),
                     "The volume of the items, in m3"),

@@ -3,8 +3,8 @@ package com.evefarm.ui;
 import com.evefarm.model.MarketOrderRow;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
+import com.evefarm.ui.column.Isk;
 import com.evefarm.util.DateUtil;
-import com.evefarm.util.IskFormatter;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -14,7 +14,8 @@ import java.util.Locale;
 public final class MarketOrdersTableModel extends ColumnTableModel<MarketOrderRow> {
 
     private static final List<ColumnDef<MarketOrderRow>> COLUMNS = List.of(
-            new ColumnDef<>("character", "Character", String.class, MarketOrderRow::characterName,
+            new ColumnDef<>("character", "Character", EveEntity.class,
+                    r -> EveEntity.character(r.characterName(), r.characterId()),
                     "The character who placed the order"),
             new ColumnDef<>("item", "Item", String.class, MarketOrderRow::typeName,
                     "The item bought or sold"),
@@ -26,20 +27,20 @@ public final class MarketOrdersTableModel extends ColumnTableModel<MarketOrderRo
                     "Buy order or sell order"),
             new ColumnDef<>("status", "Status", String.class, MarketOrdersTableModel::statusText,
                     "Active, Fulfilled, Expired, Cancelled or Closed"),
-            new ColumnDef<>("price", "Price", String.class, r -> IskFormatter.format(r.price()),
+            new ColumnDef<>("price", "Price", Isk.class, r -> Isk.of(r.price()),
                     "Your price for one unit"),
             new ColumnDef<>("outbid", "Outbid", String.class, MarketOrdersTableModel::formatOutbid,
                     "Yes when someone else has a better price at the same station: a lower sell order or a higher "
                             + "buy order. Checked every 15 minutes while EVE Farm runs; your own orders don't count"),
-            new ColumnDef<>("competitorPrice", "Competitor Price", String.class, false,
-                    r -> formatIsk(r.competitorPrice()),
+            new ColumnDef<>("competitorPrice", "Competitor Price", Isk.class, false,
+                    r -> Isk.of(r.competitorPrice()),
                     "The best price someone else offers at the same station: the lowest other sell order or the "
                             + "highest other buy order"),
             new ColumnDef<>("quantity", "Quantity", String.class, r -> r.volumeRemain() + " / " + r.volumeTotal(),
                     "The units left / the units at the start"),
-            new ColumnDef<>("escrow", "Escrow", String.class, r -> r.escrow() == null ? "" : IskFormatter.format(r.escrow()),
+            new ColumnDef<>("escrow", "Escrow", Isk.class, r -> r.escrow() == null ? Isk.NONE : Isk.of(r.escrow()),
                     "The ISK set aside to pay for a buy order"),
-            new ColumnDef<>("brokerFee", "Broker's Fee", String.class, r -> formatIsk(r.brokerFee()),
+            new ColumnDef<>("brokerFee", "Broker's Fee", Isk.class, r -> Isk.of(r.brokerFee()),
                     "What you paid to place the order, matched from your wallet journal"),
             new ColumnDef<>("brokerFeePercent", "Broker's Fee %", String.class, MarketOrdersTableModel::formatBrokerFeePercent,
                     "The broker's fee as a share of the order's value"),
@@ -56,15 +57,15 @@ public final class MarketOrdersTableModel extends ColumnTableModel<MarketOrderRo
                     "When the order was placed, in your local time"),
             new ColumnDef<>("expires", "Expires", String.class, MarketOrdersTableModel::formatExpiry,
                     "When the order expires, in your local time"),
-            new ColumnDef<>("marketPrice", "Market Price", String.class, false, r -> formatIsk(r.marketPrice()),
+            new ColumnDef<>("marketPrice", "Market Price", Isk.class, false, r -> Isk.of(r.marketPrice()),
                     "The item's price from your price provider"),
-            new ColumnDef<>("marketSellMin", "Market Sell Min", String.class, false, r -> formatIsk(r.marketSellMin()),
+            new ColumnDef<>("marketSellMin", "Market Sell Min", Isk.class, false, r -> Isk.of(r.marketSellMin()),
                     "The lowest sell price on the market"),
-            new ColumnDef<>("marketBuyMax", "Market Buy Max", String.class, false, r -> formatIsk(r.marketBuyMax()),
+            new ColumnDef<>("marketBuyMax", "Market Buy Max", Isk.class, false, r -> Isk.of(r.marketBuyMax()),
                     "The highest buy price on the market"),
             new ColumnDef<>("marketMargin", "Market Margin %", String.class, false, MarketOrdersTableModel::formatMargin,
                     "How far your price is above (+) or below (-) the market price, in percent"),
-            new ColumnDef<>("marketProfit", "Market Profit +", String.class, false, r -> formatIsk(r.marketProfit()),
+            new ColumnDef<>("marketProfit", "Market Profit +", Isk.class, false, r -> Isk.signed(r.marketProfit()),
                     "Your price less the market price, for one unit"),
             new ColumnDef<>("typeId", "Type ID", Integer.class, false, MarketOrderRow::typeId,
                     "EVE's ID of the item type"),

@@ -8,7 +8,10 @@ public record JournalRow(
         double amount,
         double balance,
         String description,
-        String firstPartyName,
-        String secondPartyName
+        Party firstParty,
+        Party secondParty
 ) {
+
+    public record Party(Long id, String name, String category) {
+    }
 }

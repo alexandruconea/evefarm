@@ -38,7 +38,8 @@ public final class MissionIncome {
     }
 
     public enum Period {
-        DAY("Day"), WEEK("Week"), MONTH("Month");
+        DAY("Day"), WEEK("Week"), MONTH("Month"), THREE_MONTHS("3 Months"), SIX_MONTHS("6 Months"), YEAR("Year"),
+        ALL_TIME("All Time");
 
         private final String label;
 
@@ -46,16 +47,31 @@ public final class MissionIncome {
             this.label = label;
         }
 
+        public boolean followsCalendar() {
+            return this != ALL_TIME;
+        }
+
+        public Grouping grouping() {
+            return switch (this) {
+                case DAY, WEEK, MONTH -> Grouping.DAY;
+                case THREE_MONTHS -> Grouping.WEEK;
+                case SIX_MONTHS, YEAR, ALL_TIME -> Grouping.MONTH;
+            };
+        }
+
         public LocalDate start(LocalDate date, DayOfWeek firstDayOfWeek) {
             return switch (this) {
-                case DAY -> date;
+                case DAY, ALL_TIME -> date;
                 case WEEK -> date.with(TemporalAdjusters.previousOrSame(firstDayOfWeek));
                 case MONTH -> date.withDayOfMonth(1);
+                case THREE_MONTHS -> firstMonthOf(date, 3);
+                case SIX_MONTHS -> firstMonthOf(date, 6);
+                case YEAR -> date.withDayOfYear(1);
             };
         }
 
         public LocalDate end(LocalDate start) {
-            return shift(start, 1).minusDays(1);
+            return followsCalendar() ? shift(start, 1).minusDays(1) : start;
         }
 
         public LocalDate shift(LocalDate start, int periods) {
@@ -63,7 +79,15 @@ public final class MissionIncome {
                 case DAY -> start.plusDays(periods);
                 case WEEK -> start.plusWeeks(periods);
                 case MONTH -> start.plusMonths(periods);
+                case THREE_MONTHS -> start.plusMonths(3L * periods);
+                case SIX_MONTHS -> start.plusMonths(6L * periods);
+                case YEAR -> start.plusYears(periods);
+                case ALL_TIME -> start;
             };
+        }
+
+        private static LocalDate firstMonthOf(LocalDate date, int months) {
+            return date.withDayOfMonth(1).withMonth((date.getMonthValue() - 1) / months * months + 1);
         }
 
         @Override
@@ -72,8 +96,26 @@ public final class MissionIncome {
         }
     }
 
+    public enum Grouping {
+        DAY, WEEK, MONTH;
+
+        public LocalDate start(LocalDate date, DayOfWeek firstDayOfWeek) {
+            return switch (this) {
+                case DAY -> date;
+                case WEEK -> date.with(TemporalAdjusters.previousOrSame(firstDayOfWeek));
+                case MONTH -> date.withDayOfMonth(1);
+            };
+        }
+    }
+
     public record Totals(int missions, double rewards, double timeBonuses, double missionNpcBounties,
                          double nearTurnInBounties, double otherBounties, long lp) {
+
+        public Totals plus(Totals other) {
+            return new Totals(missions + other.missions, rewards + other.rewards, timeBonuses + other.timeBonuses,
+                    missionNpcBounties + other.missionNpcBounties, nearTurnInBounties + other.nearTurnInBounties,
+                    otherBounties + other.otherBounties, lp + other.lp);
+        }
 
         public double bounties() {
             return missionNpcBounties + nearTurnInBounties;
@@ -197,6 +239,17 @@ public final class MissionIncome {
                         .thenComparing(CorporationLp::corporationName))
                 .toList();
         return new Report(from, to, total.totals(), dayTotals, agentTotals, corporationLp, lpEarnedSince);
+    }
+
+    public static List<DayTotals> group(List<DayTotals> days, Grouping grouping, DayOfWeek firstDayOfWeek) {
+        if (grouping == Grouping.DAY) {
+            return days;
+        }
+        Map<LocalDate, Totals> groups = new TreeMap<>();
+        for (DayTotals day : days) {
+            groups.merge(grouping.start(day.date(), firstDayOfWeek), day.totals(), Totals::plus);
+        }
+        return groups.entrySet().stream().map(group -> new DayTotals(group.getKey(), group.getValue())).toList();
     }
 
     private static final class Sum {

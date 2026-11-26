@@ -3,7 +3,7 @@ package com.evefarm.ui;
 import com.evefarm.model.AssetRow;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
-import com.evefarm.util.IskFormatter;
+import com.evefarm.ui.column.Isk;
 import com.evefarm.util.Text;
 
 import java.util.List;
@@ -12,7 +12,8 @@ import java.util.Locale;
 public final class AssetsTableModel extends ColumnTableModel<AssetRow> {
 
     private static final List<ColumnDef<AssetRow>> COLUMNS = List.of(
-            new ColumnDef<>("character", "Character", String.class, AssetRow::characterName,
+            new ColumnDef<>("character", "Character", EveEntity.class,
+                    r -> EveEntity.character(r.characterName(), r.characterId()),
                     "The character who owns the item"),
             new ColumnDef<>("item", "Item", String.class, AssetRow::typeName,
                     "The item's name"),
@@ -32,11 +33,11 @@ public final class AssetsTableModel extends ColumnTableModel<AssetRow> {
                     "The volume of one unit, in m3"),
             new ColumnDef<>("totalVolume", "Total Volume", String.class, r -> formatVolume(r.volume() * r.quantity()),
                     "The volume of all the units, in m3"),
-            new ColumnDef<>("unitPrice", "Unit Price", String.class, r -> IskFormatter.format(r.unitPrice()),
+            new ColumnDef<>("unitPrice", "Unit Price", Isk.class, r -> Isk.of(r.unitPrice()),
                     "The price of one unit, from your price provider"),
-            new ColumnDef<>("totalValue", "Total Value", String.class, r -> IskFormatter.format(r.totalValue()),
+            new ColumnDef<>("totalValue", "Total Value", Isk.class, r -> Isk.of(r.totalValue()),
                     "The unit price times the quantity"),
-            new ColumnDef<>("valuePerVolume", "ISK/m3", String.class, AssetsTableModel::formatValuePerVolume,
+            new ColumnDef<>("valuePerVolume", "ISK/m3", Isk.class, AssetsTableModel::valuePerVolume,
                     "What one m3 of the item is worth: the unit price divided by the volume. Handy to choose what to "
                             + "haul"),
             new ColumnDef<>("singleton", "Singleton", String.class, false, r -> r.singleton() ? "Yes" : "No",
@@ -61,10 +62,7 @@ public final class AssetsTableModel extends ColumnTableModel<AssetRow> {
         return String.format(Locale.US, "%,.2f m3", volume);
     }
 
-    private static String formatValuePerVolume(AssetRow row) {
-        if (row.volume() <= 0) {
-            return "";
-        }
-        return IskFormatter.format(row.unitPrice() / row.volume());
+    private static Isk valuePerVolume(AssetRow row) {
+        return row.volume() <= 0 ? Isk.NONE : Isk.of(row.unitPrice() / row.volume());
     }
 }

@@ -29,7 +29,7 @@ EVE Farm checks for a new version when it starts and once a day. **Help → Chec
 Everything stays on your computer, in `%USERPROFILE%\.evefarm` on Windows and `~/.evefarm` on Linux (readable only by your user):
 
 - `evefarm.db` holds your characters, history and settings;
-- `backups` holds automatic daily backups (the last 7 days and one per month for a year);
+- `backups` holds automatic daily backups (the last 7 days and one per month for a year). Each backup also keeps your EVE Gamelogs, and restoring it puts them back in the Gamelogs folder;
 - `logs` holds the log files.
 
 EVE only shows the last 30 to 90 days of most history, so EVE Farm saves it as it updates and keeps it for as long as you keep the app: wallet journal and transactions, closed market orders (**Show closed orders** in **Wallet > Market Orders**), finished contracts with their items, finished industry jobs, everything you mined (**Industry > Mining**), every change in your loyalty points (**LP History...** in the LP Store tab), and your whole asset list as it was at the end of each month (**Show** at the bottom of **Values > Assets**).
@@ -45,7 +45,7 @@ EVE Farm has no telemetry and sends nothing to its developer. It only connects t
 - EVE's official login and API (`login.eveonline.com`, `esi.evetech.net`), for the characters you add;
 - Fuzzwork (`www.fuzzwork.co.uk`, `market.fuzzwork.co.uk`), for market prices and EVE's static data;
 - Janice (`janice.e-351.com`), only if you choose it as your price provider;
-- `images.evetech.net`, for item icons;
+- `images.evetech.net`, for item icons, the portraits of your characters and of agents, and the logos of corporations and factions;
 - GitHub (`api.github.com`, `github.com`), to check for and download updates. You can turn the automatic check off in **Options → Settings...**.
 
 A character's location and ship are only read while you track Abyss runs for it in the **Abyss** tab, every 10 seconds. EVE Farm saves the runs it detects (start, length and ship), not where the character has been. While tracking, it also checks the clipboard every second, so that a cargo list you copy in EVE counts as the cargo before or after a run. Anything that isn't a list of EVE items is ignored and never saved.
@@ -89,7 +89,7 @@ Only `EVEFarm.exe` is signed, and only when it is built from this repository by 
 
 EVE Farm's own code is released under the [MIT License](LICENSE). The license doesn't cover EVE Online's names, images or game data, which belong to their owners (see Trademarks below).
 
-The tab and menu icons are from [Phosphor Icons](https://phosphoricons.com), also under the MIT License ([copy](src/main/resources/icons/phosphor/LICENSE.txt)).
+The icons are from Font Awesome Free by Fonticons, Inc., under the Creative Commons Attribution 4.0 License. See [fontawesome.com/license/free](https://fontawesome.com/license/free) ([copy](src/main/resources/icons/fontawesome/LICENSE.txt)).
 
 ## Trademarks
 

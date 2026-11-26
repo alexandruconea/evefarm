@@ -2,8 +2,11 @@ package com.evefarm.db.dao;
 
 import com.evefarm.db.Database;
 import com.evefarm.db.MigrationRunner;
+import com.evefarm.model.AgentRow;
 import com.evefarm.model.JournalEntry;
 import com.evefarm.model.JournalPayout;
+import com.evefarm.model.JournalRow;
+import com.evefarm.model.MissionAgent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -69,6 +72,41 @@ class WalletJournalDaoTest {
         assertEquals("Yasonar Anoh", income.get(1).agentName());
         assertNull(income.get(0).agentName(), "a bounty is paid by CONCORD, not an agent");
         assertEquals("16037: 1", income.get(0).reason());
+    }
+
+    @Test
+    void journalRowsKnowWhoTheTwoPartiesAre() {
+        new EntityNameCacheDao(database).upsert(3014399L, "Yasonar Anoh", "character");
+        dao.saveForCharacter(CHARACTER_ID, List.of(
+                new JournalEntry(1, "2026-10-28T20:55:10Z", "agent_mission_reward", 1_940_400, 0, "", "", 3014399,
+                        (int) CHARACTER_ID, 0, null)));
+
+        JournalRow row = dao.listRows().getFirst();
+
+        assertEquals(new JournalRow.Party(3014399L, "Yasonar Anoh", "character"), row.firstParty());
+        assertEquals(new JournalRow.Party(CHARACTER_ID, "#" + CHARACTER_ID, null), row.secondParty(),
+                "a party whose name isn't known yet shows its ID");
+    }
+
+    @Test
+    void missionAgentsComeWithTheirCorporationAndFaction() {
+        new EntityNameCacheDao(database).upsert(3014399L, "Yasonar Anoh", "character");
+        new AgentDao(database).replaceAll(List.of(new AgentRow(3014399L, "Yasonar Anoh", 1000035L, "Caldari Navy",
+                500001L, "Caldari State", "Security", "BasicAgent", 4, false, null, null, null, null, null, null,
+                null, null, null)));
+        dao.saveForCharacter(CHARACTER_ID, List.of(
+                new JournalEntry(1, "2026-10-28T20:55:10Z", "agent_mission_reward", 1_940_400, 0, "", "", 3014399,
+                        (int) CHARACTER_ID, 0, null),
+                new JournalEntry(2, "2026-10-28T20:55:10Z", "agent_mission_time_bonus_reward", 1_801_800, 0, "", "",
+                        3014399, (int) CHARACTER_ID, 0, null),
+                new JournalEntry(3, "2026-10-29T10:00:00Z", "agent_mission_reward", 500_000, 0, "", "", 3999999,
+                        (int) CHARACTER_ID, 0, null),
+                payout(4, "2026-10-28T20:43:54Z", 495_000)));
+
+        assertEquals(List.of(
+                        new MissionAgent(3014399L, "Yasonar Anoh", 1000035L, "Caldari Navy", 500001L, "Caldari State"),
+                        new MissionAgent(3999999L, "Agent #3999999", null, null, null, null)),
+                dao.findMissionAgents());
     }
 
     @Test

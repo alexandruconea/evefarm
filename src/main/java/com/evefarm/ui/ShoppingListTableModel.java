@@ -2,7 +2,7 @@ package com.evefarm.ui;
 
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
-import com.evefarm.util.IskFormatter;
+import com.evefarm.ui.column.Isk;
 import com.evefarm.util.Text;
 
 import java.util.List;
@@ -29,9 +29,9 @@ public final class ShoppingListTableModel extends ColumnTableModel<ShoppingListT
                     "How many you already have (see the Stock setting)"),
             new ColumnDef<>("toBuy", "To Buy", String.class, r -> Text.count(r.toBuy()),
                     "What is left to buy: needed less in stock"),
-            new ColumnDef<>("unitPrice", "Unit Price", String.class, r -> IskFormatter.format(r.unitPrice()),
+            new ColumnDef<>("unitPrice", "Unit Price", Isk.class, r -> Isk.of(r.unitPrice()),
                     "The price of one unit on the market"),
-            new ColumnDef<>("cost", "Cost", String.class, r -> IskFormatter.format(r.cost()),
+            new ColumnDef<>("cost", "Cost", Isk.class, r -> Isk.of(r.cost()),
                     "To buy times the unit price"),
             new ColumnDef<>("typeId", "Type ID", Integer.class, false, Row::typeId,
                     "EVE's ID of the item type")

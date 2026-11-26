@@ -31,6 +31,8 @@ final class LegalFooter {
 
     static final String FULL_NOTICE = "EVE Farm's own code is released under the MIT License. The license doesn't "
             + "cover EVE Online's names, images or game data, which belong to their owners.\n\n"
+            + "The icons are from Font Awesome Free by Fonticons, Inc., under the Creative Commons Attribution 4.0 "
+            + "License.\n\n"
             + "© 2014 CCP hf. All rights reserved. \"EVE\", \"EVE Online\", \"CCP\", and all related logos and "
             + "images are trademarks or registered trademarks of CCP hf.\n\n"
             + "EVE Farm is an independent, fan-made application that uses the official EVE Online APIs under the "

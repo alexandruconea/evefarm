@@ -33,6 +33,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -54,10 +55,15 @@ public final class BackupRestoreService {
 
     private final Database database;
     private final SettingsDao settingsDao;
+    private final Supplier<Path> gamelogDirectory;
 
-    public BackupRestoreService(Database database, SettingsDao settingsDao) {
+    public record Staged(List<String> toAddAgain, int gamelogsRestored, Path gamelogDirectory) {
+    }
+
+    public BackupRestoreService(Database database, SettingsDao settingsDao, Supplier<Path> gamelogDirectory) {
         this.database = database;
         this.settingsDao = settingsDao;
+        this.gamelogDirectory = gamelogDirectory;
     }
 
     public static String defaultBackupFileName() {
@@ -81,6 +87,7 @@ public final class BackupRestoreService {
                     throw new IOException("Failed to write the backup to " + target, e);
                 }
             }
+            BackupGamelogs.addTo(partial, gamelogDirectory.get());
             backupPassword().ifPresent(password ->
                     BackupLogins.addPortableCopies(partial, new PasswordProtection(password)));
             moveReplacing(partial, target);
@@ -324,22 +331,27 @@ public final class BackupRestoreService {
         return BackupLogins.passwordNeeds(backup, BackupLogins.here(database));
     }
 
-    public List<String> stageRestore(Path sourceBackupFile, String password) throws IOException {
+    public Staged stageRestore(Path sourceBackupFile, String password) throws IOException {
         return stage(sourceBackupFile, AppPaths.pendingRestoreFile(), password);
     }
 
-    List<String> stage(Path source, Path pending, String password) throws IOException {
+    Staged stage(Path source, Path pending, String password) throws IOException {
         BackupLogins.Here here = BackupLogins.here(database);
         Path partial = pending.resolveSibling("." + pending.getFileName() + "." + UUID.randomUUID() + ".partial");
         try {
             Files.copy(source, partial, StandardCopyOption.REPLACE_EXISTING);
             List<String> toAddAgain;
+            BackupGamelogs.Restored gamelogs;
             Database staged = new Database(partial.toString());
             try {
                 MigrationRunner.run(staged);
                 toAddAgain = BackupLogins.carryOver(staged, here, password);
+                gamelogs = BackupGamelogs.restoreFrom(staged.connection(), gamelogDirectory.get());
                 try (Statement statement = staged.connection().createStatement()) {
                     statement.execute("PRAGMA journal_mode = DELETE");
+                    if (gamelogs.included()) {
+                        statement.execute("VACUUM");
+                    }
                 }
             } catch (SQLException e) {
                 throw new IOException("Couldn't prepare the backup for restoring", e);
@@ -347,7 +359,7 @@ public final class BackupRestoreService {
                 staged.close();
             }
             moveReplacing(partial, pending);
-            return toAddAgain;
+            return new Staged(toAddAgain, gamelogs.files(), gamelogs.directory());
         } finally {
             Files.deleteIfExists(partial);
             Files.deleteIfExists(partial.resolveSibling(partial.getFileName() + "-wal"));

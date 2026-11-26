@@ -4,6 +4,7 @@ import com.evefarm.db.dao.WalletJournalDao.MissionIncomeEntry;
 import com.evefarm.model.LpGain;
 import com.evefarm.model.NpcType;
 import com.evefarm.service.MissionIncome.AgentTotals;
+import com.evefarm.service.MissionIncome.DayTotals;
 import com.evefarm.service.MissionIncome.Kind;
 import com.evefarm.service.MissionIncome.Payment;
 import com.evefarm.service.MissionIncome.Period;
@@ -18,6 +19,7 @@ import java.time.ZoneId;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 class MissionIncomeTest {
@@ -125,6 +127,47 @@ class MissionIncomeTest {
         assertEquals(LocalDate.of(2026, 2, 28), Period.MONTH.end(LocalDate.of(2026, 2, 1)));
         assertEquals(LocalDate.of(2026, 9, 1), Period.MONTH.shift(LocalDate.of(2026, 10, 1), -1));
         assertEquals(LocalDate.of(2026, 10, 19), Period.WEEK.shift(LocalDate.of(2026, 10, 26), -1));
+    }
+
+    @Test
+    void longPeriodsAreShownByWeekOrByMonth() {
+        Totals one = new Totals(1, 100, 10, 50, 5, 1, 1_000);
+        List<DayTotals> days = List.of(new DayTotals(LocalDate.of(2026, 10, 28), one),
+                new DayTotals(LocalDate.of(2026, 10, 30), one), new DayTotals(LocalDate.of(2026, 11, 2), one));
+
+        assertEquals(days, MissionIncome.group(days, Period.MONTH.grouping(), DayOfWeek.MONDAY));
+        assertEquals(List.of(new DayTotals(LocalDate.of(2026, 10, 26), one.plus(one)),
+                        new DayTotals(LocalDate.of(2026, 11, 2), one)),
+                MissionIncome.group(days, Period.THREE_MONTHS.grouping(), DayOfWeek.MONDAY));
+        assertEquals(List.of(new DayTotals(LocalDate.of(2026, 10, 1), one.plus(one)),
+                        new DayTotals(LocalDate.of(2026, 11, 1), one)),
+                MissionIncome.group(days, Period.YEAR.grouping(), DayOfWeek.MONDAY));
+        assertEquals(new Totals(2, 200, 20, 100, 10, 2, 2_000), one.plus(one));
+    }
+
+    @Test
+    void theLongerPeriodsAreQuartersHalvesAndYears() {
+        LocalDate wednesday = LocalDate.of(2026, 10, 28);
+        LocalDate march = LocalDate.of(2026, 3, 31);
+
+        assertEquals(LocalDate.of(2026, 10, 1), Period.THREE_MONTHS.start(wednesday, DayOfWeek.MONDAY));
+        assertEquals(LocalDate.of(2026, 1, 1), Period.THREE_MONTHS.start(march, DayOfWeek.MONDAY));
+        assertEquals(LocalDate.of(2026, 12, 31), Period.THREE_MONTHS.end(LocalDate.of(2026, 10, 1)));
+        assertEquals(LocalDate.of(2026, 7, 1), Period.THREE_MONTHS.shift(LocalDate.of(2026, 10, 1), -1));
+        assertEquals(LocalDate.of(2027, 1, 1), Period.THREE_MONTHS.shift(LocalDate.of(2026, 10, 1), 1));
+
+        assertEquals(LocalDate.of(2026, 7, 1), Period.SIX_MONTHS.start(wednesday, DayOfWeek.MONDAY));
+        assertEquals(LocalDate.of(2026, 1, 1), Period.SIX_MONTHS.start(march, DayOfWeek.MONDAY));
+        assertEquals(LocalDate.of(2026, 6, 30), Period.SIX_MONTHS.end(LocalDate.of(2026, 1, 1)));
+        assertEquals(LocalDate.of(2026, 1, 1), Period.SIX_MONTHS.shift(LocalDate.of(2026, 7, 1), -1));
+
+        assertEquals(LocalDate.of(2026, 1, 1), Period.YEAR.start(wednesday, DayOfWeek.MONDAY));
+        assertEquals(LocalDate.of(2026, 12, 31), Period.YEAR.end(LocalDate.of(2026, 1, 1)));
+        assertEquals(LocalDate.of(2025, 1, 1), Period.YEAR.shift(LocalDate.of(2026, 1, 1), -1));
+
+        assertFalse(Period.ALL_TIME.followsCalendar());
+        assertEquals(wednesday, Period.ALL_TIME.start(wednesday, DayOfWeek.MONDAY));
+        assertEquals(wednesday, Period.ALL_TIME.shift(wednesday, -1));
     }
 
     @Test

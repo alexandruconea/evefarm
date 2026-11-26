@@ -41,6 +41,15 @@ class AgentDaoTest {
     }
 
     @Test
+    void theCatalogIsEmptyUntilItIsImported() {
+        assertTrue(dao.isEmpty());
+
+        dao.replaceAll(List.of(agent(3008416L, "Aakari Ebiahi", "Jita", 30000142L)));
+
+        assertFalse(dao.isEmpty());
+    }
+
+    @Test
     void replacingTheCatalogDropsAgentsThatAreNoLongerInIt() {
         dao.replaceAll(List.of(agent(3008416L, "Aakari Ebiahi", "Jita", 30000142L)));
         AgentRow current = agent(3018920L, "Ichiro Saihara", "Perimeter", 30000144L);

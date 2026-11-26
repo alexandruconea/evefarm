@@ -3,14 +3,15 @@ package com.evefarm.ui;
 import com.evefarm.AppContext;
 import com.evefarm.model.LpOfferRow;
 import com.evefarm.model.SellingFees;
-import com.evefarm.service.LpOfferDepthService;
 import com.evefarm.service.LpOfferDepthService.JitaOrders;
 import com.evefarm.service.LpOfferDepthService.Purchase;
 import com.evefarm.service.LpOfferDepthService.Result;
 import com.evefarm.service.LpOfferDepthService.Sale;
+import com.evefarm.service.LpOfferDepthService;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
 import com.evefarm.ui.column.ColumnWidthMemory;
+import com.evefarm.ui.column.Isk;
 import com.evefarm.util.DateUtil;
 import com.evefarm.util.IskFormatter;
 import com.evefarm.util.Text;
@@ -61,7 +62,7 @@ final class LpSeveralTimesDialog extends JDialog {
                     "The lowest sell price in Jita 4-4, the one the LP Store table counts every unit at"),
             new ColumnDef<>("averagePrice", "Average Price", String.class, r -> isk(r.averagePrice()),
                     "What each unit really costs you, buying from the cheapest sell order up"),
-            new ColumnDef<>("cost", "Cost", String.class, r -> IskFormatter.format(r.cost()),
+            new ColumnDef<>("cost", "Cost", Isk.class, r -> Isk.of(r.cost()),
                     "What you pay for all of them, cheapest first. When Jita 4-4 hasn't enough, only for what is "
                             + "for sale"),
             new ColumnDef<>("aboveLowest", "Above Lowest", String.class, r -> isk(r.aboveLowest()),

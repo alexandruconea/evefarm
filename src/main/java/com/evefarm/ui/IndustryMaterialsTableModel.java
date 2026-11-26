@@ -2,7 +2,7 @@ package com.evefarm.ui;
 
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
-import com.evefarm.util.IskFormatter;
+import com.evefarm.ui.column.Isk;
 import com.evefarm.util.Text;
 
 import java.util.List;
@@ -17,9 +17,9 @@ public final class IndustryMaterialsTableModel extends ColumnTableModel<Industry
                     "A material the final job uses"),
             new ColumnDef<>("quantity", "Quantity", String.class, r -> Text.count(r.quantity()),
                     "How many the final job uses, after the ME and the structure's bonus"),
-            new ColumnDef<>("unitPrice", "Unit Price", String.class, r -> IskFormatter.format(r.unitPrice()),
+            new ColumnDef<>("unitPrice", "Unit Price", Isk.class, r -> Isk.of(r.unitPrice()),
                     "The price of one unit: the market price when you buy it, what it costs to make when you build it"),
-            new ColumnDef<>("total", "Total", String.class, r -> IskFormatter.format(r.total()),
+            new ColumnDef<>("total", "Total", Isk.class, r -> Isk.of(r.total()),
                     "The quantity times the unit price"),
             new ColumnDef<>("source", "Source", String.class, Row::source,
                     "Build or Buy, for the items you could make yourself"),

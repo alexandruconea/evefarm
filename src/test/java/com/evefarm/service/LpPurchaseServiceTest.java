@@ -263,7 +263,7 @@ class LpPurchaseServiceTest {
                 null, List.of(), 0, 0, null, null, null, null)));
         when(standings.getRows()).thenReturn(List.of(new StandingRow(PILOT, "Malpais Legate",
                 SellingFeesService.JITA_STATION_CORPORATION, "npc_corp", "Caldari Navy", 5.0, null, null, null, null,
-                null)));
+                null, null, null)));
 
         Lot lot = service.lots().getFirst();
 

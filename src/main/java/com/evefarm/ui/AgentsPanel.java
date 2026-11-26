@@ -12,6 +12,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import java.awt.BorderLayout;
 import java.util.logging.Level;
@@ -45,6 +46,10 @@ public final class AgentsPanel extends TabPanel {
                 countLabel, "agents", appContext.agentDao::listAll);
         support.init();
         ZkillboardLinks.install(table);
+        appContext.agentImportService.addImportListener(() -> SwingUtilities.invokeLater(() -> {
+            updateStatusLabel();
+            support.reload();
+        }));
     }
 
     @Override

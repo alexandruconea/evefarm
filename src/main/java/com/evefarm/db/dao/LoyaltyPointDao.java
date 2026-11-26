@@ -166,6 +166,7 @@ public final class LoyaltyPointDao {
                  ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     result.add(new LoyaltyPointHistoryRow(
+                            rs.getLong("character_id"),
                             rs.getString("character_name"),
                             rs.getLong("corporation_id"),
                             rs.getString("corporation_name"),

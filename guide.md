@@ -48,6 +48,8 @@ Open **File > Characters...** to manage your characters.
 - **Remove** removes a character. Its login and its current assets, orders, contracts and jobs are removed. Its history (journal, transactions, Tracker, NPC kills and officers) is kept.
 - **Copy EVE Settings...** copies window positions and other in-game settings between characters. See [Copy EVE Settings](#copy-eve-settings).
 
+Each character shows their EVE portrait in this list and in the **Character** column of the tables. EVE Farm downloads the portraits when it starts and when you add a character, and keeps them on your computer.
+
 If a character changes owner (it was sold or transferred to another account), EVE Farm refuses to log it in again under the new owner. Remove it and add it again to keep tracking it. Its history so far is kept.
 
 If EVE no longer accepts a character's login, for example after you revoked EVE Farm's access to the account, its updates fail with a message that asks you to add it again, and EVE Farm stops sending that login to EVE until you do. Click **Add Character...** and log in with that character. Its history is kept.
@@ -94,7 +96,7 @@ During EVE's daily downtime the servers don't answer. The update says so; try ag
 
 ## The tabs
 
-The tabs sit in the top bar, between **File** and the **Update**, **Options** and **Help** menus: **Values**, **Wallet**, **LP Store**, **NPC Kills**, **Abyss**, **Industry**, **Standings** and **Skills**. When the window is too narrow for their names, they show only their icons; hover one to see its name. A tab with an arrow next to its name holds several pages: click it to open the page you used last there and a list of its pages, with a tick next to the one you are on, then pick another page from the list or click anywhere else to stay.
+The tabs sit in the top bar, between **File** and the **Update**, **Options** and **Help** menus: **Values**, **Wallet**, **LP Store**, **NPC Kills**, **Abyss**, **Industry**, **Standings** and **Skills**. When the window is too narrow for their names, they show only their icons; hover one to see its name. A tab with an arrow next to its name holds several pages: click it to open the page you used last there and a list of its pages, with the one you are on in bold, then pick another page from the list or click anywhere else to stay.
 
 You can hide tabs you don't use and change their order in **Options > Show Tabs...**: tick a tab to show it, also the pages of **Values**, **Wallet**, **Industry** and **Standings** (ticking or clearing one of these shows or hides all its pages), and use **Move Up** and **Move Down** to reorder. To hide a tab quickly, right-click it and choose **Close Tab**; it comes back when you tick it again in **Show Tabs...**.
 
@@ -157,7 +159,7 @@ Where your ISK came from and went: **Journal**, **Transactions**, **Market Order
 
 #### Journal
 
-Your wallet journal: date, type, amount, balance, description and the two parties of every entry. EVE only shows the last 30 days; EVE Farm keeps every entry it has seen.
+Your wallet journal: date, type, amount, balance, description and the two parties of every entry. EVE only shows the last 30 days; EVE Farm keeps every entry it has seen. The two parties show a portrait for characters and agents and a logo for corporations, alliances and factions; the pictures load as the rows come into view.
 
 #### Transactions
 
@@ -238,9 +240,10 @@ Your market sales come from **Update**: each sale of the item by any of your cha
 - LP you earned while EVE Farm was closed shows on the day it reads it next, with a mark in the corner of the square, and the hover tip says since when. LP you spend between two reads isn't seen.
 - Squares with only an outline are days before EVE Farm started saving your LP.
 
-**Report** adds up the LP you earned and the ISK your missions brought in over a day, a week or a month.
+**Report** adds up the LP you earned and the ISK your missions brought in over a day, a week, a month, 3 or 6 months, a year or all the time EVE Farm has data for.
 
-- Pick **Day**, **Week** or **Month**, then use **<** and **>** to go to the one before or after. **Today** goes back to the one you are in. Weeks start on the first day of the week of your computer's settings, as in **LP per Day**.
+- Pick **Day**, **Week**, **Month**, **3 Months**, **6 Months** or **Year**, then use **<** and **>** to go to the one before or after. **Today** goes back to the one you are in. Weeks start on the first day of the week of your computer's settings, as in **LP per Day**. **3 Months** are the quarters of the year (January to March, April to June, and so on), **6 Months** its halves (January to June and July to December).
+- **All Time** adds up everything, from the first day EVE Farm has ISK or LP for to today.
 - Pick a **Character:** to see only theirs.
 - **Missions turned in** counts the missions you completed. A mission that pays only a time bonus counts too.
 - **ISK from missions** is the mission rewards, the time bonuses and the bounties of the NPCs you killed in missions, after corporation tax:
@@ -248,7 +251,8 @@ Your market sales come from **Update**: each sale of the item by any of your cha
   - **Other bounties near a turn-in**: other NPCs, such as those of level 5 missions, when EVE paid their bounty up to 30 minutes after or an hour before a mission turn-in of the same character. EVE pays bounties every 20 minutes, so the last kills of a mission are often paid just after you turn it in.
   - **Not counted: other bounties** are bounties far from any turn-in, such as ratting. They are shown, but not added to the mission ISK.
 - **LP earned** is the LP your characters earned with each corporation, counted as in **LP per Day**. **Worth at** values it at your **Set ISK/LP Target...**, and **ISK and LP together** adds it to the mission ISK.
-- **By day** lists each day of the report, and **By agent** each agent you ran missions for. A bounty counts for the agent of the turn-in closest to it; mission NPC bounties far from any turn-in are listed as **No turn-in nearby**.
+- **By day** lists each day of the report, and **By agent** below it each agent you ran missions for. For **3 Months** the days are added up **By week**, and for **6 Months**, **Year** and **All Time** **By month**; **Save Report...** still lists every day. Drag the bar between them to make one taller; EVE Farm remembers where you leave it. A bounty counts for the agent of the turn-in closest to it; mission NPC bounties far from any turn-in are listed as **No turn-in nearby**.
+- **By agent** shows each agent's portrait, and the corporation and faction they work for with their logos. Click an agent, a corporation or a faction to see it in **Standings**: the faction or corporation is picked on the left, and an agent on the right, under their corporation. With **All characters**, it shows the character with the best standing. The corporation and faction come from the agent list of **Standings > Agents**, which EVE Farm downloads by itself the first time it needs it.
 - **Save Report...** saves the report as a text file.
 - The ISK comes from your wallet journal, so run **Update** with **Journal** ticked first. EVE shows only the last 30 days of the journal, and EVE Farm keeps it from then on. LP is counted only since EVE Farm started saving it. **Save Report...** notes when that was.
 
@@ -393,13 +397,14 @@ Your characters' standings with EVE's factions, NPC corporations and agents. Run
 
 The tab has two sides. Drag the bar between them to make one wider; EVE Farm remembers where you leave it.
 
-- **Factions and corporations** (left): each faction, best standing first, with its corporations just below it, indented. Corporations whose faction you have no standing with come after, then those whose faction isn't known.
-- **Agents** (right): each agent with its standing, corporation, level, division and system.
+- **Factions and corporations** (left): each faction, best standing first, with its corporations just below it, indented. Corporations whose faction you have no standing with come after, then those whose faction isn't known. Each has its logo.
+- **Agents** (right): each agent with their portrait, standing, corporation, level, division and system. The corporation and faction show their logos.
 - Click a faction on the left to see only its agents on the right, or a corporation to see only that corporation's agents, for the same character. **Show All Agents**, Esc, or a click below the rows shows every agent again.
+- A click on an agent, a corporation or a faction in **LP Store > Report** opens this page with it selected.
 - Positive standings are blue, negative ones red.
 - Each side has its own filters and columns. Click a column header to sort another way; the grouping on the left comes back when the tab is opened again.
 
-The corporation, faction, level, division and system of an agent, and the faction of a corporation, come from the agent list. Click **Refresh Agent Data...** in **Standings > Agents** once to fill them; without it, clicking a faction finds none of its agents.
+The corporation, faction, level, division and system of an agent, and the faction of a corporation, come from the agent list of **Standings > Agents**. EVE Farm downloads it by itself the first time you open **Standings** or **LP Store > Report** without it, and fills these in when it is done.
 
 EVE's API gives the standing without the bonus from the Connections, Diplomacy and Criminal Connections skills, so it can differ a little from the value the game shows with your skills applied.
 
@@ -407,9 +412,9 @@ A character added before EVE Farm 1.0.16 must be added again (**File > Character
 
 #### Agents
 
-A searchable list of all of EVE's NPC agents: name, corporation, faction, division, level, type, whether it is a locator agent, and its station, system, constellation, region and security status.
+A searchable list of all of EVE's NPC agents: name, corporation, faction, division, level, type, whether it is a locator agent, and its station, system, constellation, region and security status. Each agent shows their portrait, and their corporation and faction their logos; the pictures load as the rows come into view.
 
-- Click **Refresh Agent Data...** the first time to download the list. It changes rarely.
+- EVE Farm downloads the list by itself the first time **Standings** or **LP Store > Report** needs it. It changes rarely; click **Refresh Agent Data...** to download it again.
 - System, constellation and region names have a zKillboard icon. Click it to see the recent kills there, so you can judge how dangerous the area is.
 
 ### Skills
@@ -444,11 +449,17 @@ A character added before EVE Farm 1.0.16 must be added again (**File > Character
 
 Most pages show a table, and all of them work the same way.
 
-**Filters**
+**Search and filters**
 
-- Click **Add** to add a filter line. Each line has a tick box to turn it on or off, **And**/**Or** to combine it with the line above, the column to look in (**All** looks in every column), the condition (Contains, Equals, Not Equals, Starts With, Ends With, Greater Than, Less Than) and the value.
-- **Clear** removes all filters. **Showing X of Y** says how many rows match.
-- **Save...** saves the filters under a name; **Load...** brings them back. Saved filters belong to their page.
+- Type in **Search:** to show only the rows that contain the text in any column.
+- Click **Filters** to filter by column. Each line has a tick box to turn it on or off, **And**/**Or** to combine it with the line above, the column to look in (**All** looks in every column), the condition (Contains, Equals, Not Equals, Starts With, Ends With, Greater Than, Less Than) and the value; **+** adds a line and **-** removes it. Click **Filters** again to hide the lines: the filters keep working, and the button shows how many there are, such as **Filters (2)**.
+- **Clear** removes the search and all filters. **Showing X of Y** says how many rows match.
+- **Save...** saves the search and the filters under a name; **Load...** brings them back. Saved filters belong to their page.
+
+**Amounts**
+
+- Amounts in ISK stand on the right, so their digits line up, and the header says **(ISK)** instead of every cell. Other numbers stand on the right too.
+- Amounts that can be a gain or a loss are green when you got ISK and red when you paid it: the amounts in **Journal**, the totals in **Transactions** (what you bought is negative) and the profits in **Abyss**, **Industry**, **LP Store** and **Market Orders**.
 
 **Columns**
 
@@ -499,6 +510,7 @@ Before replacing anything, EVE Farm makes a backup of the target files and check
 - **Options > Backup Data...** saves a backup wherever you like.
 - **Options > Restore Data...** restores a backup. EVE Farm checks the file first, then puts it in place the next time it starts. Your current data is saved beside it before it's replaced, so you can go back.
 - Before installing an app update, EVE Farm also backs up your data. It keeps the backups of the last 3 updates.
+- Every backup also keeps EVE's Gamelogs from the folder set in **Options > Settings... > Gamelogs folder**, compressed. They are the history of your fights and officers, and EVE Farm reads them again when it learns to read more from them. **Restore Data...** puts them back in the Gamelogs folder of the computer you restore to, creating it if EVE hasn't run there yet, and says how many it put back. A Gamelog that is already there is kept when it holds more than the one in the backup.
 
 A backup restored on another computer, user account or system keeps all the history. Its logins can only be read where they were saved, unless a **Backup password** was set in **Options > Settings...** when the backup was made: **Restore Data...** then asks for that password and the characters work right away. Characters already added on the computer you restore to keep their logins, and any other character is listed once to be added again, which keeps all its history. A backup keeps the password it was made with, so after you change the password, older backups still open with the old one. Restoring on the same computer never asks for it.
 
@@ -542,7 +554,7 @@ EVE Farm has no telemetry and sends nothing to its developer. It only connects t
 - EVE's official login and API, for the characters you add;
 - Fuzzwork, for market prices and EVE's static data (items, NPCs, agents);
 - Janice, only if you choose it as your price provider;
-- EVE's image server, for item icons;
+- EVE's image server, for item icons, the portraits of your characters and of agents, and the logos of corporations and factions;
 - GitHub, to check for and download updates;
 - zKillboard, only when you click one of its links.
 

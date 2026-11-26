@@ -5,6 +5,7 @@ import com.evefarm.model.ParsedEncounter;
 import com.evefarm.model.SpawnClass;
 import com.evefarm.model.SpawnMember;
 import com.evefarm.model.SpawnRow;
+import com.evefarm.ui.column.Isk;
 import org.junit.jupiter.api.Test;
 
 import javax.swing.table.DefaultTableModel;
@@ -22,18 +23,22 @@ class SpawnReportTest {
     @Test
     void numbersAndIskLineUpOnTheRight() {
         DefaultTableModel model = new DefaultTableModel(new Object[][]{
-                {"Alpha", 1200, "1,000.00 ISK"},
-                {"Be", 3, ""}}, new Object[]{"Name", "Count", "Bounty"}) {
+                {"Alpha", 1200, Isk.of(1_000.0)},
+                {"Be", 3, Isk.NONE}}, new Object[]{"Name", "Count", "Bounty"}) {
             @Override
             public Class<?> getColumnClass(int column) {
-                return column == 1 ? Integer.class : String.class;
+                return switch (column) {
+                    case 1 -> Integer.class;
+                    case 2 -> Isk.class;
+                    default -> String.class;
+                };
             }
         };
 
         assertEquals(List.of(
-                "Name   Count        Bounty",
+                "Name   Count  Bounty (ISK)",
                 "-----  -----  ------------",
-                "Alpha  1,200  1,000.00 ISK",
+                "Alpha  1,200      1,000.00",
                 "Be         3"), SpawnReport.table(model));
     }
 

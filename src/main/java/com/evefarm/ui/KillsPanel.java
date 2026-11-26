@@ -167,10 +167,12 @@ public final class KillsPanel extends TabPanel {
         panel.add(component);
     }
 
+    @Override
     public void onShown() {
         reloadFactionOptions();
     }
 
+    @Override
     public void refreshCharacterFilter() {
         characters.reload();
         reloadFactionOptions();

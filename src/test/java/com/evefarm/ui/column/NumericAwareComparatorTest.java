@@ -16,9 +16,9 @@ class NumericAwareComparatorTest {
     }
 
     @Test
-    void iskAmountsSortByValue() {
-        assertEquals(List.of("950.00 ISK", "1,200.50 ISK", "12,000,000.00 ISK"),
-                sorted("12,000,000.00 ISK", "950.00 ISK", "1,200.50 ISK"));
+    void amountsWithThousandsSeparatorsSortByValue() {
+        assertEquals(List.of("950.00", "1,200.50", "12,000,000.00"),
+                sorted("12,000,000.00", "950.00", "1,200.50"));
     }
 
     @Test

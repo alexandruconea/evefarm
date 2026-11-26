@@ -3,8 +3,8 @@ package com.evefarm.ui;
 import com.evefarm.model.AbyssalRun;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
+import com.evefarm.ui.column.Isk;
 import com.evefarm.util.DateUtil;
-import com.evefarm.util.IskFormatter;
 
 import java.util.List;
 import java.util.Locale;
@@ -17,7 +17,8 @@ public final class AbyssRunsTableModel extends ColumnTableModel<AbyssalRun> {
     private static final List<ColumnDef<AbyssalRun>> COLUMNS = List.of(
             new ColumnDef<>("started", "Started", String.class, r -> DateUtil.format(r.startedAt()),
                     "When the run started, in your local time"),
-            new ColumnDef<>("character", "Character", String.class, AbyssalRun::characterName,
+            new ColumnDef<>("character", "Character", EveEntity.class,
+                    r -> EveEntity.character(r.characterName(), r.characterId()),
                     "The character who ran the filament"),
             new ColumnDef<>("tier", "Tier", String.class, r -> r.tier() == null ? "" : r.tier().toString(),
                     "The filament tier, from Tranquil (T0) to Cataclysmic (T6)"),
@@ -31,13 +32,13 @@ public final class AbyssRunsTableModel extends ColumnTableModel<AbyssalRun> {
                     "How long the run took, from entering the Abyss to leaving it"),
             new ColumnDef<>(RESULT_COLUMN, "Result", String.class, r -> r.survived() ? SURVIVED : "Lost",
                     "Survived, or Lost when the character came back in a capsule"),
-            new ColumnDef<>("loot", "Loot", String.class, r -> IskFormatter.format(r.lootValue()),
+            new ColumnDef<>("loot", "Loot", Isk.class, r -> Isk.of(r.lootValue()),
                     "What the loot is worth: the cargo after the run less the cargo before it"),
-            new ColumnDef<>("filament", "Filament", String.class, r -> formatIsk(r.filamentCost()),
+            new ColumnDef<>("filament", "Filament", Isk.class, r -> Isk.of(r.filamentCost()),
                     "What the filaments cost: one for each ship in the fleet, at the market price"),
-            new ColumnDef<>("profit", "Profit", String.class, r -> IskFormatter.format(r.profit()),
+            new ColumnDef<>("profit", "Profit", Isk.class, r -> Isk.signed(r.profit()),
                     "The loot less the filament cost"),
-            new ColumnDef<>("iskPerHour", "ISK/h", String.class, r -> formatIsk(r.iskPerHour()),
+            new ColumnDef<>("iskPerHour", "ISK/h", Isk.class, r -> Isk.of(r.iskPerHour()),
                     "The profit per hour of run time"),
             new ColumnDef<>("notes", "Notes", String.class, r -> nullToEmpty(r.notes()),
                     "Your notes on the run"),

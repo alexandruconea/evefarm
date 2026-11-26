@@ -4,6 +4,7 @@ import com.evefarm.AppContext;
 import com.evefarm.service.LpPurchaseService;
 import com.evefarm.service.LpPurchaseService.Holding;
 import com.evefarm.service.LpPurchaseService.Lot;
+import com.evefarm.ui.column.Isk;
 import com.evefarm.util.IskFormatter;
 import com.formdev.flatlaf.FlatLaf;
 
@@ -50,6 +51,7 @@ public final class LpPurchasesPanel extends TabPanel {
         buildUi();
     }
 
+    @Override
     public void onShown() {
         reload();
     }
@@ -83,6 +85,7 @@ public final class LpPurchasesPanel extends TabPanel {
 
         lotsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         SortableTables.withColumnChooser(lotsTable, lotsModel, "lpLots", appContext.tableColumnStateDao);
+        EveEntityCells.install(lotsTable, appContext.itemIconService);
         lotsTable.getSelectionModel().addListSelectionListener(e -> updateButtons());
 
         JPanel lotsPanel = new JPanel(new BorderLayout(0, 4));
@@ -103,8 +106,8 @@ public final class LpPurchasesPanel extends TabPanel {
     }
 
     private void installSellNowColors() {
-        TableCellRenderer base = holdingsTable.getDefaultRenderer(Object.class);
-        holdingsTable.setDefaultRenderer(Object.class, (table, value, isSelected, hasFocus, row, column) -> {
+        TableCellRenderer base = holdingsTable.getDefaultRenderer(Isk.class);
+        holdingsTable.setDefaultRenderer(Isk.class, (table, value, isSelected, hasFocus, row, column) -> {
             Component c = base.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             String key = holdingsModel.columns().get(table.convertColumnIndexToModel(column)).key();
             if (!isSelected && LpHoldingsTableModel.SELL_NOW.equals(key)) {

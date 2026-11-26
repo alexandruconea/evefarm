@@ -8,7 +8,7 @@ public final class NumericAwareComparator implements Comparator<Object> {
 
     public static final NumericAwareComparator INSTANCE = new NumericAwareComparator();
 
-    private static final String[] STRIPPABLE_SUFFIXES = {" ISK", "%", " m3", " jumps"};
+    private static final String[] STRIPPABLE_SUFFIXES = {"%", " m3", " jumps"};
     private static final Pattern FRACTION = Pattern.compile("^(-?\\d+) / \\d+$");
     private static final Pattern CLOCK = Pattern.compile("^(?:(\\d+):)?(\\d+):(\\d{2})$");
     private static final Pattern DURATION =

@@ -62,6 +62,7 @@ final class LpPaymentsDialog extends JDialog {
             }
         });
         TableStyler.style(table);
+        EveEntityCells.install(table, appContext.itemIconService);
         ColumnWidthMemory.install(table, "lpPayments", appContext.tableColumnStateDao);
         ComboSizing.fix(offerCombo, 300);
         offerCombo.setToolTipText("The offer you bought with this payment, and how many times. Listed and sold "

@@ -3,8 +3,8 @@ package com.evefarm.ui;
 import com.evefarm.model.IndustryJobRow;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
+import com.evefarm.ui.column.Isk;
 import com.evefarm.util.DateUtil;
-import com.evefarm.util.IskFormatter;
 
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -25,7 +25,8 @@ public final class IndustryJobsTableModel extends ColumnTableModel<IndustryJobRo
     );
 
     private static final List<ColumnDef<IndustryJobRow>> COLUMNS = List.of(
-            new ColumnDef<>("character", "Character", String.class, IndustryJobRow::characterName,
+            new ColumnDef<>("character", "Character", EveEntity.class,
+                    r -> EveEntity.character(r.characterName(), r.characterId()),
                     "The character who started the job"),
             new ColumnDef<>("activity", "Activity", String.class,
                     r -> ACTIVITY_NAMES.getOrDefault(r.activityId(), "Activity #" + r.activityId()),
@@ -38,7 +39,7 @@ public final class IndustryJobsTableModel extends ColumnTableModel<IndustryJobRo
                     "What the job makes"),
             new ColumnDef<>("runs", "Runs", String.class, r -> r.runs() == null ? "" : String.valueOf(r.runs()),
                     "How many runs the job has"),
-            new ColumnDef<>("cost", "Cost", String.class, r -> r.cost() == null ? "" : IskFormatter.format(r.cost()),
+            new ColumnDef<>("cost", "Cost", Isk.class, r -> r.cost() == null ? Isk.NONE : Isk.of(r.cost()),
                     "What starting the job cost: the installation fee and the facility tax"),
             new ColumnDef<>("facility", "Facility", String.class, r -> r.facilityName() == null ? "" : r.facilityName(),
                     "The station or structure the job runs in"),

@@ -5,6 +5,7 @@ import com.evefarm.db.JdbcUtil;
 import com.evefarm.model.JournalEntry;
 import com.evefarm.model.JournalPayout;
 import com.evefarm.model.JournalRow;
+import com.evefarm.model.MissionAgent;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -70,7 +71,8 @@ public final class WalletJournalDao {
                        CASE WHEN j.first_party_id IS NULL THEN NULL
                             ELSE COALESCE(fp.name, '#' || j.first_party_id) END AS first_party_name,
                        CASE WHEN j.second_party_id IS NULL THEN NULL
-                            ELSE COALESCE(sp.name, '#' || j.second_party_id) END AS second_party_name
+                            ELSE COALESCE(sp.name, '#' || j.second_party_id) END AS second_party_name,
+                       fp.category AS first_party_category, sp.category AS second_party_category
                 FROM wallet_journal_entry j
                 JOIN characters c ON c.character_id = j.character_id
                 LEFT JOIN entity_name_cache fp ON fp.entity_id = j.first_party_id
@@ -93,8 +95,10 @@ public final class WalletJournalDao {
                                 rs.getDouble("amount"),
                                 rs.getDouble("balance"),
                                 rs.getString("description"),
-                                rs.getString("first_party_name"),
-                                rs.getString("second_party_name")
+                                new JournalRow.Party(JdbcUtil.getNullableLong(rs, "first_party_id"),
+                                        rs.getString("first_party_name"), rs.getString("first_party_category")),
+                                new JournalRow.Party(JdbcUtil.getNullableLong(rs, "second_party_id"),
+                                        rs.getString("second_party_name"), rs.getString("second_party_category"))
                         ));
                     }
                 }
@@ -217,6 +221,34 @@ public final class WalletJournalDao {
                 }
             } catch (SQLException e) {
                 throw new IllegalStateException("Failed to read the mission income", e);
+            }
+            return result;
+        }
+    }
+
+    public List<MissionAgent> findMissionAgents() {
+        String sql = """
+                SELECT DISTINCT j.first_party_id AS agent_id,
+                       COALESCE(e.name, 'Agent #' || j.first_party_id) AS agent_name,
+                       a.corporation_id, a.corporation_name, a.faction_id, a.faction_name
+                FROM wallet_journal_entry j
+                LEFT JOIN entity_name_cache e ON e.entity_id = j.first_party_id
+                LEFT JOIN sde_agent a ON a.agent_id = j.first_party_id
+                WHERE j.ref_type IN ('agent_mission_reward', 'agent_mission_time_bonus_reward')
+                  AND j.first_party_id IS NOT NULL
+                ORDER BY j.first_party_id
+                """;
+        synchronized (database) {
+            List<MissionAgent> result = new ArrayList<>();
+            try (PreparedStatement ps = database.connection().prepareStatement(sql);
+                 ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    result.add(new MissionAgent(rs.getLong("agent_id"), rs.getString("agent_name"),
+                            JdbcUtil.getNullableLong(rs, "corporation_id"), rs.getString("corporation_name"),
+                            JdbcUtil.getNullableLong(rs, "faction_id"), rs.getString("faction_name")));
+                }
+            } catch (SQLException e) {
+                throw new IllegalStateException("Failed to read the mission agents", e);
             }
             return result;
         }

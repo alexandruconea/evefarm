@@ -54,6 +54,7 @@ class LoyaltyPointDaoTest {
         List<LoyaltyPointHistoryRow> history = points.listHistory();
 
         assertEquals(3, history.size());
+        assertTrue(history.stream().allMatch(row -> row.characterId() == PILOT), "each row knows its character");
         assertEquals(List.of(4_500L, 10_000L), history.stream()
                 .filter(row -> row.corporationId() == GURISTAS)
                 .map(row -> row.change() == null ? row.loyaltyPoints() : row.change()).toList());

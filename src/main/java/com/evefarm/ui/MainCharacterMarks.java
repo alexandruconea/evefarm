@@ -13,6 +13,8 @@ import java.util.function.Supplier;
 
 final class MainCharacterMarks {
 
+    static final int LARGE_PORTRAIT_SIZE = 32;
+
     private MainCharacterMarks() {
     }
 

@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -110,6 +111,14 @@ public final class StandingService {
                 .filter(row -> AGENT.equals(row.fromType()))
                 .filter(row -> selected == null || belongsTo(row, selected))
                 .toList();
+    }
+
+    public static Optional<StandingRow> standingWith(List<StandingRow> rows, long fromId, String characterName) {
+        List<StandingRow> matches = rows.stream().filter(row -> row.fromId() == fromId).toList();
+        return matches.stream()
+                .filter(row -> row.characterName().equals(characterName))
+                .findFirst()
+                .or(() -> matches.stream().max(Comparator.comparingDouble(StandingRow::standing)));
     }
 
     static boolean belongsTo(StandingRow agent, StandingRow selected) {

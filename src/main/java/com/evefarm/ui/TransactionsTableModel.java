@@ -3,15 +3,16 @@ package com.evefarm.ui;
 import com.evefarm.model.TransactionRow;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
+import com.evefarm.ui.column.Isk;
 import com.evefarm.util.DateUtil;
-import com.evefarm.util.IskFormatter;
 
 import java.util.List;
 
 public final class TransactionsTableModel extends ColumnTableModel<TransactionRow> {
 
     private static final List<ColumnDef<TransactionRow>> COLUMNS = List.of(
-            new ColumnDef<>("character", "Character", String.class, TransactionRow::characterName,
+            new ColumnDef<>("character", "Character", EveEntity.class,
+                    r -> EveEntity.character(r.characterName(), r.characterId()),
                     "The character who bought or sold"),
             new ColumnDef<>("date", "Date", String.class, r -> DateUtil.formatIsoInstant(r.date()),
                     "When it happened, in your local time"),
@@ -23,10 +24,11 @@ public final class TransactionsTableModel extends ColumnTableModel<TransactionRo
                     "The item's group, such as Frigate or Mineral"),
             new ColumnDef<>("quantity", "Quantity", Long.class, TransactionRow::quantity,
                     "How many units"),
-            new ColumnDef<>("price", "Price", String.class, r -> IskFormatter.format(r.price()),
+            new ColumnDef<>("price", "Price", Isk.class, r -> Isk.of(r.price()),
                     "The price of one unit"),
-            new ColumnDef<>("total", "Total", String.class, r -> IskFormatter.format(r.price() * r.quantity()),
-                    "The price times the quantity"),
+            new ColumnDef<>("total", "Total", Isk.class,
+                    r -> Isk.signed((r.isBuy() ? -1 : 1) * r.price() * r.quantity()),
+                    "The price times the quantity: negative for what you bought, positive for what you sold"),
             new ColumnDef<>("client", "Client", String.class, r -> nullToEmpty(r.clientName()),
                     "Who you traded with"),
             new ColumnDef<>("location", "Location", String.class, TransactionRow::locationName,

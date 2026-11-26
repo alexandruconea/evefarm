@@ -1,7 +1,6 @@
 package com.evefarm.ui;
 
 import com.evefarm.AppContext;
-import com.evefarm.ui.PhosphorIcons.Hue;
 
 import javax.swing.SwingUtilities;
 
@@ -19,9 +18,9 @@ public final class NpcKillsPanel extends SubTabs {
     private NpcKillsPanel(AppContext appContext, OfficersPanel officersPanel, SpawnsPanel spawnsPanel,
                           KillsPanel killsPanel) {
         super(appContext.settingsDao, "kills",
-                new Page("officers", "Officers", PhosphorIcons.menu("crown", Hue.RED), officersPanel),
-                new Page("spawns", "Spawns", PhosphorIcons.menu("users-three", Hue.RED), spawnsPanel),
-                new Page("allKills", "All Kills", PhosphorIcons.menu("skull", Hue.RED), killsPanel));
+                new Page("officers", "Officers", FontAwesome.menu("crown"), officersPanel),
+                new Page("spawns", "Spawns", FontAwesome.menu("users"), spawnsPanel),
+                new Page("allKills", "All Kills", FontAwesome.menu("skull"), killsPanel));
         this.officersPanel = officersPanel;
         this.spawnsPanel = spawnsPanel;
         this.killsPanel = killsPanel;

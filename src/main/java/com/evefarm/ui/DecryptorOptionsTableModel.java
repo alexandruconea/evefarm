@@ -3,7 +3,7 @@ package com.evefarm.ui;
 import com.evefarm.service.IndustryService;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
-import com.evefarm.util.IskFormatter;
+import com.evefarm.ui.column.Isk;
 
 import java.util.List;
 import java.util.Locale;
@@ -23,17 +23,17 @@ public final class DecryptorOptionsTableModel extends ColumnTableModel<IndustryS
                     "The material efficiency of the invented copy"),
             new ColumnDef<>("te", "TE", Integer.class, o -> o.invention().te(),
                     "The time efficiency of the invented copy"),
-            new ColumnDef<>("inventionPerRun", "Invention per Run", String.class,
-                    o -> IskFormatter.format(o.invention().costPerRun()),
+            new ColumnDef<>("inventionPerRun", "Invention per Run", Isk.class,
+                    o -> Isk.of(o.invention().costPerRun()),
                     "What the invention costs for each run you build: datacores, the decryptor and the job fees, "
                             + "spread over the runs of a successful copy"),
-            new ColumnDef<>("unitCost", "Cost per Unit", String.class, o -> IskFormatter.format(o.unitCost()),
+            new ColumnDef<>("unitCost", "Cost per Unit", Isk.class, o -> Isk.of(o.unitCost()),
                     "What one unit costs you, the invention included"),
-            new ColumnDef<>("unitProfit", "Profit per Unit", String.class, o -> IskFormatter.format(o.unitProfit()),
+            new ColumnDef<>("unitProfit", "Profit per Unit", Isk.class, o -> Isk.signed(o.unitProfit()),
                     "The profit on one unit"),
-            new ColumnDef<>("profit", "Profit", String.class, o -> IskFormatter.format(o.profit()),
+            new ColumnDef<>("profit", "Profit", Isk.class, o -> Isk.signed(o.profit()),
                     "The profit on the whole build"),
-            new ColumnDef<>("iskPerHour", "ISK/h", String.class, o -> IskFormatter.format(o.iskPerHour()),
+            new ColumnDef<>("iskPerHour", "ISK/h", Isk.class, o -> Isk.of(o.iskPerHour()),
                     "The profit per hour of build time")
     );
 

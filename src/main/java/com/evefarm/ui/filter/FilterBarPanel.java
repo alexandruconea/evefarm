@@ -3,16 +3,24 @@ package com.evefarm.ui.filter;
 import com.evefarm.db.dao.SavedFilterDao;
 import com.evefarm.ui.ComboSizing;
 import com.evefarm.ui.Icons;
+import com.evefarm.ui.column.Isk;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import javax.swing.AbstractButton;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JTextField;
+import javax.swing.JToggleButton;
 import javax.swing.RowFilter;
+import javax.swing.SwingConstants;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.util.ArrayList;
@@ -21,12 +29,16 @@ import java.util.Locale;
 
 public final class FilterBarPanel extends JPanel {
 
+    private static final String FILTERS = "Filters";
+
     private final String panelKey;
     private final List<String> columnNames;
     private final SavedFilterDao savedFilterDao;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final List<FilterRow> rows = new ArrayList<>();
     private final JPanel rowsPanel = new JPanel();
+    private final JTextField searchField = new JTextField(18);
+    private final JToggleButton filtersButton = new JToggleButton(FILTERS);
     private final JLabel countLabel = new JLabel(" ");
     private Runnable onFilterChanged = () -> {
     };
@@ -37,19 +49,36 @@ public final class FilterBarPanel extends JPanel {
         this.columnNames = columnNames;
         this.savedFilterDao = savedFilterDao;
 
-        JButton addButton = new JButton("Add", Icons.ADD);
-        addButton.addActionListener(e -> {
-            addRow(new FilterCondition());
-            fireChanged();
+        ComboSizing.input(searchField);
+        searchField.setToolTipText("Shows only the rows that contain this text in any column");
+        searchField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                fireChanged();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                fireChanged();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                fireChanged();
+            }
         });
+        filtersButton.setIcon(Icons.FILTER);
+        filtersButton.setToolTipText("Filters by column, such as Amount greater than 1,000,000");
+        filtersButton.addActionListener(e -> showRows(filtersButton.isSelected()));
         JButton clearButton = new JButton("Clear", Icons.CLEAR);
+        clearButton.setToolTipText("Clears the search and the filters");
         clearButton.addActionListener(e -> clearAll());
         JButton saveButton = new JButton("Save...", Icons.SAVE);
         saveButton.addActionListener(e -> saveCurrentFilter());
         JButton loadButton = new JButton("Load...", Icons.LOAD);
         loadButton.addActionListener(e -> loadSavedFilter());
 
-        for (JButton button : List.of(addButton, clearButton, saveButton, loadButton)) {
+        for (AbstractButton button : List.of(filtersButton, clearButton, saveButton, loadButton)) {
             button.putClientProperty("JButton.buttonType", "toolBarButton");
             button.setFocusable(false);
         }
@@ -57,18 +86,31 @@ public final class FilterBarPanel extends JPanel {
         countLabel.setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 0));
 
         JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 2));
-        toolbar.add(addButton);
+        JLabel searchLabel = new JLabel("Search:", Icons.SEARCH, SwingConstants.LEADING);
+        searchLabel.setLabelFor(searchField);
+        searchLabel.setBorder(BorderFactory.createEmptyBorder(0, 4, 0, 4));
+        toolbar.add(searchLabel);
+        toolbar.add(searchField);
+        toolbar.add(filtersButton);
         toolbar.add(clearButton);
         toolbar.add(saveButton);
         toolbar.add(loadButton);
         toolbar.add(countLabel);
 
         rowsPanel.setLayout(new BoxLayout(rowsPanel, BoxLayout.Y_AXIS));
+        rowsPanel.setVisible(false);
         setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
         add(toolbar, BorderLayout.NORTH);
         add(rowsPanel, BorderLayout.CENTER);
 
         addRow(new FilterCondition());
+    }
+
+    private void showRows(boolean show) {
+        filtersButton.setSelected(show);
+        rowsPanel.setVisible(show);
+        revalidate();
+        repaint();
     }
 
     public void setOnFilterChanged(Runnable onFilterChanged) {
@@ -114,6 +156,7 @@ public final class FilterBarPanel extends JPanel {
     }
 
     private void clearAll() {
+        searchField.setText("");
         rows.clear();
         rowsPanel.removeAll();
         addRow(new FilterCondition());
@@ -121,10 +164,12 @@ public final class FilterBarPanel extends JPanel {
     }
 
     private void fireChanged() {
+        int active = activeConditions().size();
+        filtersButton.setText(active == 0 ? FILTERS : FILTERS + " (" + active + ")");
         onFilterChanged.run();
     }
 
-    public RowFilter<Object, Object> buildRowFilter() {
+    private List<FilterCondition> activeConditions() {
         List<FilterCondition> active = new ArrayList<>();
         for (FilterRow row : rows) {
             FilterCondition condition = row.toCondition();
@@ -132,12 +177,29 @@ public final class FilterBarPanel extends JPanel {
                 active.add(condition);
             }
         }
-        if (active.isEmpty()) {
+        return active;
+    }
+
+    static FilterCondition search(String text) {
+        FilterCondition condition = new FilterCondition();
+        condition.setColumn(FilterCondition.ALL_COLUMNS);
+        condition.setOperator(FilterCondition.Operator.CONTAINS);
+        condition.setValue(text.trim());
+        return condition;
+    }
+
+    public RowFilter<Object, Object> buildRowFilter() {
+        List<FilterCondition> active = activeConditions();
+        FilterCondition search = searchField.getText().isBlank() ? null : search(searchField.getText());
+        if (active.isEmpty() && search == null) {
             return null;
         }
         return new RowFilter<>() {
             @Override
             public boolean include(Entry<?, ?> entry) {
+                if (search != null && !matches(entry, search, columnNames)) {
+                    return false;
+                }
                 boolean result = true;
                 for (int i = 0; i < active.size(); i++) {
                     FilterCondition condition = active.get(i);
@@ -172,8 +234,12 @@ public final class FilterBarPanel extends JPanel {
         return matchesCell(entry.getValue(col), condition);
     }
 
+    static String cellText(Object cellValue) {
+        return cellValue == null || cellValue instanceof Icon ? "" : cellValue.toString();
+    }
+
     private static boolean matchesCell(Object cellValue, FilterCondition condition) {
-        String text = String.valueOf(cellValue);
+        String text = cellText(cellValue);
         String needle = condition.getValue();
         return switch (condition.getOperator()) {
             case CONTAINS -> text.toLowerCase(Locale.ROOT).contains(needle.toLowerCase(Locale.ROOT));
@@ -192,14 +258,17 @@ public final class FilterBarPanel extends JPanel {
         if (cellNumber != null && needleNumber != null) {
             return Double.compare(cellNumber, needleNumber);
         }
-        return String.valueOf(cellValue).compareToIgnoreCase(needle);
+        return cellText(cellValue).compareToIgnoreCase(needle);
     }
 
     private static Double toNumber(Object value) {
+        if (value instanceof Isk isk && isk.isEmpty()) {
+            return null;
+        }
         if (value instanceof Number number) {
             return number.doubleValue();
         }
-        String text = String.valueOf(value).replaceAll("[^0-9.\\-]", "");
+        String text = cellText(value).replaceAll("[^0-9.\\-]", "");
         if (text.isBlank() || "-".equals(text) || ".".equals(text)) {
             return null;
         }
@@ -217,7 +286,11 @@ public final class FilterBarPanel extends JPanel {
             return;
         }
         try {
-            List<FilterCondition> conditions = rows.stream().map(FilterRow::toCondition).toList();
+            List<FilterCondition> conditions = new ArrayList<>();
+            if (!searchField.getText().isBlank()) {
+                conditions.add(search(searchField.getText()));
+            }
+            rows.stream().map(FilterRow::toCondition).forEach(conditions::add);
             String json = objectMapper.writeValueAsString(conditions);
             savedFilterDao.save(panelKey, name.trim(), json);
         } catch (Exception e) {
@@ -244,8 +317,10 @@ public final class FilterBarPanel extends JPanel {
         savedFilterDao.find(panelKey, selected).ifPresent(json -> {
             try {
                 FilterCondition[] conditions = objectMapper.readValue(json, FilterCondition[].class);
+                searchField.setText("");
                 rows.clear();
                 rowsPanel.removeAll();
+                showRows(true);
                 if (conditions.length == 0) {
                     addRow(new FilterCondition());
                 } else {

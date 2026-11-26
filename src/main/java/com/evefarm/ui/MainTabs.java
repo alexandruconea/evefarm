@@ -2,9 +2,9 @@ package com.evefarm.ui;
 
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
-import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.SwingConstants;
@@ -97,7 +97,7 @@ final class MainTabs {
         }
     }
 
-    private void select(TabPanel panel) {
+    void select(TabPanel panel) {
         if (panel != selected) {
             show(panel);
             onSelected.accept(panel);
@@ -122,7 +122,10 @@ final class MainTabs {
         }
         JPopupMenu menu = new JPopupMenu();
         for (SubTabs.Page page : subTabs.visiblePages()) {
-            JCheckBoxMenuItem item = new JCheckBoxMenuItem(page.title(), page.icon(), page == subTabs.selectedPage());
+            JMenuItem item = new JMenuItem(page.title(), page.icon());
+            if (page == subTabs.selectedPage()) {
+                item.setFont(item.getFont().deriveFont(Font.BOLD));
+            }
             item.setToolTipText(page.toolTip());
             item.addActionListener(event -> subTabs.select(page));
             menu.add(item);
@@ -163,7 +166,7 @@ final class MainTabs {
             this.tab = tab;
             title = new JLabel(tab.label(), tab.icon(), SwingConstants.LEADING);
             title.setIconTextGap(ICON_TEXT_GAP);
-            Font font = UIManager.getFont("TabbedPane.font");
+            Font font = UIManager.getFont("Menu.font");
             if (font != null) {
                 title.setFont(font);
             }

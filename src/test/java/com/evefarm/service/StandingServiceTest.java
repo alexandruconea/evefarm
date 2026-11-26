@@ -4,6 +4,7 @@ import com.evefarm.model.StandingRow;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -31,7 +32,7 @@ class StandingServiceTest {
     private static StandingRow row(long characterId, String fromType, String name, double standing,
                                    String corporationName, String factionName) {
         return new StandingRow(characterId, "Pilot " + characterId, name.hashCode(), fromType, name, standing,
-                corporationName, factionName, null, null, null);
+                null, corporationName, null, factionName, null, null, null);
     }
 
     @Test
@@ -52,6 +53,16 @@ class StandingServiceTest {
         assertEquals(List.of(SISTERS_AGENT), StandingService.agents(ROWS, SISTERS));
         assertEquals(List.of(NAVY_AGENT, LAI_DAI_AGENT, SISTERS_AGENT, OTHER_PILOTS_AGENT),
                 StandingService.agents(ROWS, null));
+    }
+
+    @Test
+    void theStandingWithSomeoneIsTheChosenCharactersOrElseTheBest() {
+        long kamola = NAVY_AGENT.fromId();
+
+        assertEquals(Optional.of(OTHER_PILOTS_AGENT), StandingService.standingWith(ROWS, kamola, "Pilot 2"));
+        assertEquals(Optional.of(NAVY_AGENT), StandingService.standingWith(ROWS, kamola, null));
+        assertEquals(Optional.of(NAVY_AGENT), StandingService.standingWith(ROWS, kamola, "Pilot 3"));
+        assertEquals(Optional.empty(), StandingService.standingWith(ROWS, 42, null));
     }
 
     @Test

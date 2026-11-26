@@ -25,6 +25,8 @@ final class MissionReport {
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("EEE, MMM d, yyyy", Locale.US);
     private static final DateTimeFormatter WEEK_START = DateTimeFormatter.ofPattern("EEE, MMM d", Locale.US);
     private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.US);
+    private static final DateTimeFormatter MONTH_ONLY = DateTimeFormatter.ofPattern("MMMM", Locale.US);
+    private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US);
     private static final String GAP = "   ";
 
     record Line(String label, String value, boolean detail, String tip) {
@@ -39,6 +41,10 @@ final class MissionReport {
             case WEEK -> (from.getYear() == to.getYear() ? WEEK_START.format(from) : DAY.format(from)) + " to "
                     + DAY.format(to);
             case MONTH -> MONTH.format(from);
+            case THREE_MONTHS, SIX_MONTHS -> (from.getYear() == to.getYear() ? MONTH_ONLY.format(from)
+                    : MONTH.format(from)) + " to " + MONTH.format(to);
+            case YEAR -> String.valueOf(from.getYear());
+            case ALL_TIME -> from.equals(to) ? DATE.format(from) : DATE.format(from) + " to " + DATE.format(to);
         };
     }
 

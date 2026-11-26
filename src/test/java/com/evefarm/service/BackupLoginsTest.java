@@ -81,7 +81,7 @@ class BackupLoginsTest {
     }
 
     private static BackupRestoreService service(Database database) {
-        return new BackupRestoreService(database, new SettingsDao(database));
+        return new BackupRestoreService(database, new SettingsDao(database), () -> null);
     }
 
     private void backUpOnTheOldComputer(boolean withPassword) throws Exception {
@@ -134,7 +134,7 @@ class BackupLoginsTest {
 
         assertEquals(new BackupRestoreService.PasswordNeeds(List.of("Malpais Legate", "Yasonar Anoh"), true),
                 newComputer.passwordNeeds(backup));
-        assertEquals(List.of(), newComputer.stage(backup, pending, PASSWORD));
+        assertEquals(List.of(), newComputer.stage(backup, pending, PASSWORD).toAddAgain());
 
         assertEquals(Map.of(MALPAIS, "active new-pc:refresh-" + MALPAIS, YASONAR, "active new-pc:refresh-" + YASONAR,
                 ICHIRO, "active new-pc:refresh-" + ICHIRO), logins(pending));
@@ -158,7 +158,7 @@ class BackupLoginsTest {
         backUpOnTheOldComputer(true);
         BackupRestoreService newComputer = service(computerWith(Map.of(YASONAR, "Yasonar Anoh")));
 
-        assertEquals(List.of("Malpais Legate"), newComputer.stage(backup, pending, null));
+        assertEquals(List.of("Malpais Legate"), newComputer.stage(backup, pending, null).toAddAgain());
 
         assertEquals(Map.of(MALPAIS, TokenDao.LOGIN_REJECTED + " old-pc:refresh-" + MALPAIS,
                 YASONAR, "active new-pc:refresh-" + YASONAR), logins(pending));
@@ -171,12 +171,12 @@ class BackupLoginsTest {
         Database same = computerWith(Map.of(MALPAIS, "Malpais Legate"));
         SettingsDao settings = new SettingsDao(same);
         settings.set(SettingsDao.BACKUP_PASSWORD, TokenCipher.encrypt(PASSWORD));
-        BackupRestoreService sameComputer = new BackupRestoreService(same, settings);
+        BackupRestoreService sameComputer = new BackupRestoreService(same, settings, () -> null);
         sameComputer.backupTo(backup);
         new CharacterDao(same).remove(MALPAIS);
 
         assertFalse(sameComputer.passwordNeeds(backup).any());
-        assertEquals(List.of(), sameComputer.stage(backup, pending, null));
+        assertEquals(List.of(), sameComputer.stage(backup, pending, null).toAddAgain());
 
         assertEquals(Map.of(MALPAIS, "active old-pc:refresh-" + MALPAIS), logins(pending));
         assertEquals("old-pc:" + PASSWORD, setting(pending, SettingsDao.BACKUP_PASSWORD));

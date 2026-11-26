@@ -118,6 +118,7 @@ public final class LpProductionPanel extends TabPanel {
         overview.add(summaryLines, BorderLayout.CENTER);
 
         SortableTables.withColumnChooser(gainsTable, gainsModel, "lpGains", appContext.tableColumnStateDao);
+        EveEntityCells.install(gainsTable, appContext.itemIconService);
         JPanel dayPanel = new JPanel(new BorderLayout(0, 4));
         dayPanel.setBorder(BorderFactory.createEmptyBorder(0, 8, 8, 8));
         dayPanel.add(dayLabel, BorderLayout.NORTH);

@@ -13,6 +13,7 @@ import com.evefarm.service.ItemIconService;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
 import com.evefarm.ui.column.ColumnWidthMemory;
+import com.evefarm.ui.column.Isk;
 import com.evefarm.util.IskFormatter;
 import com.evefarm.util.Text;
 
@@ -632,11 +633,11 @@ final class AbyssRunDialog extends JDialog {
                 new ColumnDef<>("item", "Item", String.class, AbyssalLoot::typeName, "The item looted"),
                 new ColumnDef<>("quantity", "Quantity", String.class, item -> Text.count(item.quantity()),
                         "How many were looted"),
-                new ColumnDef<>("unitPrice", "Unit Price", String.class,
-                        item -> item.unitPrice() == null ? "" : IskFormatter.format(item.unitPrice()),
+                new ColumnDef<>("unitPrice", "Unit Price", Isk.class,
+                        item -> item.unitPrice() == null ? Isk.NONE : Isk.of(item.unitPrice()),
                         "The price of one unit, from your price provider"),
-                new ColumnDef<>("total", "Total", String.class,
-                        item -> item.unitPrice() == null ? "" : IskFormatter.format(item.totalValue()),
+                new ColumnDef<>("total", "Total", Isk.class,
+                        item -> item.unitPrice() == null ? Isk.NONE : Isk.of(item.totalValue()),
                         "The unit price times the quantity")));
     }
 }

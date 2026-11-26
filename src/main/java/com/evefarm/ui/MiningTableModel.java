@@ -5,6 +5,7 @@ import com.evefarm.model.RefinedMaterial;
 import com.evefarm.service.ItemIconService;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
+import com.evefarm.ui.column.Isk;
 import com.evefarm.util.IskFormatter;
 import com.evefarm.util.Text;
 
@@ -21,7 +22,8 @@ public final class MiningTableModel extends ColumnTableModel<MiningRow> {
                     "The ore's icon, or the compressed ore's when valued as compressed"),
             new ColumnDef<>("date", "Date", String.class, MiningRow::date,
                     "The day it was mined, in EVE time"),
-            new ColumnDef<>("character", "Character", String.class, MiningRow::characterName,
+            new ColumnDef<>("character", "Character", EveEntity.class,
+                    r -> EveEntity.character(r.characterName(), r.characterId()),
                     "The character who mined it"),
             new ColumnDef<>("system", "System", String.class, MiningRow::systemName,
                     "The solar system it was mined in"),
@@ -33,11 +35,11 @@ public final class MiningTableModel extends ColumnTableModel<MiningRow> {
                     "How many units were mined"),
             new ColumnDef<>("volume", "Volume", String.class, r -> formatVolume(r.volume()),
                     "The volume mined, in m3"),
-            new ColumnDef<>("unitValue", "Unit Value", String.class,
-                    r -> r.unitValue() == null ? "" : IskFormatter.format(r.unitValue()),
+            new ColumnDef<>("unitValue", "Unit Value", Isk.class,
+                    r -> r.unitValue() == null ? Isk.NONE : Isk.of(r.unitValue()),
                     "What one unit is worth, valued as chosen in Value"),
-            new ColumnDef<>("value", "Value", String.class,
-                    r -> r.value() == null ? "" : IskFormatter.format(r.value()),
+            new ColumnDef<>("value", "Value", Isk.class,
+                    r -> r.value() == null ? Isk.NONE : Isk.of(r.value()),
                     "The quantity times the unit value"),
             new ColumnDef<>("refinedInto", "Refined Into", String.class, r -> refinedInto(r.materials()),
                     "What it reprocesses into at your refining yield, when valued as refined minerals"),

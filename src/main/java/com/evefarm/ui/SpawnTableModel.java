@@ -3,8 +3,8 @@ package com.evefarm.ui;
 import com.evefarm.model.SpawnMember;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
+import com.evefarm.ui.column.Isk;
 import com.evefarm.util.DateUtil;
-import com.evefarm.util.IskFormatter;
 
 import java.util.List;
 
@@ -19,8 +19,8 @@ public final class SpawnTableModel extends ColumnTableModel<SpawnMember> {
                     "The NPC's group"),
             new ColumnDef<>("kills", "Killed", Integer.class, r -> r.npc().kills(),
                     "How many your characters killed"),
-            new ColumnDef<>("bounty", "Bounty", String.class,
-                    r -> r.npc().bounty() > 0 ? IskFormatter.format(r.npc().bounty()) : "",
+            new ColumnDef<>("bounty", "Bounty", Isk.class,
+                    r -> r.npc().bounty() > 0 ? Isk.of(r.npc().bounty()) : Isk.NONE,
                     "The bounty of those killed"),
             new ColumnDef<>("firstSeen", "First Seen (EVE)", String.class,
                     r -> DateUtil.formatEveClock(r.npc().firstSeenAt()),

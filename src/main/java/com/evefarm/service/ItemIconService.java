@@ -3,8 +3,11 @@ package com.evefarm.service;
 import com.evefarm.esi.EsiConfig;
 import com.evefarm.util.AppPaths;
 
+import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.SwingUtilities;
+import java.awt.Component;
+import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.RenderingHints;
@@ -39,10 +42,34 @@ public final class ItemIconService {
     public static final int BLUEPRINT_SIZE = 40;
     private static final int CONCURRENCY = 6;
     private static final Duration OFFLINE_PAUSE = Duration.ofSeconds(30);
+    private static final Duration FAILED_IMAGE_PAUSE = Duration.ofMinutes(10);
     public static final int RENDER_SIZE = 20;
 
     private static final ImageIcon BLANK_PLACEHOLDER =
             new ImageIcon(new BufferedImage(RENDER_SIZE, RENDER_SIZE, BufferedImage.TYPE_INT_ARGB));
+
+    public record EveImage(String category, long id, String variation) {
+
+        public static EveImage portrait(long characterId) {
+            return new EveImage("characters", characterId, "portrait");
+        }
+
+        public static EveImage logo(long corporationOrFactionId) {
+            return new EveImage("corporations", corporationOrFactionId, "logo");
+        }
+
+        public static EveImage allianceLogo(long allianceId) {
+            return new EveImage("alliances", allianceId, "logo");
+        }
+
+        String url() {
+            return "https://images.evetech.net/" + category + "/" + id + "/" + variation + "?size=64";
+        }
+
+        String cacheFileName() {
+            return category + "-" + id + "-" + variation + ".img";
+        }
+    }
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -55,10 +82,92 @@ public final class ItemIconService {
     private final Map<Integer, ImageIcon> memoryCache = new ConcurrentHashMap<>();
     private final Map<Integer, Boolean> inFlight = new ConcurrentHashMap<>();
     private final Map<Integer, ImageIcon> blueprintCache = new ConcurrentHashMap<>();
+    private final Map<EveImage, Image> rawImages = new ConcurrentHashMap<>();
+    private final Map<SizedImage, ImageIcon> sizedImages = new ConcurrentHashMap<>();
+    private final Map<Integer, ImageIcon> blanks = new ConcurrentHashMap<>();
+    private final Map<EveImage, Boolean> imagesInFlight = new ConcurrentHashMap<>();
+    private final Map<EveImage, Instant> imagesFailedAt = new ConcurrentHashMap<>();
     private volatile Instant offlineUntil = Instant.EPOCH;
+
+    private record SizedImage(EveImage image, int size) {
+    }
 
     public ImageIcon iconOrPlaceholder(int typeId) {
         return memoryCache.getOrDefault(typeId, BLANK_PLACEHOLDER);
+    }
+
+    public ImageIcon imageOrPlaceholder(EveImage image) {
+        return imageOrPlaceholder(image, RENDER_SIZE);
+    }
+
+    public ImageIcon imageOrPlaceholder(EveImage image, int size) {
+        Image raw = image == null ? null : rawImages.get(image);
+        if (raw == null) {
+            return blanks.computeIfAbsent(size,
+                    blank -> new ImageIcon(new BufferedImage(blank, blank, BufferedImage.TYPE_INT_ARGB)));
+        }
+        return sizedImages.computeIfAbsent(new SizedImage(image, size), sized -> sharpIcon(raw, size));
+    }
+
+    public Icon liveImage(EveImage image, int size) {
+        return new Icon() {
+            @Override
+            public void paintIcon(Component component, Graphics graphics, int x, int y) {
+                imageOrPlaceholder(image, size).paintIcon(component, graphics, x, y);
+            }
+
+            @Override
+            public int getIconWidth() {
+                return size;
+            }
+
+            @Override
+            public int getIconHeight() {
+                return size;
+            }
+        };
+    }
+
+    public void loadImageAsync(EveImage image, Runnable onLoaded) {
+        Instant failed = imagesFailedAt.get(image);
+        if (rawImages.containsKey(image) || failed != null && Instant.now().isBefore(failed.plus(FAILED_IMAGE_PAUSE))
+                || imagesInFlight.putIfAbsent(image, Boolean.TRUE) != null) {
+            return;
+        }
+        executor.submit(() -> {
+            try {
+                Image raw = fetchImage(image);
+                if (raw == null) {
+                    imagesFailedAt.put(image, Instant.now());
+                } else {
+                    rawImages.put(image, raw);
+                    SwingUtilities.invokeLater(onLoaded);
+                }
+            } finally {
+                imagesInFlight.remove(image);
+            }
+        });
+    }
+
+    private Image fetchImage(EveImage image) {
+        Path cacheFile = AppPaths.iconCacheDir().resolve(image.cacheFileName());
+        try {
+            if (Files.exists(cacheFile)) {
+                return new ImageIcon(Files.readAllBytes(cacheFile)).getImage();
+            }
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Failed to read the cached image " + cacheFile.getFileName(), e);
+        }
+        byte[] bytes = download(image.url());
+        if (bytes == null) {
+            return null;
+        }
+        try {
+            writeCache(cacheFile, bytes);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Failed to cache the image " + cacheFile.getFileName(), e);
+        }
+        return new ImageIcon(bytes).getImage();
     }
 
     public void loadAsync(int typeId, Runnable onLoaded) {
@@ -185,7 +294,10 @@ public final class ItemIconService {
     }
 
     private static ImageIcon toSharpIcon(byte[] bytes, int size) {
-        Image raw = new ImageIcon(bytes).getImage();
+        return sharpIcon(new ImageIcon(bytes).getImage(), size);
+    }
+
+    private static ImageIcon sharpIcon(Image raw, int size) {
         int rawSize = Math.max(size, raw.getWidth(null));
         return new ImageIcon(new BaseMultiResolutionImage(scaled(raw, size), scaled(raw, rawSize)));
     }

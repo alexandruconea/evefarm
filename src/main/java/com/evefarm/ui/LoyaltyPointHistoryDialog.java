@@ -30,7 +30,8 @@ final class LoyaltyPointHistoryDialog extends JDialog {
     private static final List<ColumnDef<LoyaltyPointHistoryRow>> COLUMNS = List.of(
             new ColumnDef<>("date", "Date", String.class, r -> DateUtil.formatIsoInstant(r.recordedAt()),
                     "When EVE Farm saw this LP, in your local time"),
-            new ColumnDef<>("character", "Character", String.class, LoyaltyPointHistoryRow::characterName,
+            new ColumnDef<>("character", "Character", EveEntity.class,
+                    r -> EveEntity.character(r.characterName(), r.characterId()),
                     "The character who holds the LP"),
             new ColumnDef<>("corporation", "Corporation", String.class, LoyaltyPointHistoryRow::corporationName,
                     "The corporation the LP is with"),
@@ -69,6 +70,7 @@ final class LoyaltyPointHistoryDialog extends JDialog {
 
     private void buildUi() {
         sorter = SortableTables.withWidths(table, tableModel, "lpHistory", appContext.tableColumnStateDao);
+        EveEntityCells.install(table, appContext.itemIconService);
         JScrollPane scroll = new JScrollPane(table);
         scroll.setPreferredSize(new Dimension(720, 380));
 

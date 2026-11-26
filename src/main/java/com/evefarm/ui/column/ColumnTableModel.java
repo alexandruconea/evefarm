@@ -1,7 +1,5 @@
 package com.evefarm.ui.column;
 
-import com.evefarm.util.IskFormatter;
-
 import javax.swing.table.AbstractTableModel;
 import java.util.ArrayList;
 import java.util.List;
@@ -68,9 +66,5 @@ public class ColumnTableModel<T> extends AbstractTableModel implements ColumnDes
 
     protected static String nullToEmpty(String value) {
         return value == null ? "" : value;
-    }
-
-    protected static String formatIsk(Double value) {
-        return value == null ? "" : IskFormatter.format(value);
     }
 }

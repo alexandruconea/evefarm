@@ -2,25 +2,14 @@ package com.evefarm.ui;
 
 import javax.swing.Icon;
 import javax.swing.UIManager;
-import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
-import java.awt.Shape;
-import java.awt.geom.Arc2D;
-import java.awt.geom.Area;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.Line2D;
-import java.awt.geom.Path2D;
-import java.awt.geom.RoundRectangle2D;
-import java.util.function.Consumer;
 
 public final class Icons {
 
     private static final int SIZE = 16;
-    private static final float STROKE = 1.5f;
+    private static final int DROPDOWN_SIZE = 10;
 
     private enum Tone {
         NEUTRAL("Actions.Grey", new Color(0x6E6E6E)),
@@ -47,243 +36,51 @@ public final class Icons {
         return Tone.ACCENT.color();
     }
 
-    public static final Icon ADD = icon(Tone.SUCCESS, g -> {
-        g.draw(line(8, 3, 8, 13));
-        g.draw(line(3, 8, 13, 8));
-    });
+    public static final Icon ADD = icon("plus", Tone.SUCCESS);
+    public static final Icon REMOVE = icon("trash-can", Tone.DANGER);
+    public static final Icon CLEAR = icon("eraser", Tone.NEUTRAL);
+    public static final Icon SAVE = icon("floppy-disk", Tone.NEUTRAL);
+    public static final Icon LOAD = icon("folder-open", Tone.NEUTRAL);
+    public static final Icon REFRESH = icon("arrows-rotate", Tone.ACCENT);
+    public static final Icon CANCEL = icon("xmark", Tone.DANGER);
+    public static final Icon PLAY = icon("play", Tone.SUCCESS);
+    public static final Icon EYE = icon("eye", Tone.NEUTRAL);
+    public static final Icon GEAR = icon("gear", Tone.NEUTRAL);
+    public static final Icon TARGET = icon("bullseye", Tone.NEUTRAL);
+    public static final Icon ARCHIVE = icon("box-archive", Tone.NEUTRAL);
+    public static final Icon DROPDOWN = FontAwesome.icon("chevron-down", Tone.NEUTRAL::color, DROPDOWN_SIZE,
+            DROPDOWN_SIZE, SIZE);
+    public static final Icon CHART = icon("chart-line", Tone.NEUTRAL);
+    public static final Icon NOTEBOOK = icon("book", Tone.NEUTRAL);
+    public static final Icon CLIPBOARD = icon("clipboard", Tone.NEUTRAL);
+    public static final Icon SWAP = icon("right-left", Tone.NEUTRAL);
+    public static final Icon DOCUMENT = icon("file-lines", Tone.NEUTRAL);
+    public static final Icon PACKAGE = icon("box", Tone.NEUTRAL);
+    public static final Icon MAIN = icon("star", Tone.FAVORITE);
+    public static final Icon BLANK = new Blank();
+    public static final Icon KILLBOARD = icon("skull-crossbones", Tone.DANGER);
+    public static final Icon INFO = icon("circle-info", Tone.ACCENT);
+    public static final Icon CALCULATOR = icon("calculator", Tone.NEUTRAL);
+    public static final Icon MOVE_UP = icon("arrow-up", Tone.NEUTRAL);
+    public static final Icon MOVE_DOWN = icon("arrow-down", Tone.NEUTRAL);
+    public static final Icon SEARCH = icon("magnifying-glass", Tone.NEUTRAL);
+    public static final Icon FILTER = icon("filter", Tone.NEUTRAL);
 
-    public static final Icon REMOVE = icon(Tone.DANGER, g -> {
-        g.draw(line(2.5, 4.5, 13.5, 4.5));
-        g.draw(path(6, 4.5, 6, 2.75, 10, 2.75, 10, 4.5));
-        g.draw(path(3.75, 4.5, 4.5, 13.25, 11.5, 13.25, 12.25, 4.5));
-        g.draw(line(6.75, 7, 6.75, 11));
-        g.draw(line(9.25, 7, 9.25, 11));
-    });
-
-    public static final Icon CLEAR = icon(Tone.NEUTRAL, g -> {
-        g.draw(closed(2.5, 10, 8.5, 4, 12.5, 8, 6.5, 14));
-        g.draw(line(5.5, 7, 9.5, 11));
-        g.draw(line(6.5, 14, 13.5, 14));
-    });
-
-    public static final Icon SAVE = icon(Tone.NEUTRAL, g -> {
-        g.draw(closed(2.5, 2.5, 11, 2.5, 13.5, 5, 13.5, 13.5, 2.5, 13.5));
-        g.draw(path(5, 2.5, 5, 5.5, 10, 5.5, 10, 2.5));
-        g.draw(path(4.75, 13.5, 4.75, 9, 11.25, 9, 11.25, 13.5));
-    });
-
-    public static final Icon LOAD = icon(Tone.NEUTRAL, g -> {
-        g.draw(path(2.5, 12.5, 2.5, 3.5, 6, 3.5, 7.5, 5, 12, 5, 12, 7.5));
-        g.draw(closed(2.5, 12.5, 4.5, 7.5, 14, 7.5, 12, 12.5));
-    });
-
-    public static final Icon REFRESH = icon(Tone.ACCENT, g -> {
-        g.draw(new Arc2D.Double(2.5, 2.5, 11, 11, 60, 300, Arc2D.OPEN));
-        g.fill(closed(9.9, 0.9, 13.3, 3.3, 9.9, 5.7));
-    });
-
-    public static final Icon CANCEL = icon(Tone.DANGER, g -> {
-        g.draw(line(4, 4, 12, 12));
-        g.draw(line(12, 4, 4, 12));
-    });
-
-    public static final Icon PLAY = icon(Tone.SUCCESS, g -> {
-        Shape triangle = closed(5, 3, 13, 8, 5, 13);
-        g.fill(triangle);
-        g.draw(triangle);
-    });
-
-    public static final Icon EYE = icon(Tone.NEUTRAL, g -> {
-        Path2D eye = new Path2D.Double();
-        eye.moveTo(1.5, 8);
-        eye.quadTo(8, 1.5, 14.5, 8);
-        eye.quadTo(8, 14.5, 1.5, 8);
-        eye.closePath();
-        g.draw(eye);
-        g.draw(new Ellipse2D.Double(5.75, 5.75, 4.5, 4.5));
-    });
-
-    public static final Icon GEAR = icon(Tone.NEUTRAL, g -> {
-        Path2D gear = new Path2D.Double();
-        for (int tooth = 0; tooth < 8; tooth++) {
-            double base = Math.toRadians(tooth * 45);
-            point(gear, tooth == 0, base - Math.toRadians(16), 4.9);
-            point(gear, false, base - Math.toRadians(8), 6.5);
-            point(gear, false, base + Math.toRadians(8), 6.5);
-            point(gear, false, base + Math.toRadians(16), 4.9);
-        }
-        gear.closePath();
-        g.setStroke(new BasicStroke(1.3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g.draw(gear);
-        g.draw(new Ellipse2D.Double(5.8, 5.8, 4.4, 4.4));
-    });
-
-    public static final Icon DOOR = icon(Tone.NEUTRAL, g -> {
-        g.draw(path(6.5, 2.5, 3, 2.5, 3, 13.5, 6.5, 13.5));
-        g.draw(line(6.5, 8, 13.5, 8));
-        g.draw(path(11, 5.5, 13.5, 8, 11, 10.5));
-    });
-
-    public static final Icon PERSON = icon(Tone.NEUTRAL, g -> {
-        g.draw(new Ellipse2D.Double(5.5, 2.25, 5, 5));
-        g.draw(new Arc2D.Double(2.5, 9.25, 11, 9, 0, 180, Arc2D.OPEN));
-    });
-
-    public static final Icon TARGET = icon(Tone.NEUTRAL, g -> {
-        g.draw(new Ellipse2D.Double(2, 2, 12, 12));
-        g.draw(new Ellipse2D.Double(5, 5, 6, 6));
-        g.fill(new Ellipse2D.Double(7, 7, 2, 2));
-    });
-
-    public static final Icon ARCHIVE = icon(Tone.NEUTRAL, g -> {
-        g.draw(new RoundRectangle2D.Double(2, 2.5, 12, 3.5, 2, 2));
-        g.draw(path(3, 6, 3, 13.5, 13, 13.5, 13, 6));
-        g.draw(line(6.5, 9, 9.5, 9));
-    });
-
-    public static final Icon DROPDOWN = new Icon() {
-        @Override
-        public void paintIcon(Component c, Graphics g, int x, int y) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
-            g2.translate(x, y);
-            g2.setColor(Tone.NEUTRAL.color());
-            g2.setStroke(new BasicStroke(STROKE, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-            g2.draw(path(1, 6.5, 4, 9.5, 7, 6.5));
-            g2.dispose();
-        }
-
-        @Override
-        public int getIconWidth() {
-            return 8;
-        }
-
-        @Override
-        public int getIconHeight() {
-            return SIZE;
-        }
-    };
-
-    public static final Icon CHART = icon(Tone.NEUTRAL, g -> {
-        g.draw(path(2.5, 2.5, 2.5, 13.5, 13.5, 13.5));
-        g.draw(path(4.75, 10.5, 7.25, 7.5, 9.5, 9.25, 13, 4.5));
-    });
-
-    public static final Icon NOTEBOOK = icon(Tone.NEUTRAL, g -> {
-        g.draw(new RoundRectangle2D.Double(3, 1.75, 10, 12.5, 2.5, 2.5));
-        g.draw(line(5.75, 1.75, 5.75, 14.25));
-        g.draw(line(8, 5.5, 10.75, 5.5));
-        g.draw(line(8, 8.25, 10.75, 8.25));
-    });
-
-    public static final Icon CLIPBOARD = icon(Tone.NEUTRAL, g -> {
-        g.draw(path(5.5, 3.25, 3, 3.25, 3, 14.5, 13, 14.5, 13, 3.25, 10.5, 3.25));
-        g.draw(new RoundRectangle2D.Double(5.5, 1.75, 5, 3, 1.5, 1.5));
-        g.draw(line(5.5, 8, 10.5, 8));
-        g.draw(line(5.5, 10.75, 9, 10.75));
-    });
-
-    public static final Icon SWAP = icon(Tone.NEUTRAL, g -> {
-        g.draw(line(3, 5.5, 13, 5.5));
-        g.draw(path(10.5, 3, 13, 5.5, 10.5, 8));
-        g.draw(line(13, 10.5, 3, 10.5));
-        g.draw(path(5.5, 8, 3, 10.5, 5.5, 13));
-    });
-
-    public static final Icon DOCUMENT = icon(Tone.NEUTRAL, g -> {
-        g.draw(closed(3.5, 1.75, 9.5, 1.75, 12.75, 5, 12.75, 14.25, 3.5, 14.25));
-        g.draw(path(9.5, 1.75, 9.5, 5, 12.75, 5));
-        g.draw(line(5.75, 8.5, 10.5, 8.5));
-        g.draw(line(5.75, 11, 10.5, 11));
-    });
-
-    public static final Icon PACKAGE = icon(Tone.NEUTRAL, g -> {
-        g.draw(closed(2.5, 5.5, 13.5, 5.5, 13.5, 13.5, 2.5, 13.5));
-        g.draw(path(2.5, 5.5, 4.5, 2.5, 11.5, 2.5, 13.5, 5.5));
-        g.draw(line(8, 2.5, 8, 5.5));
-        g.draw(line(6, 8.5, 10, 8.5));
-    });
-
-    public static final Icon MAIN = icon(Tone.FAVORITE, g -> {
-        Path2D star = star(4.8, 2.1);
-        g.setStroke(new BasicStroke(1f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g.fill(star);
-        g.draw(star);
-    });
-
-    public static final Icon BLANK = icon(Tone.NEUTRAL, g -> {
-    });
-
-    public static final Icon KILLBOARD = icon(Tone.DANGER, g -> {
-        Area skull = new Area(new Ellipse2D.Double(2.75, 1.5, 10.5, 9.5));
-        skull.add(new Area(new RoundRectangle2D.Double(5, 8.25, 6, 5.5, 1.5, 1.5)));
-        g.draw(skull);
-        g.fill(new Ellipse2D.Double(5, 5.25, 2.4, 2.6));
-        g.fill(new Ellipse2D.Double(8.6, 5.25, 2.4, 2.6));
-        g.draw(line(7, 11.5, 7, 13.75));
-        g.draw(line(9, 11.5, 9, 13.75));
-    });
-
-    public static final Icon INFO = icon(Tone.ACCENT, g -> {
-        g.draw(new Ellipse2D.Double(1.75, 1.75, 12.5, 12.5));
-        g.draw(line(8, 7.25, 8, 11.5));
-        g.fill(new Ellipse2D.Double(7.05, 3.9, 1.9, 1.9));
-    });
-
-    public static final Icon CALCULATOR = icon(Tone.NEUTRAL, g -> {
-        g.draw(closed(3.5, 1.5, 12.5, 1.5, 12.5, 14.5, 3.5, 14.5));
-        g.draw(closed(5.5, 3.5, 10.5, 3.5, 10.5, 6, 5.5, 6));
-        for (double y : new double[]{8.75, 11.75}) {
-            g.draw(line(5.75, y, 6.25, y));
-            g.draw(line(7.75, y, 8.25, y));
-            g.draw(line(9.75, y, 10.25, y));
-        }
-    });
-
-    public static final Icon MOVE_UP = icon(Tone.NEUTRAL, g -> {
-        g.draw(line(8, 13.5, 8, 2.5));
-        g.draw(path(4, 6.5, 8, 2.5, 12, 6.5));
-    });
-
-    public static final Icon MOVE_DOWN = icon(Tone.NEUTRAL, g -> {
-        g.draw(line(8, 2.5, 8, 13.5));
-        g.draw(path(4, 9.5, 8, 13.5, 12, 9.5));
-    });
+    private Icons() {
+    }
 
     public static Icon disabled(Icon icon) {
-        if (icon instanceof LineIcon line) {
-            return new LineIcon(line.tone, line.painter, true);
-        }
-        return icon;
+        return FontAwesome.disabled(icon);
     }
 
-    private static Icon icon(Tone tone, Consumer<Graphics2D> painter) {
-        return new LineIcon(tone, painter, false);
+    private static Icon icon(String name, Tone tone) {
+        return FontAwesome.icon(name, tone::color, SIZE);
     }
 
-    private static final class LineIcon implements Icon {
-
-        private final Tone tone;
-        private final Consumer<Graphics2D> painter;
-        private final boolean alwaysDisabled;
-
-        private LineIcon(Tone tone, Consumer<Graphics2D> painter, boolean alwaysDisabled) {
-            this.tone = tone;
-            this.painter = painter;
-            this.alwaysDisabled = alwaysDisabled;
-        }
+    private static final class Blank implements Icon {
 
         @Override
-        public void paintIcon(Component c, Graphics g, int x, int y) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
-            g2.translate(x, y);
-            g2.setColor(alwaysDisabled || (c != null && !c.isEnabled()) ? UiColors.muted() : tone.color());
-            g2.setStroke(new BasicStroke(STROKE, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-            painter.accept(g2);
-            g2.dispose();
+        public void paintIcon(Component component, Graphics graphics, int x, int y) {
         }
 
         @Override
@@ -300,54 +97,5 @@ public final class Icons {
         public String toString() {
             return "";
         }
-    }
-
-    private static Shape line(double x1, double y1, double x2, double y2) {
-        return new Line2D.Double(x1, y1, x2, y2);
-    }
-
-    private static Path2D path(double... points) {
-        Path2D path = new Path2D.Double();
-        path.moveTo(points[0], points[1]);
-        for (int i = 2; i < points.length; i += 2) {
-            path.lineTo(points[i], points[i + 1]);
-        }
-        return path;
-    }
-
-    private static Path2D closed(double... points) {
-        Path2D path = path(points);
-        path.closePath();
-        return path;
-    }
-
-    private static Path2D star(double outerRadius, double innerRadius) {
-        Path2D star = new Path2D.Double();
-        for (int i = 0; i < 10; i++) {
-            double angle = Math.toRadians(-90 + i * 36);
-            double radius = i % 2 == 0 ? outerRadius : innerRadius;
-            double x = 8 + Math.cos(angle) * radius;
-            double y = 8.6 + Math.sin(angle) * radius;
-            if (i == 0) {
-                star.moveTo(x, y);
-            } else {
-                star.lineTo(x, y);
-            }
-        }
-        star.closePath();
-        return star;
-    }
-
-    private static void point(Path2D path, boolean first, double angle, double radius) {
-        double x = 8 + Math.cos(angle) * radius;
-        double y = 8 + Math.sin(angle) * radius;
-        if (first) {
-            path.moveTo(x, y);
-        } else {
-            path.lineTo(x, y);
-        }
-    }
-
-    private Icons() {
     }
 }

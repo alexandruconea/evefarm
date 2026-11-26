@@ -8,6 +8,7 @@ import com.formdev.flatlaf.FlatLaf;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -16,6 +17,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
 import javax.swing.table.TableCellRenderer;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -51,7 +53,10 @@ public final class StandingsPanel extends TabPanel {
     private final JLabel hintLabel = new JLabel(" ");
     private final JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
     private volatile Set<StandingRow> indented = Set.of();
+    private volatile List<StandingRow> allRows = List.of();
     private volatile StandingRow selected;
+    private StandingTarget pending;
+    private StandingRow pendingAgent;
     private DataTablePanelSupport<StandingRow> factionSupport;
     private DataTablePanelSupport<StandingRow> agentSupport;
 
@@ -64,9 +69,17 @@ public final class StandingsPanel extends TabPanel {
     private void postInit() {
         factionSupport = new DataTablePanelSupport<>(appContext, FACTIONS_KEY, factionModel, factionTable,
                 factionFilters, factionCount, "standings", this::loadFactionsAndCorporations);
-        factionSupport.setOnRowsShown(this::updateHint);
+        factionSupport.setOnRowsShown(() -> {
+            updateHint();
+            loadImages(factionModel, factionTable);
+            revealPending();
+        });
         agentSupport = new DataTablePanelSupport<>(appContext, AGENTS_KEY, agentModel, agentTable, agentFilters,
                 agentCount, "agents", this::loadAgents);
+        agentSupport.setOnRowsShown(() -> {
+            loadImages(agentModel, agentTable);
+            revealPendingAgent();
+        });
         factionSupport.init();
         agentSupport.init();
         installColors(factionTable, factionModel, true);
@@ -79,10 +92,21 @@ public final class StandingsPanel extends TabPanel {
         });
         installShowAllAgents();
         DividerMemory.install(split, appContext.settingsDao, SettingsDao.STANDINGS_DIVIDER, DEFAULT_DIVIDER);
+        appContext.agentImportService.addImportListener(() -> SwingUtilities.invokeLater(() -> {
+            if (isShowing()) {
+                onShown();
+            }
+        }));
+    }
+
+    private void loadImages(StandingsTableModel model, JTable table) {
+        EveEntityCells.loadImages(model.rows().stream().flatMap(StandingsTableModel::entities),
+                appContext.itemIconService, table::repaint);
     }
 
     @Override
     public void onShown() {
+        appContext.agentImportService.importInBackgroundIfMissing();
         factionTable.getRowSorter().setSortKeys(null);
         factionSupport.reload();
         agentSupport.reload();
@@ -95,8 +119,64 @@ public final class StandingsPanel extends TabPanel {
 
     private List<StandingRow> loadFactionsAndCorporations() {
         List<StandingRow> rows = appContext.standingService.getRows();
+        allRows = rows;
         indented = StandingService.corporationsUnderTheirFaction(rows);
         return StandingService.factionsAndCorporations(rows);
+    }
+
+    void reveal(StandingTarget target) {
+        pending = target;
+    }
+
+    private void revealPending() {
+        StandingTarget target = pending;
+        if (target == null) {
+            return;
+        }
+        pending = null;
+        List<StandingRow> rows = allRows;
+        StandingRow agent = target.agentId() == null ? null
+                : StandingService.standingWith(rows, target.agentId(), target.characterName()).orElse(null);
+        String characterName = agent == null ? target.characterName() : agent.characterName();
+        StandingRow group = target.groupIds().stream()
+                .map(id -> StandingService.standingWith(rows, id, characterName).orElse(null))
+                .filter(row -> row != null && (agent == null || row.characterId() == agent.characterId()))
+                .findFirst()
+                .orElse(null);
+        if (group == null || !selectRow(factionTable, factionModel, group)) {
+            factionTable.clearSelection();
+        } else if (agent == null) {
+            factionTable.requestFocusInWindow();
+        }
+        if (agent != null) {
+            pendingAgent = agent;
+            agentSupport.reload();
+        }
+    }
+
+    private void revealPendingAgent() {
+        StandingRow agent = pendingAgent;
+        if (agent == null) {
+            return;
+        }
+        pendingAgent = null;
+        if (selectRow(agentTable, agentModel, agent)) {
+            agentTable.requestFocusInWindow();
+        }
+    }
+
+    private static boolean selectRow(JTable table, StandingsTableModel model, StandingRow wanted) {
+        for (int view = 0; view < table.getRowCount(); view++) {
+            if (model.rowAt(table.convertRowIndexToModel(view)).equals(wanted)) {
+                table.setRowSelectionInterval(view, view);
+                if (table.getColumnCount() > 0) {
+                    table.setColumnSelectionInterval(0, table.getColumnCount() - 1);
+                }
+                table.scrollRectToVisible(table.getCellRect(view, 0, true));
+                return true;
+            }
+        }
+        return false;
     }
 
     private List<StandingRow> loadAgents() {
@@ -116,7 +196,6 @@ public final class StandingsPanel extends TabPanel {
     }
 
     private void installShowAllAgents() {
-        showAllAgentsButton.putClientProperty("JButton.buttonType", "toolBarButton");
         showAllAgentsButton.setVisible(false);
         showAllAgentsButton.addActionListener(e -> factionTable.clearSelection());
         factionTable.getInputMap(JComponent.WHEN_FOCUSED)
@@ -146,7 +225,7 @@ public final class StandingsPanel extends TabPanel {
     }
 
     private void installColors(JTable table, StandingsTableModel model, boolean indentCorporations) {
-        for (Class<?> type : List.of(Object.class, Integer.class, Long.class)) {
+        for (Class<?> type : List.of(Object.class, Integer.class, Long.class, EveEntity.class)) {
             TableCellRenderer defaultRenderer = table.getDefaultRenderer(type);
             table.setDefaultRenderer(type, (tbl, value, isSelected, hasFocus, row, column) -> {
                 Component c = defaultRenderer.getTableCellRendererComponent(tbl, value, isSelected, hasFocus, row,
@@ -186,19 +265,30 @@ public final class StandingsPanel extends TabPanel {
         top.add(hintLabel);
 
         JLabel factionTitle = new JLabel("Factions and corporations");
-        JPanel agentHeader = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        agentHeader.add(agentTitle);
-        agentHeader.add(showAllAgentsButton);
+        bold(factionTitle);
+        bold(agentTitle);
+        showAllAgentsButton.putClientProperty("JButton.buttonType", "toolBarButton");
+        int titleHeight = Math.max(agentTitle.getPreferredSize().height,
+                showAllAgentsButton.getPreferredSize().height);
+        JPanel factionHeader = titleRow(titleHeight, factionTitle);
+        JPanel agentHeader = titleRow(titleHeight, agentTitle, showAllAgentsButton);
 
-        split.setLeftComponent(side(factionTitle, factionFilters, factionTable, factionCount));
+        split.setLeftComponent(side(factionHeader, factionFilters, factionTable, factionCount));
         split.setRightComponent(side(agentHeader, agentFilters, agentTable, agentCount));
         split.setResizeWeight(DEFAULT_DIVIDER);
         split.setBorder(BorderFactory.createEmptyBorder());
-        bold(factionTitle);
-        bold(agentTitle);
 
         add(top, BorderLayout.NORTH);
         add(split, BorderLayout.CENTER);
+    }
+
+    private static JPanel titleRow(int height, JComponent... parts) {
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        row.add(Box.createVerticalStrut(height));
+        for (JComponent part : parts) {
+            row.add(part);
+        }
+        return row;
     }
 
     private static JPanel side(JComponent title, JPanel filters, JTable table, JLabel count) {

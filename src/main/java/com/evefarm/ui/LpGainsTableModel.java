@@ -13,7 +13,8 @@ public final class LpGainsTableModel extends ColumnTableModel<LpGain> {
     private static final List<ColumnDef<LpGain>> COLUMNS = List.of(
             new ColumnDef<>("seenAt", "Seen At", String.class, r -> DateUtil.format(r.seenAt()),
                     "When EVE Farm read the LP and saw that it had gone up, in your local time"),
-            new ColumnDef<>("character", "Character", String.class, LpGain::characterName,
+            new ColumnDef<>("character", "Character", EveEntity.class,
+                    r -> EveEntity.character(r.characterName(), r.characterId()),
                     "The character who earned the LP"),
             new ColumnDef<>("corporation", "Corporation", String.class, LpGain::corporationName,
                     "The corporation the LP is with"),

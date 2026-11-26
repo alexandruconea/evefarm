@@ -8,6 +8,7 @@ import com.evefarm.service.ItemIconService;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
 import com.evefarm.ui.column.ColumnWidthMemory;
+import com.evefarm.ui.column.Isk;
 import com.evefarm.util.DateUtil;
 import com.evefarm.util.IskFormatter;
 import com.evefarm.util.Text;
@@ -234,11 +235,11 @@ final class ContractContentsDialog extends JDialog {
                         "The item's group, such as Frigate or Mineral"),
                 new ColumnDef<>("quantity", "Quantity", String.class, item -> Text.count(item.quantity()),
                         "How many units"),
-                new ColumnDef<>("unitPrice", "Unit Price", String.class,
-                        item -> item.unitPrice() == null ? "" : IskFormatter.format(item.unitPrice()),
+                new ColumnDef<>("unitPrice", "Unit Price", Isk.class,
+                        item -> item.unitPrice() == null ? Isk.NONE : Isk.of(item.unitPrice()),
                         "The price of one unit, from your price provider"),
-                new ColumnDef<>("total", "Total", String.class,
-                        item -> item.totalValue() == null ? "" : IskFormatter.format(item.totalValue()),
+                new ColumnDef<>("total", "Total", Isk.class,
+                        item -> item.totalValue() == null ? Isk.NONE : Isk.of(item.totalValue()),
                         "The unit price times the quantity")));
     }
 }
