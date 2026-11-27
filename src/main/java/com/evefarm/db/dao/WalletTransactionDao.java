@@ -108,7 +108,39 @@ public final class WalletTransactionDao {
         }
     }
 
-    public record Sale(long transactionId, Instant date, int typeId, long quantity, double price) {
+    public record Sale(long transactionId, Instant date, int typeId, long quantity, double price, long characterId) {
+    }
+
+    public record Trade(long characterId, Instant date, double amount) {
+    }
+
+    public List<Trade> findTrades(Collection<Long> characterIds, Instant since) {
+        if (characterIds.isEmpty()) {
+            return List.of();
+        }
+        String sql = "SELECT character_id, date, quantity, price, is_buy FROM wallet_transaction "
+                + "WHERE character_id IN (" + JdbcUtil.placeholders(characterIds.size()) + ") AND date >= ? "
+                + "ORDER BY date";
+        synchronized (database) {
+            List<Trade> result = new ArrayList<>();
+            try (PreparedStatement ps = database.connection().prepareStatement(sql)) {
+                int index = 1;
+                for (Long characterId : characterIds) {
+                    ps.setLong(index++, characterId);
+                }
+                ps.setString(index, since.toString());
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        double value = rs.getLong("quantity") * rs.getDouble("price");
+                        result.add(new Trade(rs.getLong("character_id"), Instant.parse(rs.getString("date")),
+                                rs.getInt("is_buy") != 0 ? -value : value));
+                    }
+                }
+            } catch (SQLException e) {
+                throw new IllegalStateException("Failed to read the market transactions", e);
+            }
+            return result;
+        }
     }
 
     public List<Sale> findSales(Collection<Integer> typeIds) {
@@ -116,7 +148,7 @@ public final class WalletTransactionDao {
             return List.of();
         }
         String placeholders = JdbcUtil.placeholders(typeIds.size());
-        String sql = "SELECT transaction_id, date, type_id, quantity, price FROM wallet_transaction "
+        String sql = "SELECT transaction_id, date, type_id, quantity, price, character_id FROM wallet_transaction "
                 + "WHERE is_buy = 0 AND type_id IN (" + placeholders + ") ORDER BY date, transaction_id";
         synchronized (database) {
             List<Sale> result = new ArrayList<>();
@@ -128,7 +160,8 @@ public final class WalletTransactionDao {
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
                         result.add(new Sale(rs.getLong("transaction_id"), Instant.parse(rs.getString("date")),
-                                rs.getInt("type_id"), rs.getLong("quantity"), rs.getDouble("price")));
+                                rs.getInt("type_id"), rs.getLong("quantity"), rs.getDouble("price"),
+                                rs.getLong("character_id")));
                     }
                 }
             } catch (SQLException e) {

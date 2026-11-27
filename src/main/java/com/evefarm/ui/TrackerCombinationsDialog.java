@@ -1,9 +1,11 @@
 package com.evefarm.ui;
 
+import com.evefarm.service.IncomeSources;
 import com.evefarm.service.TrackerCombination;
 import com.evefarm.service.TrackerCombinationService;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
@@ -39,9 +41,9 @@ final class TrackerCombinationsDialog extends JDialog {
             Map.entry("Contract Collateral", "The collateral of open courier contracts"),
             Map.entry("Contracts", "The price and reward of the open contracts you issued"),
             Map.entry("Skill Points", "The skill points as counted by Skill Point Filters..."),
-            Map.entry("LP Value", "The LP with your favorite corporation, at your ISK/LP target"),
-            Map.entry(TrackerCombination.MINING, "The ISK value of everything mined so far, valued as chosen in "
-                    + "Industry > Mining. Ore you sold is in Wallet Balance too, and ore you kept in Assets."));
+            Map.entry("LP Value", "The LP with your favorite corporation, at your ISK/LP target"));
+    private static final String EARNED_TIP = "What came in each day, added up from where the chart starts. ISK you "
+            + "earned also ends up in Wallet Balance or Assets, so ticking both counts it twice";
 
     private final TrackerCombinationService service;
     private final Consumer<String> onSaved;
@@ -82,13 +84,18 @@ final class TrackerCombinationsDialog extends JDialog {
 
         JPanel parts = new JPanel();
         parts.setLayout(new BoxLayout(parts, BoxLayout.Y_AXIS));
-        parts.add(new JLabel("Adds up:"));
-        for (String part : TrackerCombination.ALL_PARTS) {
-            JCheckBox box = new JCheckBox(part);
-            box.setToolTipText(PART_TIPS.get(part));
-            box.addActionListener(e -> partsChanged());
-            partBoxes.put(part, box);
-            parts.add(box);
+        JLabel owned = new JLabel("Adds up what you own:");
+        owned.setToolTipText("The values of the Tracker snapshots");
+        parts.add(owned);
+        for (String part : TrackerCombination.SNAPSHOT_PARTS) {
+            addPartBox(parts, part, PART_TIPS.get(part));
+        }
+        parts.add(Box.createVerticalStrut(8));
+        JLabel earned = new JLabel("And what you earned:");
+        earned.setToolTipText(EARNED_TIP);
+        parts.add(earned);
+        for (IncomeSources.Source source : IncomeSources.Source.values()) {
+            addPartBox(parts, source.label(), source.description());
         }
 
         JButton save = new JButton("Save", Icons.SAVE);
@@ -132,6 +139,14 @@ final class TrackerCombinationsDialog extends JDialog {
         }
         renameButton.setEnabled(combination != null);
         deleteButton.setEnabled(combination != null);
+    }
+
+    private void addPartBox(JPanel parts, String part, String tip) {
+        JCheckBox box = new JCheckBox(part);
+        box.setToolTipText(tip);
+        box.addActionListener(e -> partsChanged());
+        partBoxes.put(part, box);
+        parts.add(box);
     }
 
     private void partsChanged() {

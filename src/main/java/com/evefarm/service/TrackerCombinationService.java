@@ -3,10 +3,10 @@ package com.evefarm.service;
 import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.db.dao.SnapshotDao;
 import com.evefarm.db.dao.WalletJournalDao;
-import com.evefarm.model.MiningRow;
 import com.evefarm.model.TrackerSnapshot;
-import com.evefarm.service.WalletLpProjection.Projection;
-import com.evefarm.service.WalletLpProjection.Transfer;
+import com.evefarm.service.Forecast.Projection;
+import com.evefarm.service.Forecast.Transfer;
+import com.evefarm.service.IncomeSources.Source;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.Clock;
@@ -14,8 +14,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,23 +31,28 @@ public final class TrackerCombinationService {
 
     private static final Logger LOG = Logger.getLogger(TrackerCombinationService.class.getName());
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final Duration SHORTEST_HISTORY = Duration.ofDays(30);
 
     public record Point(Instant at, double value) {
     }
 
     private final SnapshotDao snapshotDao;
     private final WalletJournalDao walletJournalDao;
-    private final MiningService miningService;
+    private final IncomeSources incomeSources;
     private final SettingsDao settingsDao;
     private final Clock clock;
 
     public TrackerCombinationService(SnapshotDao snapshotDao, WalletJournalDao walletJournalDao,
-                                     MiningService miningService, SettingsDao settingsDao, Clock clock) {
+                                     IncomeSources incomeSources, SettingsDao settingsDao, Clock clock) {
         this.snapshotDao = snapshotDao;
         this.walletJournalDao = walletJournalDao;
-        this.miningService = miningService;
+        this.incomeSources = incomeSources;
         this.settingsDao = settingsDao;
         this.clock = clock;
+    }
+
+    public Clock clock() {
+        return clock;
     }
 
     public List<TrackerCombination> combinations() {
@@ -73,6 +78,10 @@ public final class TrackerCombinationService {
 
     public Optional<TrackerCombination> selected() {
         String name = settingsDao.getOrDefault(SettingsDao.TRACKER_COMBINATION, "");
+        return find(name);
+    }
+
+    public Optional<TrackerCombination> find(String name) {
         return combinations().stream().filter(combination -> combination.name().equals(name)).findFirst();
     }
 
@@ -91,19 +100,30 @@ public final class TrackerCombinationService {
     }
 
     static List<Point> points(List<TrackerSnapshot> snapshots, TrackerCombination combination,
-                              ToDoubleFunction<Instant> mined) {
+                              ToDoubleFunction<Instant> earned) {
         Map<Long, TrackerSnapshot> latestPerCharacter = new LinkedHashMap<>();
         List<Point> points = new ArrayList<>();
         for (List<TrackerSnapshot> run : SnapshotRuns.of(snapshots)) {
             run.forEach(snapshot -> latestPerCharacter.put(snapshot.characterId(), snapshot));
             Instant at = run.getFirst().capturedAt();
             double value = latestPerCharacter.values().stream().mapToDouble(combination::snapshotValue).sum();
-            points.add(new Point(at, value + mined.applyAsDouble(at)));
+            points.add(new Point(at, value + earned.applyAsDouble(at)));
         }
         return points;
     }
 
-    static ToDoubleFunction<Instant> cumulative(NavigableMap<LocalDate, Double> valueByDay) {
+    static List<Point> dailyPoints(Instant since, Instant now, ZoneId zone, ToDoubleFunction<Instant> earned) {
+        List<Point> points = new ArrayList<>();
+        for (LocalDate day = LocalDate.ofInstant(since, zone); day.isBefore(LocalDate.ofInstant(now, zone));
+             day = day.plusDays(1)) {
+            Instant endOfDay = day.plusDays(1).atStartOfDay(zone).toInstant().minusSeconds(1);
+            points.add(new Point(endOfDay, earned.applyAsDouble(endOfDay)));
+        }
+        points.add(new Point(now, earned.applyAsDouble(now)));
+        return points;
+    }
+
+    static ToDoubleFunction<Instant> cumulative(NavigableMap<LocalDate, Double> valueByDay, ZoneId zone) {
         NavigableMap<LocalDate, Double> runningTotal = new TreeMap<>();
         double total = 0;
         for (Map.Entry<LocalDate, Double> day : valueByDay.entrySet()) {
@@ -111,44 +131,48 @@ public final class TrackerCombinationService {
             runningTotal.put(day.getKey(), total);
         }
         return at -> {
-            Map.Entry<LocalDate, Double> upTo = runningTotal.floorEntry(LocalDate.ofInstant(at, ZoneOffset.UTC));
+            Map.Entry<LocalDate, Double> upTo = runningTotal.floorEntry(LocalDate.ofInstant(at, zone));
             return upTo == null ? 0 : upTo.getValue();
         };
     }
 
-    private ToDoubleFunction<Instant> minedUntil(Set<Long> characterIds) {
-        MiningService.Valuation valuation = settingsDao.getEnum(SettingsDao.MINING_VALUATION,
-                MiningService.Valuation.class).orElse(MiningService.Valuation.ORE);
-        double refineRate = Math.clamp(settingsDao.getDouble(SettingsDao.MINING_REFINE_RATE,
-                MiningService.DEFAULT_REFINE_RATE), 0, 100) / 100.0;
-        NavigableMap<LocalDate, Double> valueByDay = new TreeMap<>();
-        for (MiningRow row : miningService.getRows(MiningService.Period.ALL, valuation, refineRate)) {
-            if (characterIds.contains(row.characterId()) && row.value() != null) {
-                valueByDay.merge(LocalDate.parse(row.date()), row.value(), Double::sum);
-            }
-        }
-        return cumulative(valueByDay);
+    static Instant historyStart(Instant now, Instant end, Duration window) {
+        Duration ahead = Duration.between(now, end);
+        Duration shown = ahead.compareTo(window) > 0 ? ahead : window;
+        return now.minus(shown.compareTo(SHORTEST_HISTORY) > 0 ? shown : SHORTEST_HISTORY);
     }
 
-    public Projection project(TrackerCombination combination, Set<Long> characterIds) {
-        ToDoubleFunction<Instant> mined = combination.includes(TrackerCombination.MINING)
-                ? minedUntil(characterIds) : at -> 0;
+    public Projection project(TrackerCombination combination, Set<Long> characterIds, Instant end,
+                              Duration window) {
         Instant now = clock.instant();
         ZoneId zone = clock.getZone();
-        Instant paceStart = now.minus(WalletLpProjection.PACE_WINDOW).minus(Duration.ofDays(1));
-        Instant yearStart = WalletLpProjection.yearStart(now, zone);
-        Instant since = paceStart.isBefore(yearStart) ? paceStart : yearStart;
-        List<WalletLpProjection.Point> points = points(snapshotDao.listBetween(characterIds, since, now),
-                combination, mined).stream()
-                .map(point -> new WalletLpProjection.Point(point.at(), point.value(), 0))
-                .toList();
+        Instant historyStart = historyStart(now, end, window);
+        Instant windowStart = now.minus(window);
+        Instant since = (windowStart.isBefore(historyStart) ? windowStart : historyStart).minus(Duration.ofDays(1));
+        NavigableMap<LocalDate, Double> earnedByDay = new TreeMap<>();
+        incomeSources.daily(combination.sources(), characterIds, since).values()
+                .forEach(days -> days.forEach((day, value) -> earnedByDay.merge(day, value, Double::sum)));
+        ToDoubleFunction<Instant> earned = cumulative(earnedByDay, zone);
+        List<Point> points = combination.usesSnapshots()
+                ? points(snapshotDao.listBetween(characterIds, since, now), combination, earned)
+                : dailyPoints(since, now, zone, earned);
         List<Transfer> transfers = new ArrayList<>();
         if (combination.includes(TrackerCombination.WALLET)) {
             for (long characterId : characterIds) {
-                walletJournalDao.findByRefTypes(characterId, WalletLpProjection.TRANSFER_REF_TYPES, since)
+                walletJournalDao.findByRefTypes(characterId, Forecast.TRANSFER_REF_TYPES, since)
                         .forEach(entry -> transfers.add(new Transfer(Instant.parse(entry.date()), entry.amount())));
             }
         }
-        return WalletLpProjection.project(points, transfers, now, zone);
+        return Forecast.project(points.stream().map(point -> new Forecast.Point(point.at(), point.value()))
+                .toList(), transfers, historyStart, end, window, zone);
+    }
+
+    public Map<Source, Double> earnedPerDay(Set<Source> sources, Set<Long> characterIds, Duration window) {
+        Instant since = clock.instant().minus(window);
+        double days = Math.max(1, window.toSeconds() / (double) Duration.ofDays(1).toSeconds());
+        Map<Source, Double> perDay = new EnumMap<>(Source.class);
+        incomeSources.daily(sources, characterIds, since).forEach((source, byDay) ->
+                perDay.put(source, byDay.values().stream().mapToDouble(Double::doubleValue).sum() / days));
+        return perDay;
     }
 }

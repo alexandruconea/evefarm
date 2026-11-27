@@ -17,6 +17,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
+import javax.swing.JSlider;
 import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
 import java.awt.BorderLayout;
@@ -58,6 +59,8 @@ public final class SettingsDialog extends JDialog {
     private final JCheckBox notifySkillsBox = new JCheckBox("Skill queues that end within 24 hours");
     private final JCheckBox notifyContractsBox = new JCheckBox("Your contracts: accepted, or expiring within 24 hours");
     private final JCheckBox notifyLpTargetBox = new JCheckBox("LP Store purchases back at their target price");
+    private final JCheckBox soundsBox = new JCheckBox("Play a sound when the mouse moves over or clicks a button");
+    private final JSlider volumeSlider = new JSlider(0, 100, UiSounds.DEFAULT_VOLUME);
 
     static List<String> themeKeys(boolean windows) {
         return windows ? List.of(SettingsDao.DEFAULT_LAF_THEME, "flatlaf-dark", "eve", "adwaita",
@@ -79,6 +82,17 @@ public final class SettingsDialog extends JDialog {
         add(buildButtons(), BorderLayout.SOUTH);
 
         loadCurrentValues();
+        soundsBox.addActionListener(e -> {
+            volumeSlider.setEnabled(soundsBox.isSelected());
+            if (soundsBox.isSelected()) {
+                UiSounds.preview(volumeSlider.getValue());
+            }
+        });
+        volumeSlider.addChangeListener(e -> {
+            if (!volumeSlider.getValueIsAdjusting()) {
+                UiSounds.preview(volumeSlider.getValue());
+            }
+        });
         pack();
         setLocationRelativeTo(owner);
     }
@@ -153,6 +167,17 @@ public final class SettingsDialog extends JDialog {
         }
         c.anchor = GridBagConstraints.NORTHWEST;
         addRow(panel, c, row++, "Notifications:", notificationsPanel);
+
+        soundsBox.setToolTipText("A short tick when the mouse moves over a button, a tab or a menu, and a click "
+                + "when you press it");
+        volumeSlider.setToolTipText("How loud the sounds are. Moving it plays the click");
+        JPanel volumeRow = new JPanel(new BorderLayout(8, 0));
+        volumeRow.add(new JLabel("Volume:"), BorderLayout.WEST);
+        volumeRow.add(volumeSlider, BorderLayout.CENTER);
+        JPanel soundsPanel = new JPanel(new GridLayout(0, 1, 0, 2));
+        soundsPanel.add(soundsBox);
+        soundsPanel.add(volumeRow);
+        addRow(panel, c, row++, "Sounds:", soundsPanel);
         c.anchor = GridBagConstraints.WEST;
 
         priceProviderCombo.addActionListener(e -> updateJaniceFieldEnabled());
@@ -268,6 +293,9 @@ public final class SettingsDialog extends JDialog {
         notifySkillsBox.setSelected(isOn(SettingsDao.NOTIFY_SKILL_QUEUE));
         notifyContractsBox.setSelected(isOn(SettingsDao.NOTIFY_CONTRACTS));
         notifyLpTargetBox.setSelected(isOn(SettingsDao.NOTIFY_LP_TARGET));
+        soundsBox.setSelected("true".equals(settingsDao.getOrDefault(SettingsDao.UI_SOUNDS, "false")));
+        volumeSlider.setValue(settingsDao.getInt(SettingsDao.UI_SOUND_VOLUME, UiSounds.DEFAULT_VOLUME));
+        volumeSlider.setEnabled(soundsBox.isSelected());
     }
 
     private boolean isOn(String key) {
@@ -335,6 +363,9 @@ public final class SettingsDialog extends JDialog {
         settingsDao.set(SettingsDao.NOTIFY_SKILL_QUEUE, String.valueOf(notifySkillsBox.isSelected()));
         settingsDao.set(SettingsDao.NOTIFY_CONTRACTS, String.valueOf(notifyContractsBox.isSelected()));
         settingsDao.set(SettingsDao.NOTIFY_LP_TARGET, String.valueOf(notifyLpTargetBox.isSelected()));
+        settingsDao.set(SettingsDao.UI_SOUNDS, String.valueOf(soundsBox.isSelected()));
+        settingsDao.set(SettingsDao.UI_SOUND_VOLUME, String.valueOf(volumeSlider.getValue()));
+        UiSounds.apply(soundsBox.isSelected(), volumeSlider.getValue());
 
         JOptionPane.showMessageDialog(this,
                 "Saved. Restart EVE Farm for theme changes to take effect. For price provider or "

@@ -123,6 +123,7 @@ public final class MainFrame extends JFrame {
         group("group.values", "Values", "chart-column",
                 page("values", "Values", "chart-pie", new ValuesPanel(appContext)),
                 page("tracker", "Tracker", "chart-line", new TrackerPanel(appContext)),
+                page("forecast", "Forecast", "arrow-trend-up", new ForecastPage(appContext)),
                 page("assets", "Assets", "box", new AssetsPanel(appContext)));
         group("group.wallet", "Wallet", "wallet",
                 page("journal", "Journal", "book", new DataTablePanel<>(appContext, "journal",
@@ -183,6 +184,8 @@ public final class MainFrame extends JFrame {
         }
 
         setupUpdates();
+        UiSounds.apply("true".equals(appContext.settingsDao.getOrDefault(SettingsDao.UI_SOUNDS, "false")),
+                appContext.settingsDao.getInt(SettingsDao.UI_SOUND_VOLUME, UiSounds.DEFAULT_VOLUME));
         setupBeltKillAlerts();
         appContext.notificationService.addListener(notification -> SwingUtilities.invokeLater(
                 () -> showTrayNotification(notification.caption(), notification.text())));

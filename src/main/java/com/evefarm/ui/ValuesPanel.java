@@ -3,8 +3,6 @@ package com.evefarm.ui;
 import com.evefarm.AppContext;
 import com.evefarm.model.EveCharacter;
 import com.evefarm.model.ValueSummary;
-import com.evefarm.service.TrackerCombination;
-import com.evefarm.service.TrackerCombinationService;
 
 import javax.swing.BorderFactory;
 import javax.swing.GroupLayout;
@@ -14,22 +12,16 @@ import javax.swing.JScrollPane;
 import javax.swing.JViewport;
 import javax.swing.LayoutStyle;
 import javax.swing.Scrollable;
-import javax.swing.SwingUtilities;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.Rectangle;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public final class ValuesPanel extends TabPanel {
 
     private final AppContext appContext;
     private final ValueColumnPanel grandTotalColumn = new ValueColumnPanel();
     private final ValueColumnPanel characterColumn = new ValueColumnPanel();
-    private final ForecastPanel projectionPanel = new ForecastPanel(this::chooseCombination, this::editCombinations);
-    private final AtomicInteger projectionGeneration = new AtomicInteger();
 
     public ValuesPanel(AppContext appContext) {
         this.appContext = appContext;
@@ -46,7 +38,6 @@ public final class ValuesPanel extends TabPanel {
         FillViewportPanel content = new FillViewportPanel();
         content.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
         content.add(columnsContainer, BorderLayout.NORTH);
-        content.add(projectionPanel, BorderLayout.CENTER);
         columnsScrollPane.setViewportView(content);
 
         characterCombo.addActionListener(e -> refreshCharacterColumn());
@@ -69,34 +60,6 @@ public final class ValuesPanel extends TabPanel {
 
         refreshGrandTotalColumn();
         refreshCharacterColumn();
-        refreshProjection();
-    }
-
-    private void refreshProjection() {
-        List<EveCharacter> characters = characterCombo.characters();
-        projectionPanel.setVisible(!characters.isEmpty());
-        if (characters.isEmpty()) {
-            return;
-        }
-        EveCharacter main = characters.getFirst();
-        TrackerCombinationService combinations = appContext.trackerCombinationService;
-        TrackerCombination combination = combinations.forecastCombination();
-        projectionPanel.setCombinations(combinations.combinations().stream().map(TrackerCombination::name).toList(),
-                combination.name());
-        BackgroundLoader.load(projectionGeneration, () -> combinations.project(combination,
-                        Set.of(main.characterId())),
-                projection -> projectionPanel.setProjection(main.characterName(), combination, projection),
-                "the forecast");
-    }
-
-    private void chooseCombination(String name) {
-        appContext.trackerCombinationService.select(name);
-        refreshProjection();
-    }
-
-    private void editCombinations() {
-        new TrackerCombinationsDialog(SwingUtilities.getWindowAncestor(this), appContext.trackerCombinationService,
-                projectionPanel.combinationName(), this::chooseCombination).setVisible(true);
     }
 
     private void refreshGrandTotalColumn() {

@@ -3,9 +3,12 @@ package com.evefarm.service;
 import com.evefarm.db.Database;
 import com.evefarm.db.MigrationRunner;
 import com.evefarm.db.dao.CharacterDao;
+import com.evefarm.db.dao.LpPurchaseDao;
 import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.db.dao.SnapshotDao;
 import com.evefarm.db.dao.WalletJournalDao;
+import com.evefarm.db.dao.WalletTransactionDao;
+import com.evefarm.model.LpPurchase;
 import com.evefarm.model.TrackerSnapshot;
 import com.evefarm.service.TrackerCombinationService.Point;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,24 +31,31 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class TrackerCombinationServiceTest {
 
     private static final Instant NOW = Instant.parse("2026-11-18T12:00:00Z");
+    private static final Instant END = Instant.parse("2027-01-01T00:00:00Z");
+    private static final Duration WINDOW = Duration.ofDays(30);
     private static final TrackerCombination WALLET_AND_LP =
             new TrackerCombination("Wallet + LP", List.of(TrackerCombination.WALLET, TrackerCombination.LP));
 
+    private Database database;
     private SettingsDao settingsDao;
     private SnapshotDao snapshotDao;
     private TrackerCombinationService service;
 
     @BeforeEach
     void setUp() {
-        Database database = new Database(":memory:");
+        database = new Database(":memory:");
         MigrationRunner.run(database);
         settingsDao = new SettingsDao(database);
         snapshotDao = new SnapshotDao(database);
         CharacterDao characterDao = new CharacterDao(database);
         characterDao.upsert(1, "Alpha", List.of(), "a");
         characterDao.upsert(2, "Bravo", List.of(), "b");
-        service = new TrackerCombinationService(snapshotDao, new WalletJournalDao(database), null, settingsDao,
-                Clock.fixed(NOW, ZoneOffset.UTC));
+        Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
+        WalletJournalDao journalDao = new WalletJournalDao(database);
+        IncomeSources incomeSources = new IncomeSources(journalDao, new WalletTransactionDao(database), null,
+                null, null, null, null, null, new LpPurchaseDao(database), null, settingsDao, clock);
+        service = new TrackerCombinationService(snapshotDao, journalDao, incomeSources, settingsDao,
+                clock);
     }
 
     private static TrackerSnapshot snapshot(long characterId, Instant at, double wallet, double assets, double lp) {
@@ -76,7 +86,7 @@ class TrackerCombinationServiceTest {
         byDay.put(LocalDate.parse("2026-11-02"), 5.0);
         byDay.put(LocalDate.parse("2026-11-05"), 7.0);
 
-        ToDoubleFunction<Instant> mined = TrackerCombinationService.cumulative(byDay);
+        ToDoubleFunction<Instant> mined = TrackerCombinationService.cumulative(byDay, ZoneOffset.UTC);
 
         assertEquals(0, mined.applyAsDouble(Instant.parse("2026-11-01T23:00:00Z")));
         assertEquals(5, mined.applyAsDouble(Instant.parse("2026-11-04T08:00:00Z")));
@@ -109,13 +119,13 @@ class TrackerCombinationServiceTest {
             snapshotDao.insert(snapshot(2, at.minusSeconds(20), 0, 0, 500_000_000L * (20 - day)));
         }
 
-        WalletLpProjection.Projection projection = service.project(WALLET_AND_LP, Set.of(1L, 2L));
+        Forecast.Projection projection = service.project(WALLET_AND_LP, Set.of(1L, 2L), END, WINDOW);
 
         assertEquals(30_000_000_000.0, projection.latest().total(), 1);
         assertNotNull(projection.pace());
         assertEquals(1_500_000_000.0, projection.pace().perDay(), 1_000);
         TrackerCombination walletOnly = new TrackerCombination("Wallet", List.of(TrackerCombination.WALLET));
-        assertEquals(1_000_000_000.0, service.project(walletOnly, Set.of(1L)).pace().perDay(), 1_000);
+        assertEquals(1_000_000_000.0, service.project(walletOnly, Set.of(1L), END, WINDOW).pace().perDay(), 1_000);
     }
 
     @Test
@@ -133,5 +143,75 @@ class TrackerCombinationServiceTest {
 
         service.saveCombinations(List.of());
         assertEquals(WALLET_AND_LP.parts(), service.forecastCombination().parts());
+    }
+
+    private void trade(long characterId, long id, Instant at, double amount) throws Exception {
+        try (var ps = database.connection().prepareStatement("INSERT INTO wallet_transaction(character_id, "
+                + "transaction_id, date, type_id, quantity, price, is_buy, is_personal) VALUES (?, ?, ?, 34, 1, ?, ?, 1)")) {
+            ps.setLong(1, characterId);
+            ps.setLong(2, id);
+            ps.setString(3, at.toString());
+            ps.setDouble(4, Math.abs(amount));
+            ps.setInt(5, amount < 0 ? 1 : 0);
+            ps.executeUpdate();
+        }
+    }
+
+    @Test
+    void anEarnedOnlyCombinationAddsUpWhatCameInDayByDay() throws Exception {
+        for (int day = 30; day >= 1; day--) {
+            trade(1, day, NOW.minus(Duration.ofDays(day)), 3_000_000_000L);
+            trade(1, 100 + day, NOW.minus(Duration.ofDays(day)).plusSeconds(60), -1_000_000_000L);
+        }
+        TrackerCombination market = new TrackerCombination("Trading", List.of("Market"));
+
+        Forecast.Projection projection = service.project(market, Set.of(1L), END, WINDOW);
+
+        assertNotNull(projection.pace());
+        assertEquals(2_000_000_000.0, projection.pace().perDay(), 20_000_000, "today has nothing yet");
+        assertEquals(60_000_000_000.0, projection.latest().total(), 1, "earned since the chart starts");
+        assertEquals(0, service.project(market, Set.of(2L), END, WINDOW).latest().total(), 0.5);
+    }
+
+    @Test
+    void earnedPerDayIsTheAverageOfTheChosenDays() throws Exception {
+        trade(1, 1, NOW.minus(Duration.ofDays(3)), 6_000_000_000L);
+        trade(1, 2, NOW.minus(Duration.ofDays(40)), 9_000_000_000L);
+
+        assertEquals(200_000_000.0, service.earnedPerDay(Set.of(IncomeSources.Source.MARKET), Set.of(1L), WINDOW)
+                .get(IncomeSources.Source.MARKET), 1);
+    }
+
+    @Test
+    void theChartShowsAsFarBackAsItLooksAheadAndAtLeastAMonth() {
+        assertEquals(NOW.minus(Duration.ofDays(90)), TrackerCombinationService.historyStart(NOW,
+                NOW.plus(Duration.ofDays(90)), WINDOW));
+        assertEquals(NOW.minus(Duration.ofDays(30)), TrackerCombinationService.historyStart(NOW,
+                NOW.plus(Duration.ofDays(5)), Duration.ofDays(14)));
+        assertEquals(NOW.minus(Duration.ofDays(60)), TrackerCombinationService.historyStart(NOW,
+                NOW.plus(Duration.ofDays(5)), Duration.ofDays(60)));
+    }
+
+    @Test
+    void itemsFromTheLpStoreCountAsLpSalesNotAsMarket() throws Exception {
+        settingsDao.set(SettingsDao.LP_STORE_TARGET_ISK_PER_LP, "1000");
+        new LpPurchaseDao(database).insert(new LpPurchase(0, 2, "Bravo", 1000180, "Caldari Navy", 1, 34,
+                "Navy Item", 1, 10, 100_000, 20_000_000, 0, null, NOW.minus(Duration.ofDays(5)), null, 0, null));
+        try (var ps = database.connection().prepareStatement("INSERT INTO wallet_transaction(character_id, "
+                + "transaction_id, date, type_id, quantity, price, is_buy, is_personal) VALUES (1, 7, ?, 34, 10, "
+                + "15000000, 0, 1)")) {
+            ps.setString(1, NOW.minus(Duration.ofDays(2)).toString());
+            ps.executeUpdate();
+        }
+        Set<IncomeSources.Source> both = Set.of(IncomeSources.Source.MARKET, IncomeSources.Source.LP_SALES);
+
+        var perDay = service.earnedPerDay(both, Set.of(1L, 2L), WINDOW);
+
+        assertEquals(0, perDay.get(IncomeSources.Source.MARKET), 0.01, "the sale is not trading");
+        double beyondTarget = 10 * 15_000_000.0 - 20_000_000 - 100_000 * 1000.0;
+        assertEquals(beyondTarget / 30, perDay.get(IncomeSources.Source.LP_SALES), 0.01,
+                "only what the items made beyond the LP at the target");
+        assertEquals(0, service.earnedPerDay(both, Set.of(1L), WINDOW).get(IncomeSources.Source.LP_SALES), 0.01,
+                "the LP was Bravo's");
     }
 }

@@ -136,6 +136,9 @@ public final class LpPurchaseService {
     record Matched(long units, double revenue) {
     }
 
+    public record Allocation(LpPurchase purchase, long sellerId, Instant date, long units, double price) {
+    }
+
     private final LpPurchaseDao lpPurchaseDao;
     private final WalletJournalDao walletJournalDao;
     private final WalletTransactionDao walletTransactionDao;
@@ -265,6 +268,16 @@ public final class LpPurchaseService {
     }
 
     static Map<Long, Matched> matchSales(List<LpPurchase> purchases, List<Sale> sales) {
+        Map<Long, Matched> result = new HashMap<>();
+        for (Allocation allocation : allocate(purchases, sales)) {
+            result.merge(allocation.purchase().purchaseId(),
+                    new Matched(allocation.units(), allocation.units() * allocation.price()),
+                    (a, b) -> new Matched(a.units() + b.units(), a.revenue() + b.revenue()));
+        }
+        return result;
+    }
+
+    public static List<Allocation> allocate(List<LpPurchase> purchases, List<Sale> sales) {
         Map<Integer, List<LpPurchase>> byType = new HashMap<>();
         for (LpPurchase purchase : purchases) {
             byType.computeIfAbsent(purchase.typeId(), type -> new ArrayList<>()).add(purchase);
@@ -272,7 +285,7 @@ public final class LpPurchaseService {
         byType.values().forEach(list -> list.sort(Comparator.comparing(LpPurchase::purchasedAt)
                 .thenComparing(LpPurchase::purchaseId)));
         Map<Long, long[]> units = new HashMap<>();
-        Map<Long, double[]> revenue = new HashMap<>();
+        List<Allocation> allocations = new ArrayList<>();
         List<Sale> ordered = new ArrayList<>(sales);
         ordered.sort(Comparator.comparing(Sale::date).thenComparing(Sale::transactionId));
         for (Sale sale : ordered) {
@@ -286,14 +299,12 @@ public final class LpPurchaseService {
                 long taken = Math.min(Math.max(0, free), left);
                 if (taken > 0) {
                     sold[0] += taken;
-                    revenue.computeIfAbsent(lot.purchaseId(), id -> new double[1])[0] += taken * sale.price();
+                    allocations.add(new Allocation(lot, sale.characterId(), sale.date(), taken, sale.price()));
                     left -= taken;
                 }
             }
         }
-        Map<Long, Matched> result = new HashMap<>();
-        units.forEach((id, sold) -> result.put(id, new Matched(sold[0], revenue.getOrDefault(id, new double[1])[0])));
-        return result;
+        return allocations;
     }
 
     public int pendingPaymentCount() {

@@ -177,6 +177,7 @@ final class MainTabs {
             arrow.setVisible(hasPages());
             add(arrow, BorderLayout.EAST);
             putClientProperty(CAPTION, false);
+            putClientProperty(UiSounds.SOUND_TARGET, true);
             title.putClientProperty(CAPTION, false);
             arrow.putClientProperty(CAPTION, false);
             MouseAdapter mouse = new MouseAdapter() {

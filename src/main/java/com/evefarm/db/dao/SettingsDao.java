@@ -22,6 +22,9 @@ public final class SettingsDao {
     public static final String SUB_TAB_PREFIX = "sub_tab_";
     public static final String TRACKER_COMBINATIONS = "tracker_combinations";
     public static final String TRACKER_COMBINATION = "tracker_combination";
+    public static final String FORECAST_VIEWS = "forecast_views";
+    public static final String FORECAST_VIEW = "forecast_view";
+    public static final String CHARACTER_GROUPS = "character_groups";
     public static final String WINDOW_WIDTH = "window_width";
     public static final String WINDOW_HEIGHT = "window_height";
     public static final String WINDOW_MAXIMIZED = "window_maximized";
@@ -75,6 +78,8 @@ public final class SettingsDao {
     public static final String NOTIFY_SKILL_QUEUE = "notify_skill_queue";
     public static final String NOTIFY_CONTRACTS = "notify_contracts";
     public static final String NOTIFY_LP_TARGET = "notify_lp_target";
+    public static final String UI_SOUNDS = "ui_sounds";
+    public static final String UI_SOUND_VOLUME = "ui_sound_volume";
 
     private final Database database;
 

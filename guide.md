@@ -108,7 +108,7 @@ Fields that expect a set format, such as a date or an ISK amount, show an exampl
 
 ### Values
 
-What your characters are worth: **Values** for today, **Tracker** for how it changed and **Assets** for everything they own.
+What your characters are worth: **Values** for today, **Tracker** for how it changed, **Forecast** for where it is heading and **Assets** for everything they own.
 
 #### Values
 
@@ -122,14 +122,6 @@ Each card shows:
 - **Sell Orders**: the value of the items on your open sell orders;
 - **Earned Today**: the ISK from missions and the LP earned today, counted as in **LP Store > Report**, and below it both together, with the LP at your **Set ISK/LP Target...**;
 - **Best Asset**, **Best Ship** and **Best Module**: the most valuable item of each kind, with its value.
-
-Under the cards, **Forecast for Favorite Character** projects your main character (**Set as Main**) to December 31. **Adds up:** chooses what it projects, **Wallet + LP** unless you choose another. The LP is the same as the Tracker's **LP Value**: the LP with your favorite corporation in the LP Store, times your **Set ISK/LP Target...**.
-
-- **Edit...** adds, renames and deletes combinations, and ticks what each adds up: any of the Tracker's series (Wallet Balance, Assets, Sell Orders, LP Value and the others), and **Mining**, the ISK value of everything the character has mined so far, valued as chosen in **Industry > Mining**. Ore you sell is also in Wallet Balance, and ore you keep is also in Assets, so tick Mining with them only if you want it counted twice. **Net Worth**, **Wallet + LP** and **Wallet + LP + Mining** are there to start with.
-
-- The pace is the trend line of the last 30 days of Tracker snapshots. The band shows where you would be at the pace of the slowest and the fastest week in them.
-- When the combination has Wallet Balance, ISK moved from or to a corporation wallet and donations between characters don't count as produced, so moving ISK around doesn't change the forecast.
-- The forecast needs at least 3 days of snapshots. Hover the chart to see the value of a day.
 
 #### Tracker
 
@@ -148,6 +140,33 @@ A chart of your net worth over time. Each point is a snapshot, taken when EVE Fa
 - **Skill Point Filters...** chooses, per character, whether its skill points count in the total. The value counted is what you would get by extracting the skill points above 5,000,000: the number of 500,000 SP extractions times the price of a Large Skill Injector minus the price of a Skill Extractor. **Extra SP kept** raises that floor if you never want to extract below a certain amount.
 - **LP Value** is the LP you hold with your favorite corporation in the LP Store tab, times your **Set ISK/LP Target...**, the same as **Estimated Value** in the LP Store. It goes up when you earn LP and down when you spend it, not with the market. A snapshot keeps the target it was taken with.
 - **Manage Snapshots...** lists every snapshot. Select some and click **Delete Selected** to remove wrong points. You can also right-click a point in the chart and choose **Delete Snapshot**.
+
+#### Forecast
+
+Where your ISK is heading. The chart shows the days so far, the expected value ahead as a dashed line and a band around it of what is likely. Above it, EVE Farm says where you end up and how sure that is.
+
+- **View:** a view keeps all the choices below together, so you can switch between, for example, *Main to the end of the year* and *All alts, 90 days, goal 500b*. Every change is kept in the view you are on. **New...** starts a new view from the one you are on; **Rename...** and **Delete** change it.
+- **Characters:** your favorite character (**Set as Main**), all characters, a group or one character. **Groups...** makes groups of characters, such as your mission alts or your miners.
+- **Adds up:** what the forecast adds up. **Edit...** makes combinations of what you own, from the Tracker snapshots (Wallet Balance, Assets, Sell Orders, LP Value and the others), and of what you earned, day by day:
+  - **Missions**: rewards, time bonuses and the bounties of mission NPCs; **Bounties**: bounties far from any mission turn-in, such as ratting. Both are counted as in **LP Store > Report**.
+  - **Market**: what you sold on the market less what you bought, the broker fees and the sales tax. Items from the LP store that you recorded in **LP Store > Purchases** count under **LP Sales** instead.
+  - **Industry**: what your finished manufacturing and reaction jobs made, at today's prices.
+  - **Mining**: the value of what was mined, as in **Industry > Mining**; **LP Earned**: the LP earned, at your **Set ISK/LP Target...**; **Abyss**: the profit of your Abyss runs.
+  - **LP Sales**: what items from the LP store sold for, less the ISK you paid in the store and their LP at your **Set ISK/LP Target...**. It is only what they made beyond **LP Earned**, so the same ISK isn't counted twice, and it is below zero when you sold under your target. It uses the purchases in **LP Store > Purchases**; items from the LP store you didn't record there count under Market.
+
+  What you earned is added up from where the chart starts. ISK you earned also ends up in Wallet Balance or Assets, so ticking both counts it twice. **Net Worth**, **Wallet + LP**, **Wallet + LP + Mining** and **Everything Earned** are there to start with.
+- **Until:** 30, 90 or 180 days ahead, the end of the year, or a **Date** you type as year-month-day, up to two years ahead.
+- **Trend from:** the last 14, 30, 60 or 90 days. Fewer days follow a new pace sooner; more days are steadier.
+- **Goal:** an amount to reach, such as `100b`, `2.5t` or `750,000,000`. The chart shows it as a line, and the text says around when you get there, between which days it is likely, and how much a day it takes to get there by the end of the forecast.
+
+**Where it comes from**, under the chart, shows what each source brought in a day for the chosen characters over the same days, and in all. A ✓ marks the sources the forecast adds up.
+
+How it is worked out:
+
+- The pace is what a usual day of the chosen days brought in. A day far out of the ordinary, such as one big sale or purchase, counts only as much as a busy day, so it doesn't bend the forecast.
+- The band comes from replaying the real days in a thousand different orders: 8 in 10 times the result falls inside it. The further ahead, the wider it gets.
+- When the combination has Wallet Balance, ISK moved from or to a corporation wallet and donations between characters don't count as produced, so moving ISK around doesn't change the forecast.
+- The forecast needs at least 3 days of data. Hover the chart to see the value of a day.
 
 #### Assets
 
@@ -493,6 +512,7 @@ Open **Options > Settings...**.
 - **Backup password** and **Repeat password:** every backup also keeps your EVE logins protected with this password, so a backup restored on another computer needs no characters added again. Leave it empty and the logins in a backup work only on this computer. Use at least 8 characters; EVE Farm can't recover a forgotten password.
 - **Updates:** **Check for new versions automatically**.
 - **Notifications:** which desktop notifications you get. See [Tray icon and notifications](#tray-icon-and-notifications).
+- **Sounds:** **Play a sound when the mouse moves over or clicks a button** gives a short, soft tick when the mouse moves over a button, a tab, a menu or a list, and a click when you press it. **Volume** sets how loud; moving it plays the click so you can hear it. It is off at first and works as soon as you click **Save**.
 
 After changing the price provider or the default price, click **Now** next to **Market Prices** in **Update > Update...** to load the new prices.
 

@@ -9,6 +9,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -62,6 +63,42 @@ public final class IndustryJobDao {
                 ps.executeBatch();
             }
         });
+    }
+
+    public record FinishedJob(long characterId, Instant endDate, int activityId, int blueprintTypeId,
+                              Integer productTypeId, int runs) {
+    }
+
+    public List<FinishedJob> findFinished(Set<Long> characterIds, Instant since, Instant until) {
+        if (characterIds.isEmpty()) {
+            return List.of();
+        }
+        String sql = "SELECT character_id, end_date, activity_id, blueprint_type_id, product_type_id, runs "
+                + "FROM industry_job WHERE character_id IN (" + JdbcUtil.placeholders(characterIds.size()) + ") "
+                + "AND end_date >= ? AND end_date <= ? "
+                + "AND (status IS NULL OR status NOT IN ('cancelled', 'reverted'))";
+        synchronized (database) {
+            List<FinishedJob> result = new ArrayList<>();
+            try (PreparedStatement ps = database.connection().prepareStatement(sql)) {
+                int index = 1;
+                for (Long characterId : characterIds) {
+                    ps.setLong(index++, characterId);
+                }
+                ps.setString(index++, since.toString());
+                ps.setString(index, until.toString());
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        Integer runs = JdbcUtil.getNullableInt(rs, "runs");
+                        result.add(new FinishedJob(rs.getLong("character_id"), Instant.parse(rs.getString("end_date")),
+                                rs.getInt("activity_id"), rs.getInt("blueprint_type_id"),
+                                JdbcUtil.getNullableInt(rs, "product_type_id"), runs == null ? 1 : runs));
+                    }
+                }
+            } catch (SQLException e) {
+                throw new IllegalStateException("Failed to read the finished industry jobs", e);
+            }
+            return result;
+        }
     }
 
     public List<IndustryJobRow> listRows(Set<Long> characterIdFilter) {

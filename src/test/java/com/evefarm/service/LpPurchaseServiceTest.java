@@ -102,7 +102,7 @@ class LpPurchaseServiceTest {
     }
 
     private static Sale sale(long id, String date, int typeId, long quantity, double price) {
-        return new Sale(id, Instant.parse(date), typeId, quantity, price);
+        return new Sale(id, Instant.parse(date), typeId, quantity, price, 1);
     }
 
     private static LpOfferRow offer(long offerId, int typeId, String name, long lpCost, double iskCost,
