@@ -76,15 +76,6 @@ You need JDK 25.
 <img width="1780" height="884" alt="image" src="https://github.com/user-attachments/assets/3b492a16-e08c-44ac-a07c-7388e85da428" />
 
 
-## Code signing policy
-
-Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
-
-- Committers and reviewers: [Alex Conea](https://github.com/alexandruconea)
-- Approvers: [Alex Conea](https://github.com/alexandruconea)
-
-Only `EVEFarm.exe` is signed, and only when it is built from this repository by the [release workflow](.github/workflows/release.yml) for a version tag. Every signing request is approved by hand. The privacy policy is in [Privacy](#privacy).
-
 ## License
 
 EVE Farm's own code is released under the [MIT License](LICENSE). The license doesn't cover EVE Online's names, images or game data, which belong to their owners (see Trademarks below).
