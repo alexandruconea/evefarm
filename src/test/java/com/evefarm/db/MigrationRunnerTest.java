@@ -77,7 +77,8 @@ class MigrationRunnerTest {
             Map.entry(47, "54c735f48ef5afa733aca4db10e7f7b4d2f5c747796c775621e149f9ae366ea2"),
             Map.entry(48, "b55a6a41bbf022fe783446b080ce6413f2aaa2843bc19fdac59437e3ce6e771b"),
             Map.entry(49, "2f78246ef76bf7729fea72853b0d6fb734b0ea128f80882666cd5560de2e8733"),
-            Map.entry(50, "012e1a7834f098bfeecb0335f127bc56cc8586b4145d09ce6b17bf0928d220d1"));
+            Map.entry(50, "012e1a7834f098bfeecb0335f127bc56cc8586b4145d09ce6b17bf0928d220d1"),
+            Map.entry(51, "566521b693559e22e59fad38693d377e6ab62b87cb8550d20ecf6bfa8a1e9caa"));
 
     @Test
     void semicolonInsideQuotedStringDoesNotSplit() {
@@ -172,6 +173,34 @@ class MigrationRunnerTest {
             assertEquals("[\"missions\",\"agent\",\"corporation\",\"faction\",\"isk\"]", rs.getString(2));
             assertTrue(rs.next());
             assertEquals("[\"agent\"]", rs.getString(2));
+        }
+    }
+
+    @Test
+    void savedLpPurchaseColumnsGainTheItemIcon() throws SQLException {
+        Database database = new Database(":memory:");
+        MigrationRunner.run(database);
+        try (Statement statement = database.connection().createStatement()) {
+            statement.executeUpdate("INSERT INTO table_column_state(panel_key, columns_json) VALUES "
+                    + "('lpHoldings', '[\"item\",\"remaining\"]'), "
+                    + "('lpLots', '[\"date\",\"character\"]'), "
+                    + "('lpStore', '[\"icon\",\"item\"]'), ('other', '[\"item\"]')");
+            statement.executeUpdate("DELETE FROM schema_version WHERE version = 51");
+        }
+
+        MigrationRunner.run(database);
+
+        try (Statement statement = database.connection().createStatement();
+             ResultSet rs = statement.executeQuery(
+                     "SELECT panel_key, columns_json FROM table_column_state ORDER BY panel_key")) {
+            assertTrue(rs.next());
+            assertEquals("[\"icon\",\"item\",\"remaining\"]", rs.getString(2));
+            assertTrue(rs.next());
+            assertEquals("[\"icon\",\"date\",\"character\"]", rs.getString(2));
+            assertTrue(rs.next());
+            assertEquals("[\"icon\",\"item\"]", rs.getString(2));
+            assertTrue(rs.next());
+            assertEquals("[\"item\"]", rs.getString(2));
         }
     }
 

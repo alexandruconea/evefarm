@@ -1,11 +1,13 @@
 package com.evefarm.ui;
 
+import com.evefarm.service.ItemIconService;
 import com.evefarm.service.LpPurchaseService.Lot;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
 import com.evefarm.ui.column.Isk;
 import com.evefarm.util.DateUtil;
 
+import javax.swing.ImageIcon;
 import java.util.List;
 import java.util.Locale;
 
@@ -13,9 +15,12 @@ import static com.evefarm.util.Text.count;
 
 public final class LpLotsTableModel extends ColumnTableModel<Lot> {
 
-    private static final List<ColumnDef<Lot>> COLUMNS = List.of(
+    private static List<ColumnDef<Lot>> columns(ItemIconService iconService) {
+        return List.of(
             new ColumnDef<>("date", "Bought On", String.class, r -> DateUtil.format(r.purchase().purchasedAt()),
                     "When you bought it, in your local time"),
+            new ColumnDef<>("icon", "", ImageIcon.class,
+                    r -> iconService.iconOrPlaceholder(r.purchase().typeId()), "The item's icon"),
             new ColumnDef<>("item", "Item", String.class, r -> r.purchase().typeName(),
                     "The item you bought"),
             new ColumnDef<>("character", "Character", EveEntity.class,
@@ -65,9 +70,10 @@ public final class LpLotsTableModel extends ColumnTableModel<Lot> {
                     "Your notes on the purchase"),
             new ColumnDef<>("purchaseId", "Purchase ID", Long.class, false, r -> r.purchase().purchaseId(),
                     "EVE Farm's number for the purchase")
-    );
+        );
+    }
 
-    public LpLotsTableModel() {
-        super(COLUMNS);
+    public LpLotsTableModel(ItemIconService iconService) {
+        super(columns(iconService));
     }
 }

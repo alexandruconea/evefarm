@@ -72,7 +72,8 @@ public final class MigrationRunner {
             "db/migrations/V47__token_status.sql",
             "db/migrations/V48__backup_secret.sql",
             "db/migrations/V49__table_column_width.sql",
-            "db/migrations/V50__mission_agent_columns.sql"
+            "db/migrations/V50__mission_agent_columns.sql",
+            "db/migrations/V51__lp_purchase_icons.sql"
     );
 
     public static void run(Database database) {

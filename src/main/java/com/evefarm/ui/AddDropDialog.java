@@ -10,7 +10,6 @@ import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JList;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
@@ -93,7 +92,9 @@ final class AddDropDialog extends JDialog {
 
         JPanel top = new JPanel(new BorderLayout(0, 4));
         JPanel searchRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-        searchRow.add(new JLabel("Search:"));
+        if (!Inputs.search(searchField, "Search items")) {
+            searchRow.add(new JLabel("Search:"));
+        }
         searchRow.add(searchField);
         top.add(searchRow, BorderLayout.NORTH);
         top.add(listLabel, BorderLayout.SOUTH);
@@ -101,7 +102,10 @@ final class AddDropDialog extends JDialog {
         JPanel form = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
         form.add(new JLabel("Quantity:"));
         form.add(quantitySpinner);
-        form.add(new JLabel("Unit price (ISK):"));
+        form.add(new JLabel(Inputs.embedsIcons() ? "Unit price:" : "Unit price (ISK):"));
+        Inputs.unit(priceField, "ISK");
+        Inputs.hint(priceField, "1,250,000,000");
+        Inputs.check(priceField, text -> parsePrice(text) != null);
         priceField.setToolTipText("The market price from your price provider - overwrite it with a sale price "
                 + "if you like");
         form.add(priceField);
@@ -170,8 +174,7 @@ final class AddDropDialog extends JDialog {
         }
         Double price = parsePrice(priceField.getText());
         if (price == null) {
-            JOptionPane.showMessageDialog(this, "Enter a unit price in ISK (e.g. 1,250,000,000).",
-                    "Add Drop", JOptionPane.WARNING_MESSAGE);
+            Inputs.reject(priceField, "Enter a unit price in ISK, for example 1,250,000,000");
             return;
         }
         result = new Result(item, (Integer) quantitySpinner.getValue(), price);

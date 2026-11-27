@@ -12,6 +12,7 @@ import com.evefarm.service.MissionIncome.Report;
 import com.evefarm.ui.EveEntity.Kind;
 import com.evefarm.ui.MissionAgentsTableModel.Row;
 import com.evefarm.ui.column.ColumnTableModel;
+import com.formdev.flatlaf.FlatClientProperties;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -22,9 +23,13 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSeparator;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
+import javax.swing.JTextArea;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -60,9 +65,11 @@ public final class MissionReportPanel extends TabPanel {
     private static final String WIDEST_PERIOD = "Wed, Dec 30, 2026 to Tue, Jan 5, 2027";
     private static final String WIDEST_LABEL = "Other bounties near a turn-in";
     private static final String WIDEST_ISK = "00,000,000,000.00 ISK";
-    private static final int DETAIL_INDENT = 16;
+    private static final int CARD_INSET = 15;
+    private static final int CARD_PADDING = 6;
+    private static final int CARD_GAP = 8;
+    private static final float HEADLINE_GROWTH = 8f;
     private static final int VALUE_GAP = 24;
-    private static final int SUMMARY_INSET = 6;
 
     private record Loaded(List<Payment> payments, List<LpGain> gains, Map<Long, Instant> lpFirstRecorded,
                           double targetIskPerLp, Map<String, MissionAgent> agents) {
@@ -73,13 +80,13 @@ public final class MissionReportPanel extends TabPanel {
     private final ZoneId zone = ZoneId.systemDefault();
     private final DayOfWeek firstDayOfWeek = WeekFields.of(Locale.getDefault()).getFirstDayOfWeek();
     private final JComboBox<Period> periodCombo = new JComboBox<>(Period.values());
-    private final JButton previousButton = new JButton("<");
-    private final JButton nextButton = new JButton(">");
+    private final JButton previousButton = new JButton(Icons.PREVIOUS);
+    private final JButton nextButton = new JButton(Icons.NEXT);
     private final JButton todayButton = new JButton("Today");
     private final JLabel periodLabel = new JLabel(" ");
     private final JComboBox<String> characterCombo = new JComboBox<>();
     private final JButton saveButton = new JButton("Save Report...", Icons.SAVE);
-    private final JPanel summaryGrid = new JPanel(new GridBagLayout());
+    private final JPanel summaryPanel = new JPanel(new GridBagLayout());
     private final JLabel daysTitle = new JLabel("By day");
     private final MissionDaysTableModel daysModel = new MissionDaysTableModel();
     private final JTable daysTable = new JTable(daysModel);
@@ -124,9 +131,9 @@ public final class MissionReportPanel extends TabPanel {
                         appContext.walletJournalDao.findMissionAgents().stream().collect(Collectors.toMap(
                                 MissionAgent::agentName, agent -> agent, (first, second) -> first))),
                 this::apply, "the mission report", failure -> {
-                    summaryGrid.removeAll();
-                    summaryGrid.add(new JLabel("Couldn't load the mission report - see the log."));
-                    summaryGrid.revalidate();
+                    summaryPanel.removeAll();
+                    summaryPanel.add(UiColors.mutedLabel("Couldn't load the mission report - see the log."));
+                    summaryPanel.revalidate();
                 });
     }
 
@@ -146,21 +153,21 @@ public final class MissionReportPanel extends TabPanel {
             }
         });
         ComboSizing.names(characterCombo);
+        ComboFilter.install(characterCombo);
         saveButton.addActionListener(e -> saveReport());
         saveButton.setToolTipText("Save this report as a text file");
 
-        FontMetrics plain = periodLabel.getFontMetrics(periodLabel.getFont());
-        FontMetrics bold = periodLabel.getFontMetrics(periodLabel.getFont().deriveFont(Font.BOLD));
-        periodLabel.setPreferredSize(new Dimension(plain.stringWidth(WIDEST_PERIOD) + 8,
-                periodLabel.getPreferredSize().height));
-        List<JPanel> rows = List.of(row(new JLabel("Report:"), periodCombo, todayButton),
-                row(previousButton, periodLabel, nextButton), row(new JLabel("Character:"), characterCombo),
-                row(saveButton));
-        contentWidth = SUMMARY_INSET + DETAIL_INDENT + bold.stringWidth(WIDEST_LABEL) + VALUE_GAP
-                + bold.stringWidth(WIDEST_ISK);
-        for (JPanel row : rows) {
-            contentWidth = Math.max(contentWidth, row.getPreferredSize().width);
+        for (JButton arrow : List.of(previousButton, nextButton)) {
+            arrow.putClientProperty(FlatClientProperties.BUTTON_TYPE, FlatClientProperties.BUTTON_TYPE_TOOLBAR_BUTTON);
         }
+        periodLabel.setFont(periodLabel.getFont().deriveFont(Font.BOLD));
+        periodLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        JPanel controls = controls();
+        FontMetrics plain = periodLabel.getFontMetrics(periodLabel.getFont().deriveFont(Font.PLAIN));
+        FontMetrics bold = periodLabel.getFontMetrics(periodLabel.getFont().deriveFont(Font.BOLD,
+                periodLabel.getFont().getSize2D() + 1f));
+        contentWidth = Math.max(controls.getPreferredSize().width, 2 * CARD_INSET
+                + plain.stringWidth(WIDEST_LABEL) + VALUE_GAP + bold.stringWidth(WIDEST_ISK));
         JPanel sidebar = new JPanel(new GridBagLayout()) {
             @Override
             public Dimension getPreferredSize() {
@@ -168,19 +175,19 @@ public final class MissionReportPanel extends TabPanel {
                 return new Dimension(contentWidth + insets.left + insets.right, super.getPreferredSize().height);
             }
         };
-        sidebar.setBorder(BorderFactory.createEmptyBorder(6, 6, 8, 16));
+        sidebar.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 12));
         GridBagConstraints c = new GridBagConstraints();
         c.gridx = 0;
         c.gridy = GridBagConstraints.RELATIVE;
         c.weightx = 1;
         c.anchor = GridBagConstraints.NORTHWEST;
         c.fill = GridBagConstraints.HORIZONTAL;
-        c.insets = new Insets(0, 0, 6, 0);
-        for (JPanel row : rows) {
-            sidebar.add(row, c);
-        }
-        c.insets = new Insets(8, SUMMARY_INSET, 0, 0);
-        sidebar.add(summaryGrid, c);
+        c.insets = new Insets(0, 0, 10, 0);
+        sidebar.add(controls, c);
+        sidebar.add(summaryPanel, c);
+        JPanel saveRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        saveRow.add(saveButton);
+        sidebar.add(saveRow, c);
         c.weighty = 1;
         sidebar.add(Box.createGlue(), c);
         add(sidebar, BorderLayout.WEST);
@@ -198,12 +205,44 @@ public final class MissionReportPanel extends TabPanel {
         add(split, BorderLayout.CENTER);
     }
 
-    private static JPanel row(JComponent... components) {
-        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-        for (JComponent component : components) {
-            row.add(component);
-        }
-        return row;
+    private JPanel controls() {
+        JPanel controls = new JPanel(new GridBagLayout());
+        GridBagConstraints c = new GridBagConstraints();
+        c.anchor = GridBagConstraints.WEST;
+        c.gridy = 0;
+        c.insets = new Insets(0, 0, 6, 8);
+        controls.add(new JLabel("Report:"), c);
+        JPanel periodRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        periodRow.add(periodCombo);
+        periodRow.add(Box.createHorizontalStrut(6));
+        periodRow.add(todayButton);
+        c.gridx = 1;
+        c.weightx = 1;
+        c.insets = new Insets(0, 0, 6, 0);
+        controls.add(periodRow, c);
+        c.gridy = 1;
+        c.gridx = 0;
+        c.weightx = 0;
+        c.insets = new Insets(0, 0, 6, 8);
+        controls.add(new JLabel("Character:"), c);
+        c.gridx = 1;
+        c.weightx = 1;
+        c.insets = new Insets(0, 0, 6, 0);
+        controls.add(characterCombo, c);
+        JPanel navigation = new JPanel(new BorderLayout(4, 0));
+        navigation.add(previousButton, BorderLayout.WEST);
+        navigation.add(periodLabel, BorderLayout.CENTER);
+        navigation.add(nextButton, BorderLayout.EAST);
+        FontMetrics bold = periodLabel.getFontMetrics(periodLabel.getFont());
+        navigation.setPreferredSize(new Dimension(bold.stringWidth(WIDEST_PERIOD) + 16
+                + 2 * previousButton.getPreferredSize().width, navigation.getPreferredSize().height));
+        c.gridy = 2;
+        c.gridx = 0;
+        c.gridwidth = 2;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.insets = new Insets(2, 0, 0, 0);
+        controls.add(navigation, c);
+        return controls;
     }
 
     private <T> void installTable(JTable table, ColumnTableModel<T> model, String key) {
@@ -357,33 +396,118 @@ public final class MissionReportPanel extends TabPanel {
     }
 
     private void showSummary(Report report, double targetIskPerLp) {
-        summaryGrid.removeAll();
+        MissionReport.Overview overview = MissionReport.overview(report, targetIskPerLp);
+        summaryPanel.removeAll();
         GridBagConstraints c = new GridBagConstraints();
-        c.gridy = 0;
-        for (MissionReport.Line line : MissionReport.summary(report, targetIskPerLp)) {
-            JLabel label = new JLabel(line.label());
-            JLabel value = new JLabel(line.value());
-            for (JLabel part : List.of(label, value)) {
-                part.setToolTipText(line.tip());
-                if (!line.detail()) {
-                    part.setFont(part.getFont().deriveFont(Font.BOLD));
-                }
-            }
-            label.setMinimumSize(new Dimension(0, label.getPreferredSize().height));
-            c.gridx = 0;
-            c.weightx = 1;
-            c.insets = new Insets(line.detail() ? 0 : 6, line.detail() ? DETAIL_INDENT : 0, 1, VALUE_GAP);
-            c.anchor = GridBagConstraints.WEST;
-            summaryGrid.add(label, c);
-            c.gridx = 1;
-            c.weightx = 0;
-            c.insets = new Insets(line.detail() ? 0 : 6, 0, 1, 0);
-            c.anchor = GridBagConstraints.EAST;
-            summaryGrid.add(value, c);
-            c.gridy++;
+        c.gridx = 0;
+        c.gridy = GridBagConstraints.RELATIVE;
+        c.weightx = 1;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.insets = new Insets(0, 0, CARD_GAP, 0);
+        summaryPanel.add(headlineCard(overview), c);
+        for (MissionReport.Card card : overview.cards()) {
+            summaryPanel.add(card(card), c);
         }
-        summaryGrid.revalidate();
-        summaryGrid.repaint();
+        if (overview.notCounted() != null) {
+            JPanel row = new JPanel(new GridBagLayout());
+            row.setBorder(BorderFactory.createEmptyBorder(0, CARD_INSET, 0, CARD_INSET));
+            addLine(row, 0, muted(overview.notCounted().label(), overview.notCounted().tip()),
+                    muted(overview.notCounted().value(), overview.notCounted().tip()), 0, 0);
+            summaryPanel.add(row, c);
+        }
+        for (String note : notes) {
+            summaryPanel.add(note(note), c);
+        }
+        summaryPanel.revalidate();
+        summaryPanel.repaint();
+    }
+
+    private static JComponent headlineCard(MissionReport.Overview overview) {
+        CardPanel card = new CardPanel(new GridBagLayout());
+        GridBagConstraints c = new GridBagConstraints();
+        c.gridx = 0;
+        c.gridy = GridBagConstraints.RELATIVE;
+        c.weightx = 1;
+        c.anchor = GridBagConstraints.WEST;
+        c.insets = new Insets(CARD_PADDING, 0, 0, 0);
+        card.add(muted(overview.headline().label(), overview.headline().tip()), c);
+        JLabel value = new JLabel(overview.headline().value());
+        value.setFont(value.getFont().deriveFont(Font.BOLD, value.getFont().getSize2D() + HEADLINE_GROWTH));
+        value.setToolTipText(overview.headline().tip());
+        c.insets = new Insets(0, 0, 0, 0);
+        card.add(value, c);
+        c.insets = new Insets(0, 0, CARD_PADDING, 0);
+        card.add(muted(overview.caption(), overview.captionTip()), c);
+        return card;
+    }
+
+    private static JComponent card(MissionReport.Card section) {
+        CardPanel card = new CardPanel(new GridBagLayout());
+        JLabel total = new JLabel(section.total().value());
+        total.setFont(total.getFont().deriveFont(Font.BOLD, total.getFont().getSize2D() + 1f));
+        total.setToolTipText(section.total().tip());
+        addLine(card, 0, muted(section.total().label(), section.total().tip()), total, CARD_PADDING,
+                section.rows().isEmpty() ? CARD_PADDING : 0);
+        if (section.rows().isEmpty()) {
+            return card;
+        }
+        GridBagConstraints c = new GridBagConstraints();
+        c.gridx = 0;
+        c.gridy = 1;
+        c.gridwidth = 2;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.insets = new Insets(6, 0, 3, 0);
+        card.add(new JSeparator(), c);
+        int row = 2;
+        for (MissionReport.Line line : section.rows()) {
+            boolean last = row == section.rows().size() + 1;
+            JLabel label = new JLabel(line.label());
+            label.setToolTipText(line.tip());
+            label.putClientProperty("html.disable", Boolean.TRUE);
+            JLabel value = new JLabel(line.value());
+            value.setToolTipText(line.tip());
+            addLine(card, row++, label, value, 3, last ? CARD_PADDING : 0);
+        }
+        return card;
+    }
+
+    private static void addLine(JPanel panel, int row, JLabel label, JLabel value, int top, int bottom) {
+        label.setMinimumSize(new Dimension(0, label.getPreferredSize().height));
+        GridBagConstraints c = new GridBagConstraints();
+        c.gridy = row;
+        c.gridx = 0;
+        c.weightx = 1;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.anchor = GridBagConstraints.WEST;
+        c.insets = new Insets(top, 0, bottom, VALUE_GAP);
+        panel.add(label, c);
+        c.gridx = 1;
+        c.weightx = 0;
+        c.fill = GridBagConstraints.NONE;
+        c.anchor = GridBagConstraints.EAST;
+        c.insets = new Insets(top, 0, bottom, 0);
+        panel.add(value, c);
+    }
+
+    private static JLabel muted(String text, String tip) {
+        JLabel label = UiColors.mutedLabel(text);
+        label.putClientProperty("html.disable", Boolean.TRUE);
+        label.setToolTipText(tip);
+        return label;
+    }
+
+    private JComponent note(String text) {
+        JTextArea area = new JTextArea(text);
+        area.setEditable(false);
+        area.setFocusable(false);
+        area.setOpaque(false);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.setFont(UIManager.getFont("Label.font"));
+        area.setForeground(UiColors.muted());
+        area.setBorder(BorderFactory.createEmptyBorder(0, CARD_INSET, 0, CARD_INSET));
+        area.setSize(new Dimension(contentWidth, Short.MAX_VALUE));
+        return area;
     }
 
     private void saveReport() {

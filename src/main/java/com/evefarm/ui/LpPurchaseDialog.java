@@ -43,7 +43,6 @@ final class LpPurchaseDialog extends JDialog {
     private final JSpinner usedSpinner;
     private final JTextField notesField = new JTextField(28);
     private final JLabel summaryLabel = new JLabel(" ");
-    private final JLabel errorLabel = new JLabel(" ");
 
     LpPurchaseDialog(Window owner, String title, LpPurchase base, Consumer<LpPurchase> onSave) {
         super(owner, title, ModalityType.APPLICATION_MODAL);
@@ -59,8 +58,14 @@ final class LpPurchaseDialog extends JDialog {
         targetSpinner = new JSpinner(new SpinnerNumberModel(
                 base.targetIskPerLp() == null ? 0.0 : Math.clamp(base.targetIskPerLp(), 0.0, 1e9), 0.0, 1e9, 50.0));
         usedSpinner = new JSpinner(new SpinnerNumberModel(base.usedUnits(), 0, Long.MAX_VALUE, 1));
+        Inputs.amount(otherCostSpinner, "ISK");
+        Inputs.amount(targetSpinner, "ISK/LP");
+        Inputs.amount(usedSpinner, null);
         dateField.setText(DATE_TIME.format(base.purchasedAt().atZone(ZoneId.systemDefault())));
+        Inputs.hint(dateField, "2026-10-09 14:30");
+        Inputs.check(dateField, text -> parseDate(text) != null);
         notesField.setText(base.notes() == null ? "" : base.notes());
+        Inputs.hint(notesField, "Optional");
         buildUi();
         updateSummary();
         offersSpinner.addChangeListener(e -> updateSummary());
@@ -102,9 +107,6 @@ final class LpPurchaseDialog extends JDialog {
         c.gridy++;
         c.gridwidth = 2;
         form.add(summaryLabel, c);
-        c.gridy++;
-        errorLabel.setForeground(UiColors.danger());
-        form.add(errorLabel, c);
 
         JButton save = new JButton("Save", Icons.SAVE);
         save.addActionListener(e -> save());
@@ -117,6 +119,14 @@ final class LpPurchaseDialog extends JDialog {
         setLayout(new BorderLayout());
         add(form, BorderLayout.CENTER);
         add(buttons, BorderLayout.SOUTH);
+    }
+
+    static LocalDateTime parseDate(String text) {
+        try {
+            return LocalDateTime.parse(text.trim(), DATE_TIME);
+        } catch (DateTimeParseException e) {
+            return null;
+        }
     }
 
     private static void addRow(JPanel form, GridBagConstraints c, String label, Component field,
@@ -148,12 +158,9 @@ final class LpPurchaseDialog extends JDialog {
     }
 
     private void save() {
-        LocalDateTime boughtOn;
-        try {
-            boughtOn = LocalDateTime.parse(dateField.getText().trim(), DATE_TIME);
-        } catch (DateTimeParseException e) {
-            errorLabel.setText("Write the date as year-month-day hour:minute, for example 2026-10-09 14:30");
-            pack();
+        LocalDateTime boughtOn = parseDate(dateField.getText());
+        if (boughtOn == null) {
+            Inputs.reject(dateField, "Write the date as year-month-day hour:minute, for example 2026-10-09 14:30");
             return;
         }
         int offers = offers();

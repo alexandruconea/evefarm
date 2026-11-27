@@ -3,6 +3,7 @@ package com.evefarm.ui.filter;
 import com.evefarm.db.dao.SavedFilterDao;
 import com.evefarm.ui.ComboSizing;
 import com.evefarm.ui.Icons;
+import com.evefarm.ui.Inputs;
 import com.evefarm.ui.column.Isk;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -38,6 +39,7 @@ public final class FilterBarPanel extends JPanel {
     private final List<FilterRow> rows = new ArrayList<>();
     private final JPanel rowsPanel = new JPanel();
     private final JTextField searchField = new JTextField(18);
+    private final boolean iconInSearchField;
     private final JToggleButton filtersButton = new JToggleButton(FILTERS);
     private final JLabel countLabel = new JLabel(" ");
     private Runnable onFilterChanged = () -> {
@@ -49,6 +51,7 @@ public final class FilterBarPanel extends JPanel {
         this.columnNames = columnNames;
         this.savedFilterDao = savedFilterDao;
 
+        iconInSearchField = Inputs.search(searchField, "Search");
         ComboSizing.input(searchField);
         searchField.setToolTipText("Shows only the rows that contain this text in any column");
         searchField.getDocument().addDocumentListener(new DocumentListener() {
@@ -86,10 +89,12 @@ public final class FilterBarPanel extends JPanel {
         countLabel.setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 0));
 
         JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 2));
-        JLabel searchLabel = new JLabel("Search:", Icons.SEARCH, SwingConstants.LEADING);
-        searchLabel.setLabelFor(searchField);
-        searchLabel.setBorder(BorderFactory.createEmptyBorder(0, 4, 0, 4));
-        toolbar.add(searchLabel);
+        if (!iconInSearchField) {
+            JLabel searchLabel = new JLabel("Search:", Icons.SEARCH, SwingConstants.LEADING);
+            searchLabel.setLabelFor(searchField);
+            searchLabel.setBorder(BorderFactory.createEmptyBorder(0, 4, 0, 4));
+            toolbar.add(searchLabel);
+        }
         toolbar.add(searchField);
         toolbar.add(filtersButton);
         toolbar.add(clearButton);

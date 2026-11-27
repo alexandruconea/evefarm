@@ -99,6 +99,7 @@ public final class LpStorePanel extends TabPanel {
         characterCombo.addActionListener(e -> updateYourLpLabel());
         appContext.loyaltyPointService.addChangeListener(() -> SwingUtilities.invokeLater(this::updateYourLpLabel));
         ComboSizing.names(corporationCombo);
+        ComboFilter.install(corporationCombo);
         corporationCombo.addActionListener(e -> onCorporationSelected());
         favoriteCheckBox.addActionListener(e -> onFavoriteToggled());
         refreshOffersButton.addActionListener(e -> fetchOffers());

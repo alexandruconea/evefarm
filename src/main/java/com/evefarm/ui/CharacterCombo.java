@@ -17,6 +17,7 @@ final class CharacterCombo extends JComboBox<String> {
         this.characterService = characterService;
         setRenderer(MainCharacterMarks.comboRenderer(() -> mainCharacterName));
         ComboSizing.names(this);
+        ComboFilter.install(this);
     }
 
     void reload(boolean selectMain) {

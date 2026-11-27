@@ -183,6 +183,8 @@ public final class EveSettingsCopyDialog extends JDialog {
         rescanButton.addActionListener(e -> loadProfiles());
         sourceProfile.addActionListener(e -> profilesChanged());
         targetProfile.addActionListener(e -> profilesChanged());
+        ComboFilter.install(sourceCharacter);
+        ComboFilter.install(targetCharacter);
         sourceCharacter.addActionListener(e -> sourceCharacterChanged());
         targetCharacter.addActionListener(e -> targetCharacterChanged());
         includeAccount.addActionListener(e -> updateControls());

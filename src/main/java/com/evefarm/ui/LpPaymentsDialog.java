@@ -68,8 +68,8 @@ final class LpPaymentsDialog extends JDialog {
         offerCombo.setToolTipText("The offer you bought with this payment, and how many times. Listed and sold "
                 + "count the units of the item put up for sale and sold in the 30 days after the payment, in assets "
                 + "what you have now. The offers that fit them best come first");
+        Inputs.search(findField, "Find an offer");
         ComboSizing.input(findField);
-        findField.putClientProperty("JTextField.placeholderText", "Find an offer");
         findField.setToolTipText("Show only the offers whose name has this text");
         findField.getDocument().addDocumentListener(new DocumentListener() {
             @Override

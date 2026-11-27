@@ -53,7 +53,7 @@ final class BlueprintChooserDialog extends JDialog {
     }
 
     private void buildUi() {
-        searchField.putClientProperty("JTextField.placeholderText", "Search by what it makes, for example Jaguar");
+        Inputs.search(searchField, "Search by what it makes, for example Jaguar");
         searchField.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {

@@ -70,7 +70,7 @@ final class SkillBrowserDialog extends JDialog {
     }
 
     private void buildUi() {
-        searchField.putClientProperty("JTextField.placeholderText", "Search skills");
+        Inputs.search(searchField, "Search skills");
         searchField.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {

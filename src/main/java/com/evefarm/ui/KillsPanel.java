@@ -95,6 +95,7 @@ public final class KillsPanel extends TabPanel {
 
 
         factionCombo.setModel(factionComboModel);
+        ComboFilter.install(factionCombo);
         factionCombo.addActionListener(e -> {
             if (!populatingFactionOptions) {
                 reloadSystemOptions(reloadGeneration.incrementAndGet());
@@ -102,6 +103,7 @@ public final class KillsPanel extends TabPanel {
         });
 
         systemCombo.setModel(systemComboModel);
+        ComboFilter.install(systemCombo);
         systemCombo.addActionListener(e -> {
             if (!populatingSystemOptions) {
                 reloadShipTypeOptions(reloadGeneration.incrementAndGet());

@@ -28,6 +28,7 @@ public final class LpTargetDialog extends JDialog {
         double current = settingsDao.getDouble(SettingsDao.LP_STORE_TARGET_ISK_PER_LP,
                 SettingsDao.DEFAULT_LP_STORE_TARGET_ISK_PER_LP);
         targetSpinner.setValue(current);
+        Inputs.amount(targetSpinner, "ISK/LP");
 
         JPanel form = new JPanel(new GridLayout(0, 2, 8, 8));
         form.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));

@@ -9,6 +9,7 @@ import com.evefarm.ui.ComboBoxFocus;
 import com.evefarm.ui.CompactMenuItemUI;
 import com.evefarm.ui.CompactToolTips;
 import com.evefarm.ui.EveLaf;
+import com.evefarm.ui.LightLaf;
 import com.evefarm.ui.MainFrame;
 import com.evefarm.ui.TableStyler;
 import com.evefarm.ui.UnderlineTabbedPaneUI;
@@ -19,7 +20,6 @@ import com.evefarm.util.SingleInstance;
 import com.evefarm.util.TokenCipher;
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLaf;
-import com.formdev.flatlaf.FlatLightLaf;
 
 import javax.swing.JDialog;
 import javax.swing.JFrame;
@@ -170,14 +170,14 @@ public final class Main {
                 UIManager.setLookAndFeel(new EveLaf());
             } else if ("adwaita".equals(theme)) {
                 UIManager.setLookAndFeel(new AdwaitaLaf());
-            } else if (!Platform.isWindows()) {
-                UIManager.setLookAndFeel(new FlatLightLaf());
-            } else {
+            } else if (SettingsDao.WINDOWS_CLASSIC_THEME.equals(theme) && Platform.isWindows()) {
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
                 CompactMenuItemUI.install();
                 UnderlineTabbedPaneUI.install();
                 TableStyler.installCellPadding();
                 ComboBoxFocus.hideDashedOutline();
+            } else {
+                UIManager.setLookAndFeel(new LightLaf());
             }
             CompactToolTips.install();
             boolean decorated = UIManager.getLookAndFeel() instanceof FlatLaf

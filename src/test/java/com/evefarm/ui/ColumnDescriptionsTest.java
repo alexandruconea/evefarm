@@ -17,8 +17,8 @@ class ColumnDescriptionsTest {
                 new AssetsTableModel(), new BuildOrBuyTableModel((typeId, build) -> {
                 }), new ChainTableModel(), new ContractsTableModel(), new DecryptorOptionsTableModel(),
                 new DropsTableModel(), new IndustryJobsTableModel(), new IndustryMaterialsTableModel(),
-                new JournalTableModel(), new KillsTableModel(), new LpGainsTableModel(), new LpHoldingsTableModel(),
-                new LpLotsTableModel(),
+                new JournalTableModel(), new KillsTableModel(), new LpGainsTableModel(), new LpHoldingsTableModel(null),
+                new LpLotsTableModel(null),
                 new LpPaymentsTableModel(), new LpStoreTableModel(null),
                 new MarketOrdersTableModel(), new MiningTableModel(null), new OfficersTableModel(),
                 new PlanTableModel(), new ShoppingListTableModel(), new SpawnsTableModel(), new SpawnTableModel(),

@@ -70,6 +70,37 @@ class MissionReportTest {
     }
 
     @Test
+    void theOverviewLeadsWithTheTotalAndGroupsTheRestInCards() {
+        MissionReport.Overview overview = MissionReport.overview(REPORT, 1_000);
+
+        assertEquals("ISK and LP together = 34,900,000.00 ISK",
+                overview.headline().label() + " = " + overview.headline().value());
+        assertEquals("3 missions  ·  11.6M ISK per mission", overview.caption());
+        assertEquals(List.of(
+                "ISK from missions = 22,900,000.00 ISK",
+                "  Mission rewards = 4,000,000.00",
+                "  Time bonuses = 3,000,000.00",
+                "  Bounties for mission NPCs = 9,900,000.00",
+                "  Other bounties near a turn-in = 6,000,000.00",
+                "LP earned = 12,000 LP",
+                "  Carthum Conglomerate = 12,000",
+                "  Worth at 1,000 ISK/LP = 12,000,000.00 ISK"), overview.cards().stream()
+                .flatMap(card -> java.util.stream.Stream.concat(
+                        java.util.stream.Stream.of(card.total().label() + " = " + card.total().value()),
+                        card.rows().stream().map(row -> "  " + row.label() + " = " + row.value())))
+                .toList());
+        assertEquals("900,000.00 ISK", overview.notCounted().value());
+    }
+
+    @Test
+    void withoutATargetTheOverviewLeadsWithTheMissionIsk() {
+        MissionReport.Overview overview = MissionReport.overview(REPORT, 0);
+
+        assertEquals("ISK from missions", overview.headline().label());
+        assertEquals("3 missions  ·  7.6M ISK per mission", overview.caption());
+    }
+
+    @Test
     void theSavedReportLinesUpItsColumns() {
         List<String> lines = MissionReport.lines(REPORT, Period.WEEK, "All characters", 0,
                 List.of("A note."), Instant.parse("2026-10-28T22:00:00Z"));

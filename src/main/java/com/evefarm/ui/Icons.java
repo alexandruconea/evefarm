@@ -63,6 +63,8 @@ public final class Icons {
     public static final Icon CALCULATOR = icon("calculator", Tone.NEUTRAL);
     public static final Icon MOVE_UP = icon("arrow-up", Tone.NEUTRAL);
     public static final Icon MOVE_DOWN = icon("arrow-down", Tone.NEUTRAL);
+    public static final Icon PREVIOUS = icon("chevron-left", Tone.NEUTRAL);
+    public static final Icon NEXT = icon("chevron-right", Tone.NEUTRAL);
     public static final Icon SEARCH = icon("magnifying-glass", Tone.NEUTRAL);
     public static final Icon FILTER = icon("filter", Tone.NEUTRAL);
 

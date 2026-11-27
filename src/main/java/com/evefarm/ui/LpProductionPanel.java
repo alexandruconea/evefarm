@@ -90,7 +90,9 @@ public final class LpProductionPanel extends TabPanel {
         characterCombo.addActionListener(e -> filtersChanged());
         corporationCombo.addActionListener(e -> filtersChanged());
         ComboSizing.names(characterCombo);
+        ComboFilter.install(characterCombo);
         ComboSizing.names(corporationCombo);
+        ComboFilter.install(corporationCombo);
         JPanel filters = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 6));
         filters.add(new JLabel("Character:"));
         filters.add(characterCombo);

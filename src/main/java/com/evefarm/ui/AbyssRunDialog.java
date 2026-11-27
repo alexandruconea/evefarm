@@ -139,9 +139,20 @@ final class AbyssRunDialog extends JDialog {
 
     private void buildUi() {
         ComboSizing.names(characterCombo);
+        ComboFilter.install(characterCombo);
         for (JComboBox<?> combo : List.of(tierCombo, weatherCombo, fleetCombo)) {
             ComboSizing.options(combo);
         }
+        Inputs.hint(startedField, "2026-09-28 18:30");
+        Inputs.check(startedField, text -> parseStarted(text) != null);
+        Inputs.hint(durationField, "14:32");
+        Inputs.check(durationField, text -> parseDuration(text) != null);
+        for (JTextField isk : List.of(filamentField, lootField)) {
+            Inputs.unit(isk, "ISK");
+            Inputs.hint(isk, "12,500,000");
+            Inputs.check(isk, text -> parseIsk(text) != null);
+        }
+        Inputs.hint(notesField, "Optional");
         for (JComponent field : List.of(startedField, durationField, shipField, filamentField, lootField, notesField)) {
             ComboSizing.input(field);
         }
@@ -521,18 +532,22 @@ final class AbyssRunDialog extends JDialog {
         }
         Instant started = parseStarted(startedField.getText());
         if (started == null) {
-            error("Type the start as year-month-day hour:minute, for example 2026-09-28 18:30.");
+            Inputs.reject(startedField, "Type the start as year-month-day hour:minute, for example 2026-09-28 18:30");
             return;
         }
         Integer duration = parseDuration(durationField.getText());
         if (!durationField.getText().isBlank() && duration == null) {
-            error("Type the time as minutes:seconds, for example 14:32.");
+            Inputs.reject(durationField, "Type the time as minutes:seconds, for example 14:32");
             return;
         }
         Double lootValue = lootField.getText().isBlank() ? Double.valueOf(0) : parseIsk(lootField.getText());
         Double filament = filamentField.getText().isBlank() ? null : parseIsk(filamentField.getText());
-        if (lootValue == null || (!filamentField.getText().isBlank() && filament == null)) {
-            error("Type ISK amounts as numbers, for example 12,500,000.");
+        if (lootValue == null) {
+            Inputs.reject(lootField, "Type ISK amounts as numbers, for example 12,500,000");
+            return;
+        }
+        if (!filamentField.getText().isBlank() && filament == null) {
+            Inputs.reject(filamentField, "Type ISK amounts as numbers, for example 12,500,000");
             return;
         }
         String ship = shipField.getText().strip();

@@ -32,6 +32,52 @@ final class MissionReport {
     record Line(String label, String value, boolean detail, String tip) {
     }
 
+    record Card(Line total, List<Line> rows) {
+    }
+
+    record Overview(Line headline, String caption, String captionTip, List<Card> cards, Line notCounted) {
+    }
+
+    private enum Unit {
+        ISK, LP;
+
+        String full(double value) {
+            return this == ISK ? IskFormatter.format(value) : lp(Math.round(value));
+        }
+
+        String plain(double value) {
+            return this == ISK ? IskFormatter.formatPlain(value) : Text.count(Math.round(value));
+        }
+    }
+
+    private record Amount(String label, double value, Unit unit, String tip) {
+
+        Line full(boolean detail) {
+            return new Line(label, unit.full(value), detail, tip);
+        }
+
+        Line in(Unit cardUnit) {
+            return new Line(label, unit == cardUnit ? unit.plain(value) : unit.full(value), true, tip);
+        }
+    }
+
+    private record Section(Amount total, List<Amount> rows) {
+
+        List<Line> lines() {
+            List<Line> lines = new ArrayList<>();
+            lines.add(total.full(false));
+            rows.forEach(row -> lines.add(row.full(true)));
+            return lines;
+        }
+
+        Card card() {
+            return new Card(total.full(false), rows.stream().map(row -> row.in(total.unit())).toList());
+        }
+    }
+
+    private record Parts(Line missions, Section isk, Section lp, Amount together, Amount notCounted) {
+    }
+
     private MissionReport() {
     }
 
@@ -48,44 +94,72 @@ final class MissionReport {
         };
     }
 
-    static List<Line> summary(Report report, double targetIskPerLp) {
+    private static Parts parts(Report report, double targetIskPerLp) {
         Totals totals = report.totals();
-        List<Line> lines = new ArrayList<>();
-        lines.add(new Line("Missions turned in", String.valueOf(totals.missions()), false,
-                "Counted from the rewards and time bonuses in your wallet journal"));
-        lines.add(new Line("ISK from missions", IskFormatter.format(totals.isk()), false,
+        Line missions = new Line("Missions turned in", String.valueOf(totals.missions()), false,
+                "Counted from the rewards and time bonuses in your wallet journal");
+        Section isk = new Section(new Amount("ISK from missions", totals.isk(), Unit.ISK,
                 "Mission rewards, time bonuses and the bounties of the NPCs killed in missions, after corporation "
-                        + "tax, from your wallet journal"));
-        lines.add(new Line("Mission rewards", IskFormatter.format(totals.rewards()), true,
-                "The ISK reward of the missions turned in"));
-        lines.add(new Line("Time bonuses", IskFormatter.format(totals.timeBonuses()), true,
-                "The bonus for finishing missions in time"));
-        lines.add(new Line("Bounties for mission NPCs", IskFormatter.format(totals.missionNpcBounties()), true,
-                "Bounties for NPCs that only spawn in missions, such as burners"));
-        lines.add(new Line("Other bounties near a turn-in", IskFormatter.format(totals.nearTurnInBounties()), true,
-                "Bounties for other NPCs that EVE paid up to 30 minutes after or an hour before a mission turn-in, "
-                        + "such as the NPCs of level 5 missions"));
-        lines.add(new Line("LP earned", lp(totals.lp()), false,
-                "The LP your characters earned, with every corporation"));
+                        + "tax, from your wallet journal"), List.of(
+                new Amount("Mission rewards", totals.rewards(), Unit.ISK, "The ISK reward of the missions turned in"),
+                new Amount("Time bonuses", totals.timeBonuses(), Unit.ISK, "The bonus for finishing missions in time"),
+                new Amount("Bounties for mission NPCs", totals.missionNpcBounties(), Unit.ISK,
+                        "Bounties for NPCs that only spawn in missions, such as burners"),
+                new Amount("Other bounties near a turn-in", totals.nearTurnInBounties(), Unit.ISK,
+                        "Bounties for other NPCs that EVE paid up to 30 minutes after or an hour before a mission "
+                                + "turn-in, such as the NPCs of level 5 missions")));
+        List<Amount> lpRows = new ArrayList<>();
         for (CorporationLp corporation : report.corporations()) {
-            lines.add(new Line(corporation.corporationName(), lp(corporation.points()), true,
+            lpRows.add(new Amount(corporation.corporationName(), corporation.points(), Unit.LP,
                     "The LP earned with " + corporation.corporationName()));
         }
+        Amount together = null;
         if (targetIskPerLp > 0) {
             String target = String.format(Locale.US, "%,.0f ISK/LP", targetIskPerLp);
             double lpValue = totals.lp() * targetIskPerLp;
             if (totals.lp() > 0) {
-                lines.add(new Line("Worth at " + target, IskFormatter.format(lpValue), true,
+                lpRows.add(new Amount("Worth at " + target, lpValue, Unit.ISK,
                         "The LP times your target, set with Set ISK/LP Target... in Offers"));
             }
-            lines.add(new Line("ISK and LP together", IskFormatter.format(totals.isk() + lpValue), false,
-                    "ISK from missions plus the LP at " + target));
+            together = new Amount("ISK and LP together", totals.isk() + lpValue, Unit.ISK,
+                    "ISK from missions plus the LP at " + target);
         }
-        if (totals.otherBounties() > 0) {
-            lines.add(new Line("Not counted: other bounties", IskFormatter.format(totals.otherBounties()), false,
-                    "Bounties far from any mission turn-in, such as ratting"));
+        Section lp = new Section(new Amount("LP earned", totals.lp(), Unit.LP,
+                "The LP your characters earned, with every corporation"), lpRows);
+        Amount notCounted = totals.otherBounties() > 0 ? new Amount("Not counted: other bounties",
+                totals.otherBounties(), Unit.ISK, "Bounties far from any mission turn-in, such as ratting") : null;
+        return new Parts(missions, isk, lp, together, notCounted);
+    }
+
+    static List<Line> summary(Report report, double targetIskPerLp) {
+        Parts parts = parts(report, targetIskPerLp);
+        List<Line> lines = new ArrayList<>();
+        lines.add(parts.missions());
+        lines.addAll(parts.isk().lines());
+        lines.addAll(parts.lp().lines());
+        if (parts.together() != null) {
+            lines.add(parts.together().full(false));
+        }
+        if (parts.notCounted() != null) {
+            lines.add(parts.notCounted().full(false));
         }
         return lines;
+    }
+
+    static Overview overview(Report report, double targetIskPerLp) {
+        Parts parts = parts(report, targetIskPerLp);
+        Amount headline = parts.together() == null ? parts.isk().total() : parts.together();
+        int missions = report.totals().missions();
+        String caption = missions == 1 ? "1 mission" : Text.count(missions) + " missions";
+        if (missions > 0) {
+            caption += "  ·  " + new CompactIskNumberFormat(1).format(headline.value() / missions)
+                    + " ISK per mission";
+        }
+        String captionTip = parts.missions().tip() + (missions > 0 ? ". Per mission: " + headline.label()
+                + " divided by the missions" : "");
+        return new Overview(headline.full(false), caption, captionTip,
+                List.of(parts.isk().card(), parts.lp().card()),
+                parts.notCounted() == null ? null : parts.notCounted().full(false));
     }
 
     static List<String> lines(Report report, Period period, String characters, double targetIskPerLp,

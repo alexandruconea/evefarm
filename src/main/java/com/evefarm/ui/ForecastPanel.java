@@ -77,6 +77,7 @@ final class ForecastPanel extends JPanel {
         titleLabel.setBorder(BorderFactory.createEmptyBorder(0, 2, 0, 0));
         combinationCombo.setToolTipText("What the forecast adds up. Edit... chooses what each combination adds up.");
         ComboSizing.names(combinationCombo);
+        ComboFilter.install(combinationCombo);
         combinationCombo.addActionListener(e -> {
             if (!fillingCombinations && combinationCombo.getSelectedItem() != null) {
                 onCombinationChosen.accept(combinationCombo.getSelectedItem().toString());

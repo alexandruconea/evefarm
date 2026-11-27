@@ -1,18 +1,23 @@
 package com.evefarm.ui;
 
+import com.evefarm.service.ItemIconService;
 import com.evefarm.service.LpPurchaseService.Holding;
 import com.evefarm.ui.column.ColumnDef;
 import com.evefarm.ui.column.ColumnTableModel;
 import com.evefarm.ui.column.Isk;
 import com.evefarm.util.Text;
 
+import javax.swing.ImageIcon;
 import java.util.List;
 
 public final class LpHoldingsTableModel extends ColumnTableModel<Holding> {
 
     static final String SELL_NOW = "sellNow";
 
-    private static final List<ColumnDef<Holding>> COLUMNS = List.of(
+    private static List<ColumnDef<Holding>> columns(ItemIconService iconService) {
+        return List.of(
+            new ColumnDef<>("icon", "", ImageIcon.class, r -> iconService.iconOrPlaceholder(r.typeId()),
+                    "The item's icon"),
             new ColumnDef<>("item", "Item", String.class, Holding::typeName,
                     "The item you bought from LP stores. For a blueprint offer, the item it builds"),
             new ColumnDef<>("remaining", "Left", String.class, r -> Text.count(r.remaining()),
@@ -45,10 +50,11 @@ public final class LpHoldingsTableModel extends ColumnTableModel<Holding> {
                     "How many days of sales in The Forge what is left equals"),
             new ColumnDef<>("typeId", "Type ID", Integer.class, false, Holding::typeId,
                     "EVE's ID of the item type")
-    );
+        );
+    }
 
-    public LpHoldingsTableModel() {
-        super(COLUMNS);
+    public LpHoldingsTableModel(ItemIconService iconService) {
+        super(columns(iconService));
     }
 
 }

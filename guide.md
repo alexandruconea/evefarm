@@ -102,6 +102,10 @@ You can hide tabs you don't use and change their order in **Options > Show Tabs.
 
 To keep the screens tidy, the explanations sit behind the mouse: hover a tab, a field, a button or a line of the Industry Result to read what it does.
 
+Long lists, such as characters, corporations, factions, systems and columns, can be filtered: open the list or just start typing, and it keeps only the lines with every word you typed, in any order. Use the arrow keys and Enter, or click, to pick a line. Backspace removes the last letter, and Esc closes the list without changing anything.
+
+Fields that expect a set format, such as a date or an ISK amount, show an example in gray while they are empty. A value EVE Farm can't read gets a red border as you type, and if you save it anyway, a short note under the field says what to write.
+
 ### Values
 
 What your characters are worth: **Values** for today, **Tracker** for how it changed and **Assets** for everything they own.
@@ -217,7 +221,7 @@ To record a purchase:
 - A purchase you recorded from **Offers** is matched to its payment by itself: same character, same store and the same ISK, paid within a week of the **Bought on** date. It isn't listed again, and its **Bought on** becomes the exact time of the payment.
 - **Target ISK/LP** starts as the **ISK/LP (Sell)** the LP Store showed when you recorded the purchase. When the offer showed no ISK/LP above 0, it starts as your **Set ISK/LP Target...** value instead. Set it to what you want to make, or to 0 for no target.
 
-The top table has one row per item. The bottom table shows each purchase of the item you select, or every purchase when none is selected.
+The top table has one row per item, with its icon. The bottom table shows each purchase of the item you select, or every purchase when none is selected.
 
 - **Left**: the units you still have: what you bought, less what you sold and used.
 - **Avg Cost**: what one unit cost you in ISK: the ISK paid and the other items. The LP is not counted.
@@ -242,10 +246,10 @@ Your market sales come from **Update**: each sale of the item by any of your cha
 
 **Report** adds up the LP you earned and the ISK your missions brought in over a day, a week, a month, 3 or 6 months, a year or all the time EVE Farm has data for.
 
-- Pick **Day**, **Week**, **Month**, **3 Months**, **6 Months** or **Year**, then use **<** and **>** to go to the one before or after. **Today** goes back to the one you are in. Weeks start on the first day of the week of your computer's settings, as in **LP per Day**. **3 Months** are the quarters of the year (January to March, April to June, and so on), **6 Months** its halves (January to June and July to December).
+- Pick **Day**, **Week**, **Month**, **3 Months**, **6 Months** or **Year**, then use the arrows on each side of the dates to go to the one before or after. **Today** goes back to the one you are in. Weeks start on the first day of the week of your computer's settings, as in **LP per Day**. **3 Months** are the quarters of the year (January to March, April to June, and so on), **6 Months** its halves (January to June and July to December).
 - **All Time** adds up everything, from the first day EVE Farm has ISK or LP for to today.
 - Pick a **Character:** to see only theirs.
-- **Missions turned in** counts the missions you completed. A mission that pays only a time bonus counts too.
+- The first card shows the total: **ISK and LP together**, or **ISK from missions** when you have no ISK/LP target. Under it are the missions you completed and what one brought in on average. A mission that pays only a time bonus counts too. The two cards below split the total into ISK and LP.
 - **ISK from missions** is the mission rewards, the time bonuses and the bounties of the NPCs you killed in missions, after corporation tax:
   - **Bounties for mission NPCs**: NPCs that only spawn in missions, such as burners.
   - **Other bounties near a turn-in**: other NPCs, such as those of level 5 missions, when EVE paid their bounty up to 30 minutes after or an hour before a mission turn-in of the same character. EVE pays bounties every 20 minutes, so the last kills of a mission are often paid just after you turn it in.
@@ -254,7 +258,7 @@ Your market sales come from **Update**: each sale of the item by any of your cha
 - **By day** lists each day of the report, and **By agent** below it each agent you ran missions for. For **3 Months** the days are added up **By week**, and for **6 Months**, **Year** and **All Time** **By month**; **Save Report...** still lists every day. Drag the bar between them to make one taller; EVE Farm remembers where you leave it. A bounty counts for the agent of the turn-in closest to it; mission NPC bounties far from any turn-in are listed as **No turn-in nearby**.
 - **By agent** shows each agent's portrait, and the corporation and faction they work for with their logos. Click an agent, a corporation or a faction to see it in **Standings**: the faction or corporation is picked on the left, and an agent on the right, under their corporation. With **All characters**, it shows the character with the best standing. The corporation and faction come from the agent list of **Standings > Agents**, which EVE Farm downloads by itself the first time it needs it.
 - **Save Report...** saves the report as a text file.
-- The ISK comes from your wallet journal, so run **Update** with **Journal** ticked first. EVE shows only the last 30 days of the journal, and EVE Farm keeps it from then on. LP is counted only since EVE Farm started saving it. **Save Report...** notes when that was.
+- The ISK comes from your wallet journal, so run **Update** with **Journal** ticked first. EVE shows only the last 30 days of the journal, and EVE Farm keeps it from then on. LP is counted only since EVE Farm started saving it. A note under the cards, and in **Save Report...**, says when that was.
 
 ### NPC Kills
 
@@ -451,7 +455,7 @@ Most pages show a table, and all of them work the same way.
 
 **Search and filters**
 
-- Type in **Search:** to show only the rows that contain the text in any column.
+- Type in the **Search** field to show only the rows that contain the text in any column. The **x** at its end clears it.
 - Click **Filters** to filter by column. Each line has a tick box to turn it on or off, **And**/**Or** to combine it with the line above, the column to look in (**All** looks in every column), the condition (Contains, Equals, Not Equals, Starts With, Ends With, Greater Than, Less Than) and the value; **+** adds a line and **-** removes it. Click **Filters** again to hide the lines: the filters keep working, and the button shows how many there are, such as **Filters (2)**.
 - **Clear** removes the search and all filters. **Showing X of Y** says how many rows match.
 - **Save...** saves the search and the filters under a name; **Load...** brings them back. Saved filters belong to their page.
@@ -478,7 +482,7 @@ Most pages show a table, and all of them work the same way.
 
 Open **Options > Settings...**.
 
-- **Theme:** Windows (Light on Linux), Dark, EVE or Adwaita, the dark look of GNOME apps such as Files. Restart EVE Farm to see the new theme.
+- **Theme:** Light, in the style of Windows 11, Dark, EVE or Adwaita, the dark look of GNOME apps such as Files. On Windows, **Windows Classic** brings back the older Windows look. Restart EVE Farm to see the new theme.
 - **Price provider:** where prices come from:
   - **CCP (ESI, global average)**: EVE's own average price across all markets;
   - **Fuzzwork (Jita 4-4 sell price)**: prices from the Jita 4-4 market;

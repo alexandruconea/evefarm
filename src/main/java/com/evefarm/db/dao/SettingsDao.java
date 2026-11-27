@@ -12,6 +12,7 @@ public final class SettingsDao {
 
     public static final String LAF_THEME = "laf_theme";
     public static final String DEFAULT_LAF_THEME = "system";
+    public static final String WINDOWS_CLASSIC_THEME = "windows-classic";
     public static final String PRICE_PROVIDER = "price_provider";
     public static final String JANICE_API_KEY = "janice_api_key";
     public static final String BACKUP_PASSWORD = "backup_password";

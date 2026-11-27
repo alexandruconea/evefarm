@@ -1,6 +1,7 @@
 package com.evefarm.ui.filter;
 
 import com.evefarm.ui.ButtonSizing;
+import com.evefarm.ui.ComboFilter;
 import com.evefarm.ui.ComboSizing;
 
 import javax.swing.BorderFactory;
@@ -44,6 +45,7 @@ final class FilterRow extends JPanel {
         columnCombo = new JComboBox<>(columns);
         ComboSizing.options(logicCombo);
         ComboSizing.options(columnCombo);
+        ComboFilter.install(columnCombo);
         ComboSizing.options(operatorCombo);
         ComboSizing.input(valueField);
         ComboSizing.input(addButton);

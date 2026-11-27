@@ -76,6 +76,7 @@ final class LoyaltyPointHistoryDialog extends JDialog {
 
         characterCombo.addActionListener(e -> applyFilter());
         ComboSizing.names(characterCombo);
+        ComboFilter.install(characterCombo);
         JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         top.add(new JLabel("Character:"));
         top.add(characterCombo);

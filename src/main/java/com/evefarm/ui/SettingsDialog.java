@@ -38,9 +38,8 @@ public final class SettingsDialog extends JDialog {
     private static final int MIN_BACKUP_PASSWORD = 8;
 
     private final SettingsDao settingsDao;
-    private static final List<String> THEME_KEYS = List.of("system", "flatlaf-dark", "eve", "adwaita");
-    private final JComboBox<String> themeCombo = new JComboBox<>(new String[]{
-            Platform.isWindows() ? "Windows" : "Light", "Dark", "EVE", "Adwaita"});
+    private static final List<String> THEME_KEYS = themeKeys(Platform.isWindows());
+    private final JComboBox<String> themeCombo = new JComboBox<>(themeNames(Platform.isWindows()));
     private final JComboBox<String> priceProviderCombo = new JComboBox<>(new String[]{
             "CCP (ESI, global average)", "Fuzzwork (Jita 4-4 sell price)", "Janice (Jita 4-4, requires API key)"});
     private final JPasswordField janiceApiKeyField = new JPasswordField();
@@ -59,6 +58,17 @@ public final class SettingsDialog extends JDialog {
     private final JCheckBox notifySkillsBox = new JCheckBox("Skill queues that end within 24 hours");
     private final JCheckBox notifyContractsBox = new JCheckBox("Your contracts: accepted, or expiring within 24 hours");
     private final JCheckBox notifyLpTargetBox = new JCheckBox("LP Store purchases back at their target price");
+
+    static List<String> themeKeys(boolean windows) {
+        return windows ? List.of(SettingsDao.DEFAULT_LAF_THEME, "flatlaf-dark", "eve", "adwaita",
+                SettingsDao.WINDOWS_CLASSIC_THEME)
+                : List.of(SettingsDao.DEFAULT_LAF_THEME, "flatlaf-dark", "eve", "adwaita");
+    }
+
+    static String[] themeNames(boolean windows) {
+        return windows ? new String[]{"Light", "Dark", "EVE", "Adwaita", "Windows Classic"}
+                : new String[]{"Light", "Dark", "EVE", "Adwaita"};
+    }
 
     public SettingsDialog(Frame owner, SettingsDao settingsDao) {
         super(owner, "Settings", true);
@@ -287,13 +297,13 @@ public final class SettingsDialog extends JDialog {
         }
         String backupPassword = new String(backupPasswordField.getPassword());
         if (!backupPassword.equals(new String(backupPasswordRepeatField.getPassword()))) {
-            JOptionPane.showMessageDialog(this, "The two backup passwords are different. Type the same password "
-                    + "in both fields.", "Settings", JOptionPane.WARNING_MESSAGE);
+            Inputs.reject(backupPasswordRepeatField, "The two backup passwords are different. Type the same "
+                    + "password in both fields");
             return;
         }
         if (!backupPassword.isEmpty() && backupPassword.length() < MIN_BACKUP_PASSWORD) {
-            JOptionPane.showMessageDialog(this, "The backup password needs at least " + MIN_BACKUP_PASSWORD
-                    + " characters.", "Settings", JOptionPane.WARNING_MESSAGE);
+            Inputs.reject(backupPasswordField, "The backup password needs at least " + MIN_BACKUP_PASSWORD
+                    + " characters");
             return;
         }
         String storedBackupPassword;

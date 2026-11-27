@@ -1,6 +1,7 @@
 package com.evefarm.ui;
 
 import com.evefarm.AppContext;
+import com.evefarm.service.ItemIconService;
 import com.evefarm.service.LpPurchaseService;
 import com.evefarm.service.LpPurchaseService.Holding;
 import com.evefarm.service.LpPurchaseService.Lot;
@@ -34,10 +35,10 @@ public final class LpPurchasesPanel extends TabPanel {
     }
 
     private final AppContext appContext;
-    private final LpHoldingsTableModel holdingsModel = new LpHoldingsTableModel();
-    private final JTable holdingsTable = new JTable(holdingsModel);
-    private final LpLotsTableModel lotsModel = new LpLotsTableModel();
-    private final JTable lotsTable = new JTable(lotsModel);
+    private final LpHoldingsTableModel holdingsModel;
+    private final JTable holdingsTable;
+    private final LpLotsTableModel lotsModel;
+    private final JTable lotsTable;
     private final JButton reviewButton = new JButton("Review Payments...", Icons.REFRESH);
     private final JButton editButton = new JButton("Edit...", Icons.GEAR);
     private final JButton deleteButton = new JButton("Delete", Icons.REMOVE);
@@ -48,6 +49,10 @@ public final class LpPurchasesPanel extends TabPanel {
 
     public LpPurchasesPanel(AppContext appContext) {
         this.appContext = appContext;
+        holdingsModel = new LpHoldingsTableModel(appContext.itemIconService);
+        holdingsTable = new JTable(holdingsModel);
+        lotsModel = new LpLotsTableModel(appContext.itemIconService);
+        lotsTable = new JTable(lotsModel);
         buildUi();
     }
 
@@ -76,6 +81,7 @@ public final class LpPurchasesPanel extends TabPanel {
 
         holdingsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         SortableTables.withColumnChooser(holdingsTable, holdingsModel, "lpHoldings", appContext.tableColumnStateDao);
+        holdingsTable.setRowHeight(Math.max(holdingsTable.getRowHeight(), ItemIconService.RENDER_SIZE + 6));
         holdingsTable.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 showLots();
@@ -86,6 +92,7 @@ public final class LpPurchasesPanel extends TabPanel {
         lotsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         SortableTables.withColumnChooser(lotsTable, lotsModel, "lpLots", appContext.tableColumnStateDao);
         EveEntityCells.install(lotsTable, appContext.itemIconService);
+        lotsTable.setRowHeight(Math.max(lotsTable.getRowHeight(), ItemIconService.RENDER_SIZE + 6));
         lotsTable.getSelectionModel().addListSelectionListener(e -> updateButtons());
 
         JPanel lotsPanel = new JPanel(new BorderLayout(0, 4));
@@ -143,8 +150,17 @@ public final class LpPurchasesPanel extends TabPanel {
             lots = loaded.lots();
             reviewButton.setText(reviewText(loaded.pendingPayments()));
             show(lots);
+            loadIcons(lots);
         }, "the LP Store purchases", failure -> summaryLabel.setText("Couldn't load the purchases: "
                 + failure.getMessage()));
+    }
+
+    private void loadIcons(List<Lot> all) {
+        all.stream().map(lot -> lot.purchase().typeId()).distinct()
+                .forEach(typeId -> appContext.itemIconService.loadAsync(typeId, () -> {
+                    holdingsTable.repaint();
+                    lotsTable.repaint();
+                }));
     }
 
     static String reviewText(int pendingPayments) {
