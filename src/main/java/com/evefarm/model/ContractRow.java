@@ -18,6 +18,7 @@ public record ContractRow(
         String assigneeName,
         String acceptorName,
         String startLocationName,
-        String endLocationName
+        String endLocationName,
+        boolean corporation
 ) {
 }

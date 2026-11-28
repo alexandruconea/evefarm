@@ -8,6 +8,7 @@ public final class UpdateCategories {
     public static final String TRANSACTIONS = "transactions";
     public static final String CONTRACTS = "contracts";
     public static final String INDUSTRY_JOBS = "industryJobs";
+    public static final String BLUEPRINTS = "blueprints";
     public static final String TRACKER = "tracker";
     public static final String MARKET_PRICES = "marketPrices";
     public static final String LOYALTY_POINTS = "loyaltyPoints";
@@ -15,6 +16,7 @@ public final class UpdateCategories {
     public static final String MINING = "mining";
     public static final String STANDINGS = "standings";
     public static final String SKILLS = "skills";
+    public static final String CORPORATION = "corporation";
 
     private UpdateCategories() {
     }

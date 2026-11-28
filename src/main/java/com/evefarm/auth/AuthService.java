@@ -9,10 +9,12 @@ import com.evefarm.util.TokenCipher;
 
 import java.net.URI;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 public final class AuthService {
 
@@ -49,15 +51,18 @@ public final class AuthService {
         this.jwtValidator = jwtValidator;
     }
 
-    public CharacterIdentity startLoginFlow() throws Exception {
+    public CharacterIdentity startLoginFlow(boolean corporation) throws Exception {
         TokenCipher.checkAvailable();
+        List<String> scopes = corporation
+                ? Stream.concat(OAuthConfig.SCOPES.stream(), OAuthConfig.CORPORATION_SCOPES.stream()).toList()
+                : OAuthConfig.SCOPES;
         OAuthConfig config = OAuthConfig.DEFAULT;
         String codeVerifier = PkceUtil.generateCodeVerifier();
         String codeChallenge = PkceUtil.deriveCodeChallenge(codeVerifier);
         String state = PkceUtil.generateState();
 
         try (LoopbackCallbackServer callbackServer = new LoopbackCallbackServer(config.redirectPort(), state)) {
-            URI authorizeUrl = ssoClient.buildAuthorizeUrl(config, state, codeChallenge);
+            URI authorizeUrl = ssoClient.buildAuthorizeUrl(config, state, codeChallenge, scopes);
             Browser.open(authorizeUrl);
 
             String code = callbackServer.awaitAuthorizationCode(CALLBACK_TIMEOUT_SECONDS, TimeUnit.SECONDS);

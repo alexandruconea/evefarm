@@ -12,9 +12,9 @@ import java.util.List;
 public final class JournalTableModel extends ColumnTableModel<JournalRow> {
 
     private static final List<ColumnDef<JournalRow>> COLUMNS = List.of(
-            new ColumnDef<>("character", "Character", EveEntity.class,
-                    r -> EveEntity.character(r.characterName(), r.characterId()),
-                    "The character whose wallet it is"),
+            new ColumnDef<>("character", "Wallet", EveEntity.class,
+                    r -> EveEntity.owner(r.characterName(), r.characterId(), r.corporation()),
+                    "The character whose wallet it is, or the corporation and its wallet division"),
             new ColumnDef<>("date", "Date", String.class, r -> DateUtil.formatIsoInstant(r.date()),
                     "When it happened, in your local time"),
             new ColumnDef<>("type", "Type", String.class, r -> Text.titleCase(r.refType()),

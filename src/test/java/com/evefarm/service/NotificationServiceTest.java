@@ -80,12 +80,12 @@ class NotificationServiceTest {
 
     private static IndustryJobRow job(long jobId, String status, Instant end) {
         return new IndustryJobRow(PILOT, "Pilot", jobId, 1, status, "Rifter Blueprint", "Rifter", 10, 1_000.0,
-                "Jita", NOW.minus(Duration.ofDays(1)).toString(), end.toString());
+                "Jita", NOW.minus(Duration.ofDays(1)).toString(), end.toString(), false);
     }
 
     private static MarketOrderDto order(long orderId, boolean buy, double price, long location) {
         return new MarketOrderDto(orderId, TRITANIUM, 100, 100, price, buy, null, null, location, null, 90, "station",
-                1L, FORGE, null);
+                1L, FORGE, null, false, null);
     }
 
     private static ContractDto contract(long contractId, String type, String status, int issuer, Instant expires,

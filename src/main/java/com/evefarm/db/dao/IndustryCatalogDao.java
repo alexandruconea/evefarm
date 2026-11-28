@@ -6,6 +6,7 @@ import com.evefarm.model.Decryptor;
 import com.evefarm.model.IndustryActivity;
 import com.evefarm.model.IndustryCatalog;
 import com.evefarm.model.IndustryType;
+import com.evefarm.model.InventionSource;
 import com.evefarm.model.SkillRequirement;
 import com.evefarm.model.SolarSystem;
 import com.evefarm.model.TypeQuantity;
@@ -319,23 +320,32 @@ public final class IndustryCatalogDao {
         return activity(blueprintId, activityId);
     }
 
-    public Optional<Integer> inventedFrom(int blueprintId) {
+    public List<InventionSource> inventionSources(int blueprintId) {
         String sql = """
-                SELECT p.blueprint_id FROM sde_industry_product p
+                SELECT p.blueprint_id, t.name, t.category_name FROM sde_industry_product p
                 JOIN sde_industry_type t ON t.type_id = p.blueprint_id
-                WHERE p.product_id = ? AND p.activity_id = ? AND t.category_name = 'Blueprint' AND t.published = 1
-                ORDER BY p.blueprint_id LIMIT 1
+                WHERE p.product_id = ? AND p.activity_id = ? AND t.published = 1
+                  AND t.category_name IN ('Blueprint', 'Ancient Relics')
+                ORDER BY CASE t.category_name WHEN 'Blueprint' THEN 0 ELSE 1 END, p.probability DESC, p.blueprint_id
                 """;
         synchronized (database) {
+            List<InventionSource> sources = new ArrayList<>();
             try (PreparedStatement ps = database.connection().prepareStatement(sql)) {
                 ps.setInt(1, blueprintId);
                 ps.setInt(2, IndustryActivity.INVENTION);
                 try (ResultSet rs = ps.executeQuery()) {
-                    return rs.next() ? Optional.of(rs.getInt(1)) : Optional.empty();
+                    while (rs.next()) {
+                        sources.add(new InventionSource(rs.getInt("blueprint_id"), rs.getString("name"),
+                                !"Blueprint".equals(rs.getString("category_name"))));
+                    }
                 }
             } catch (SQLException e) {
                 throw new IllegalStateException("Failed to find how blueprint " + blueprintId + " is invented", e);
             }
+            if (!sources.isEmpty() && !sources.getFirst().relic()) {
+                return List.of(sources.getFirst());
+            }
+            return sources;
         }
     }
 

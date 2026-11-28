@@ -82,7 +82,9 @@ public final class TrackerSnapshotService {
         double assetsValue = assetDao.sumTotalValue(characterId);
         double implantsValue = implantsValue(characterId, accessToken);
 
-        List<MarketOrderDto> orders = marketsApi.listCharacterOrders(characterId, accessToken);
+        List<MarketOrderDto> orders = marketsApi.listCharacterOrders(characterId, accessToken).stream()
+                .filter(order -> !order.isCorporation())
+                .toList();
         double sellOrdersValue = orders.stream()
                 .filter(o -> !o.isBuyOrder())
                 .mapToDouble(o -> o.price() * o.volumeRemain())

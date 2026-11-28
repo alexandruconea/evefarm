@@ -10,12 +10,12 @@ This guide walks through every part of the app. Menu and button names are writte
 2. [Characters](#characters)
 3. [Updating your data](#updating-your-data)
 4. [The tabs](#the-tabs)
-   - [Values](#values): [Values](#values-1), [Tracker](#tracker), [Assets](#assets)
+   - [Values](#values): [Values](#values-1), [Tracker](#tracker), [Forecast](#forecast), [Assets](#assets)
    - [Wallet](#wallet): [Journal](#journal), [Transactions](#transactions), [Market Orders](#market-orders), [Contracts](#contracts)
    - [LP Store](#lp-store)
    - [NPC Kills](#npc-kills)
    - [Abyss](#abyss)
-   - [Industry](#industry): [Calculator](#calculator), [Jobs](#jobs), [Mining](#mining)
+   - [Industry](#industry): [Calculator](#calculator), [Jobs](#jobs), [Blueprints](#blueprints), [Mining](#mining)
    - [Standings](#standings): [Standings](#standings-1), [Agents](#agents)
    - [Skills](#skills)
 5. [Working with tables](#working-with-tables)
@@ -44,11 +44,12 @@ Only one copy of EVE Farm runs at a time. Starting it again brings the open wind
 Open **File > Characters...** to manage your characters.
 
 - **Add Character...** opens EVE's login page in your browser. Log in, pick the character and approve the permissions. EVE Farm never sees your password. You can add as many characters as you like, from any number of accounts. **Cancel Login** stops a login you don't want to finish.
+- **Also read the corporation**, next to **Add Character...**, also asks EVE for your corporation's data when you log in. Most of it EVE only gives to a character with a corporation role: **Director** (the CEO counts as one) for the assets, the blueprints and the names of the hangars and wallets, **Accountant** or **Junior Accountant** for the wallets with their journal and transactions, **Accountant** or **Trader** for the market orders and **Factory Manager** for the industry jobs. The corporation's contracts need no role. A Director can read all of it. For a character you already have, tick it and add the character again. The box is ticked at first and stays as you leave it, so adding a character again keeps its corporation. The **Corporation** column shows each character's corporation and the roles EVE Farm can use; **Not asked** means the character was added without it.
 - **Set as Main** marks your main character. It is listed first and is selected first in the Values and LP Store tabs, and it has a star next to its name.
 - **Remove** removes a character. Its login and its current assets, orders, contracts and jobs are removed. Its history (journal, transactions, Tracker, NPC kills and officers) is kept.
 - **Copy EVE Settings...** copies window positions and other in-game settings between characters. See [Copy EVE Settings](#copy-eve-settings).
 
-Each character shows their EVE portrait in this list and in the **Character** column of the tables. EVE Farm downloads the portraits when it starts and when you add a character, and keeps them on your computer.
+Each character shows their EVE portrait in this list and in the **Character**, **Owner** and **Wallet** columns of the tables. EVE Farm downloads the portraits when it starts and when you add a character, and keeps them on your computer.
 
 If a character changes owner (it was sold or transferred to another account), EVE Farm refuses to log it in again under the new owner. Remove it and add it again to keep tracking it. Its history so far is kept.
 
@@ -75,6 +76,8 @@ To choose what to update, open **Update > Update...**:
 | Transactions | Your market buys and sells | 1 hour |
 | Contracts | Your contracts | 1 hour |
 | Industry Jobs | Your industry jobs | 1 hour |
+| Blueprints | Your blueprints, with their ME, TE and runs | 1 hour |
+| Corporation | The wallets, journal, transactions, assets, market orders, contracts, industry jobs and blueprints of your corporations, for the characters added with **Also read the corporation** | 1 hour |
 | Tracker Snapshot | Wallet, net worth and skill points, saved as one point in the Tracker chart | 1 hour |
 | Loyalty Points | Your LP with every corporation | 1 hour |
 | NPC Kills | Reads your Gamelogs for new NPC kills | 1 hour |
@@ -119,9 +122,11 @@ Each card shows:
 - **Total**: everything below added up;
 - **Wallet Balance**: ISK in the wallet;
 - **Assets**: the value of everything the character owns;
-- **Sell Orders**: the value of the items on your open sell orders;
+- **Sell Orders**: the value of the items on your open sell orders. Orders you placed for your corporation belong to the corporation and don't count here;
 - **Earned Today**: the ISK from missions and the LP earned today, counted as in **LP Store > Report**, and below it both together, with the LP at your **Set ISK/LP Target...**;
 - **Best Asset**, **Best Ship** and **Best Module**: the most valuable item of each kind, with its value.
+
+If you added a character with **Also read the corporation**, a third card shows a corporation: the ISK in all its wallets, its assets, its open sell orders and its most valuable items. **Corporation:** at the top picks which one, when you have more than one. The corporation's ISK and items belong to the corporation, so the **Grand Total** leaves them out at first; tick **Add the corporations to the Grand Total**, next to it, to count them all.
 
 #### Tracker
 
@@ -175,6 +180,7 @@ Every item your characters own: location, quantity, unit price, total value, vol
 - **Show:** chooses what you see. **Current assets** is the list from the last update. EVE Farm also saves your whole asset list as it was at the end of each month, so you can pick a past month to see what you owned then.
 - The total value of what's shown is at the bottom.
 - Blueprint copies have **(Blueprint Copy)** after their name and count as 0 ISK, as copies can't be sold on the market.
+- Your corporations' items are listed too, when a character was added with **Also read the corporation**: **Owner** shows the corporation's logo and name, and **Flag** the hangar with its name, such as **Hangar 3: Ore**.
 
 ### Wallet
 
@@ -182,11 +188,11 @@ Where your ISK came from and went: **Journal**, **Transactions**, **Market Order
 
 #### Journal
 
-Your wallet journal: date, type, amount, balance, description and the two parties of every entry. EVE only shows the last 30 days; EVE Farm keeps every entry it has seen. The two parties show a portrait for characters and agents and a logo for corporations, alliances and factions; the pictures load as the rows come into view.
+Your wallet journal: date, type, amount, balance, description and the two parties of every entry. EVE only shows the last 30 days; EVE Farm keeps every entry it has seen. The two parties show a portrait for characters and agents and a logo for corporations, alliances and factions; the pictures load as the rows come into view. Your corporations' wallets are listed too: **Wallet** shows the corporation and which of its wallets, such as **Master Wallet**.
 
 #### Transactions
 
-Your market purchases and sales: date, item, group, quantity, price, total, buy or sell, client and location. EVE Farm keeps every transaction it has seen.
+Your market purchases and sales: date, item, group, quantity, price, total, buy or sell, client and location. EVE Farm keeps every transaction it has seen. The trades of your corporations' wallets are listed too, with the corporation and the wallet in **Wallet**.
 
 #### Market Orders
 
@@ -196,10 +202,13 @@ Your buy and sell orders with price, quantity, location, issue and expiry date, 
 - **Outbid** says whether someone else has a better price than you at the same station: a cheaper sell order or a higher buy order. Orders of your own characters don't count. EVE Farm checks every 15 minutes while it runs, so the column fills in about a minute after it starts. **Competitor Price** (hidden at first) shows that best price.
 - **Broker's Fee** and **Broker's Fee %** show what you paid to place the order: the broker's fee in your wallet journal from the second the order was issued. They stay empty when the journal has no fee from that second, for example for orders placed before EVE Farm saved your journal.
 - Hidden columns (right-click a column header and choose **Choose Columns...** to show them): **Market Sell Min**, **Market Buy Max**, **Market Price**, **Market Margin %** and **Market Profit +**, which compare your price with the market.
+- Your corporations' orders are listed too, when a character with **Accountant** or **Trader** was added with **Also read the corporation**: **Owner** shows the corporation's logo, its name and the wallet that pays for the order. An order you placed for the corporation is listed once, as the corporation's. **Outbid** and **Broker's Fee** stay empty for them.
 
 #### Contracts
 
 Your contracts: type, status, title, issuer, assignee, acceptor, price, reward, collateral, volume, start and end location and dates. Finished contracts are kept.
+
+Your corporations' contracts are listed too, when a character was added with **Also read the corporation**, with the corporation in **Owner**. EVE shows the corporation's contracts of the last 30 days and those still in progress. A contract you made for the corporation is listed once, as the corporation's.
 
 Click the **Info** icon at the start of a row to see what's in the contract. The window lists the items included and, for item exchanges, the items asked for in return, each with its price and an **Estimated value** of the whole contract. Contracts that expired long ago may no longer show their items in EVE.
 
@@ -341,7 +350,7 @@ It reads your characters' Gamelogs and speaks with Windows' own voice. On Linux 
 
 ### Industry
 
-What you build and mine: the **Calculator**, your industry **Jobs** and your **Mining**.
+What you build and mine: the **Calculator**, your industry **Jobs**, your **Blueprints** and your **Mining**.
 
 #### Calculator
 
@@ -353,7 +362,7 @@ Works out what it costs to build an item and what you make selling it. The first
 4. Choose where you build: an NPC station, or a Raitaru, Azbel or Sotiyo with no rig, a T1 rig or a T2 rig for material (ME) and time (TE), and the structure's **Facility tax %**. The rig bonus grows in low-sec and null-sec, as in the game.
 5. Set the **Broker fee %** you pay: in an NPC station it is 3% less 0.3% for each level of Broker Relations, and less again with good standings; in a player structure it is the owner's fee plus 0.5%. Set it to 0 if you sell to buy orders. The **Sales tax** comes from the character's Accounting skill: 7.5% less 11% for each level.
 
-The **Materials** tab lists what the job uses, with the price you pay for each and whether you build it or buy it. The **Result** at the top right shows what the product sells for, the sales tax and broker fee, the materials, the job fee, the total cost, the profit, **To spend** (the ISK you still pay out: what is left to buy, the job fees and the invention), the build time and the ISK per hour. Hover a line for more, such as the price per unit or what the surplus is worth.
+The **Materials** tab lists what the job uses, with the price you pay for each and whether you build it or buy it. The **Result** at the top right shows, in groups, what the product sells for and the sales tax and broker fee; the materials, the job fees, the invention, the total cost and **To spend** (the ISK you still pay out: what is left to buy, the job fees and the invention); the profit and the ISK per hour; and the build time. Hover a line for more, such as the price per unit, the chance of invention or what the surplus is worth.
 
 **Building components.** The **Components:** setting decides what you make yourself:
 
@@ -393,11 +402,22 @@ The numbers follow EVE's rules:
 
 **Tech II items.** With **Include invention** ticked, the cost of inventing the blueprint copies is added: datacores, the decryptor, and the copying and invention job fees, spread over the runs of a successful copy. The **Invention** tab compares building without a decryptor and with each decryptor: the chance of success with your skills (base chance × (1 + science skill levels / 30 + encryption skill level / 40) × the decryptor's bonus), the runs, ME and TE of the invented copy, the invention cost per run, the cost and profit per unit, and the ISK per hour. Each invented copy has only a few runs, so every copy is a job of its own: the materials are rounded job by job, and the jobs run side by side on the character's manufacturing lines (1 + Mass Production + Advanced Mass Production). The build time and the ISK per hour use that time, and the Result shows how many jobs run at once. The most profitable choice is selected; click another row to see its materials and numbers. While it is ticked, **ME:** and **TE:** show the invented copy's values for the chosen row and can't be changed. Clear **Include invention** if you already have the copy, and set its ME and TE yourself. The box is greyed out for blueprints that can't be invented.
 
+**Tech III items.** Strategic cruisers, tactical destroyers and their subsystems are invented from Sleeper relics instead of a Tech I copy. With **Include invention** ticked, the **Invention** tab compares each relic (Intact, Malfunctioning and Wrecked) without a decryptor and with each decryptor; **Invented With** names both. An Intact relic has the best chance and gives the most runs, but costs the most. The relic is used up on every try, so its price is part of the invention cost, with the datacores and the invention job fee; there is no copying fee. The chance uses the same formula, with Sleeper Encryption Methods as the encryption skill.
+
 If the character's skills aren't saved yet, they count as level IV; run **Update > Skills** for the real ones. If the character lacks a skill needed to build or invent the item, a note under the settings says so.
 
 #### Jobs
 
 Your industry jobs: activity (manufacturing, research, copying, invention, reactions), blueprint, product, runs, facility, cost, start and end date and status. A job that has finished shows as **Ready** until you deliver it. Finished jobs are kept.
+
+Your corporations' jobs are listed too, when a character with **Factory Manager** was added with **Also read the corporation**: **Owner** shows the corporation and who started the job.
+
+#### Blueprints
+
+Your blueprints and your corporations' in one list: owner, blueprint, **Original** or **Copy**, ME, TE, the runs a copy has left, how many sit in one stack, location, container and where it sits, such as the hangar. **Owner** shows the character's portrait or the corporation's logo.
+
+- Run **Update > Blueprints** for your characters' blueprints. Characters added before EVE Farm read blueprints must be added again (**File > Characters... > Add Character...**); until then their update says so. Tick **Also read the corporation** again for the characters that had it, or their corporation's data stops.
+- Run **Update > Corporation** for your corporations' blueprints. EVE only gives them to a **Director** added with **Also read the corporation**.
 
 #### Mining
 
@@ -583,6 +603,8 @@ EVE Farm has no telemetry and sends nothing to its developer. It only connects t
 - zKillboard, only when you click one of its links.
 
 A character's location and ship are only read while you track Abyss runs for it. EVE Farm saves the runs it detects, not where the character has been.
+
+Your corporation's wallets, journal, transactions, assets, market orders, contracts, industry jobs and blueprints are only read for the characters you add with **Also read the corporation**, and only as far as their corporation roles allow.
 
 **Uninstalling:** close EVE Farm and delete the folder you unzipped it into. To remove your data too, delete `%USERPROFILE%\.evefarm` (`~/.evefarm` on Linux); copy any backups you want to keep first. On Linux, also delete **EVE Farm login key** from your keyring. EVE Farm installs nothing else and doesn't change system settings.
 

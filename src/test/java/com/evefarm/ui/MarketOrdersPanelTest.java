@@ -16,7 +16,7 @@ class MarketOrdersPanelTest {
     private static MarketOrderRow order(boolean buy, String state, double price, long remaining, Double brokerFee) {
         return new MarketOrderRow(1, 1, "Pilot", 34, "Tritanium", null, null, buy, state, price, remaining,
                 remaining * 2, null, 60003760L, "Jita", null, null, null, null, 0, null, null, null, null, null,
-                null, null, brokerFee, null);
+                null, null, brokerFee, null, false);
     }
 
     @Test

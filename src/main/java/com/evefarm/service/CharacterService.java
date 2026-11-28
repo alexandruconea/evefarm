@@ -23,8 +23,8 @@ public final class CharacterService {
         this.settingsDao = settingsDao;
     }
 
-    public CharacterIdentity addCharacter() throws Exception {
-        return authService.startLoginFlow();
+    public CharacterIdentity addCharacter(boolean corporation) throws Exception {
+        return authService.startLoginFlow(corporation);
     }
 
     public void removeCharacter(long characterId) {

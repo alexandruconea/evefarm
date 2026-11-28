@@ -68,11 +68,6 @@ final class UpdateDialog extends JDialog {
         for (Category category : updater.categories()) {
             list.add(row(category));
         }
-        JCheckBox blueprints = new JCheckBox("Blueprints (not yet supported)");
-        blueprints.setEnabled(false);
-        JPanel blueprintsRow = new JPanel(new BorderLayout());
-        blueprintsRow.add(blueprints, BorderLayout.CENTER);
-        list.add(blueprintsRow);
 
         allBox.addActionListener(e -> {
             for (Row row : rows) {

@@ -99,7 +99,7 @@ final class ContractContentsDialog extends JDialog {
 
     private JPanel details() {
         List<String[]> fields = new ArrayList<>();
-        addField(fields, "Character", contract.characterName());
+        addField(fields, contract.corporation() ? "Corporation" : "Character", contract.characterName());
         addField(fields, "Type", Text.titleCase(contract.type()));
         addField(fields, "Status", Text.titleCase(contract.status()));
         addField(fields, "Issuer", contract.issuerName());
@@ -186,7 +186,10 @@ final class ContractContentsDialog extends JDialog {
 
     private void loadItems() {
         BackgroundLoader.load(
-                () -> appContext.contractService.listContractItems(contract.characterId(), contract.contractId()),
+                () -> contract.corporation()
+                        ? appContext.contractService.priced(appContext.corporationService.contractItems(
+                                contract.characterId(), contract.contractId()))
+                        : appContext.contractService.listContractItems(contract.characterId(), contract.contractId()),
                 this::showItems, "the items of contract " + contract.contractId(), failure -> status.setText(
                         failure instanceof EsiException esi && (esi.statusCode() == 403 || esi.statusCode() == 404)
                                 ? "EVE doesn't show the items of this contract any more - it may have expired or "

@@ -29,7 +29,11 @@ public final class JournalService {
     public void refreshJournalForCharacter(long characterId) {
         String accessToken = authService.getValidAccessToken(characterId);
         List<WalletJournalEntryDto> entries = walletApi.listJournal(characterId, accessToken);
+        entityNameCacheService.resolveEntities(parties(entries));
+        walletJournalDao.saveForCharacter(characterId, entries(entries));
+    }
 
+    static Set<Long> parties(List<WalletJournalEntryDto> entries) {
         Set<Long> partyIds = new HashSet<>();
         for (WalletJournalEntryDto entry : entries) {
             if (entry.firstPartyId() != null) {
@@ -39,9 +43,11 @@ public final class JournalService {
                 partyIds.add((long) entry.secondPartyId());
             }
         }
-        entityNameCacheService.resolveEntities(partyIds);
+        return partyIds;
+    }
 
-        List<JournalEntry> journalEntries = entries.stream()
+    static List<JournalEntry> entries(List<WalletJournalEntryDto> entries) {
+        return entries.stream()
                 .map(entry -> new JournalEntry(
                         entry.id(), entry.date(), entry.refType(),
                         entry.amount() == null ? 0 : entry.amount(),
@@ -49,7 +55,6 @@ public final class JournalService {
                         entry.description(), entry.reason(), entry.firstPartyId(), entry.secondPartyId(),
                         entry.tax() == null ? 0 : entry.tax(), entry.taxReceiverId()))
                 .toList();
-        walletJournalDao.saveForCharacter(characterId, journalEntries);
     }
 
     public List<JournalRow> getJournalRows() {

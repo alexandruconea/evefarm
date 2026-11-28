@@ -136,7 +136,7 @@ public final class MarketOrderDao {
                                 rs.getString("range"),
                                 JdbcUtil.getNullableLong(rs, "min_volume"),
                                 rs.getDouble("volume"),
-                                null, null, null, null, null, null, null, null, null
+                                null, null, null, null, null, null, null, null, null, false
                         ));
                     }
                 }

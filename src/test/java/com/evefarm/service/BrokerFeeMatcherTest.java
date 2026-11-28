@@ -22,7 +22,7 @@ class BrokerFeeMatcherTest {
     private static MarketOrderRow order(long orderId, String state, double price, long volumeTotal, String issued) {
         return new MarketOrderRow(orderId, PILOT, "Malpais Legate", 34, "Tritanium", null, null, false, state,
                 price, volumeTotal, volumeTotal, null, 60003760L, "Jita", issued, 90, "station", null, 0.01, null,
-                null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, false);
     }
 
     private void feesPaid(WalletJournalDao.DatedAmount... fees) {

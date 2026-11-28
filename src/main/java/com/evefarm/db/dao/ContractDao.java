@@ -231,7 +231,8 @@ public final class ContractDao {
                                 rs.getString("assignee_name"),
                                 rs.getString("acceptor_name"),
                                 rs.getString("start_location_name"),
-                                rs.getString("end_location_name")
+                                rs.getString("end_location_name"),
+                                false
                         ));
                     }
                 }

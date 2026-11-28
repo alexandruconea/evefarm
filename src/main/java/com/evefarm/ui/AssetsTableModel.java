@@ -12,9 +12,9 @@ import java.util.Locale;
 public final class AssetsTableModel extends ColumnTableModel<AssetRow> {
 
     private static final List<ColumnDef<AssetRow>> COLUMNS = List.of(
-            new ColumnDef<>("character", "Character", EveEntity.class,
-                    r -> EveEntity.character(r.characterName(), r.characterId()),
-                    "The character who owns the item"),
+            new ColumnDef<>("character", "Owner", EveEntity.class,
+                    r -> EveEntity.owner(r.characterName(), r.characterId(), r.corporation()),
+                    "The character or the corporation that owns the item"),
             new ColumnDef<>("item", "Item", String.class, AssetRow::typeName,
                     "The item's name"),
             new ColumnDef<>("group", "Group", String.class, r -> nullToEmpty(r.groupName()),

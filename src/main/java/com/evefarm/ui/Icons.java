@@ -60,6 +60,7 @@ public final class Icons {
     public static final Icon BLANK = new Blank();
     public static final Icon KILLBOARD = icon("skull-crossbones", Tone.DANGER);
     public static final Icon INFO = icon("circle-info", Tone.ACCENT);
+    public static final Icon WARNING = icon("triangle-exclamation", Tone.FAVORITE);
     public static final Icon CALCULATOR = icon("calculator", Tone.NEUTRAL);
     public static final Icon MOVE_UP = icon("arrow-up", Tone.NEUTRAL);
     public static final Icon MOVE_DOWN = icon("arrow-down", Tone.NEUTRAL);

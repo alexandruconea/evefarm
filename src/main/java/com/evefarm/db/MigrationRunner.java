@@ -73,7 +73,10 @@ public final class MigrationRunner {
             "db/migrations/V48__backup_secret.sql",
             "db/migrations/V49__table_column_width.sql",
             "db/migrations/V50__mission_agent_columns.sql",
-            "db/migrations/V51__lp_purchase_icons.sql"
+            "db/migrations/V51__lp_purchase_icons.sql",
+            "db/migrations/V52__corporations.sql",
+            "db/migrations/V53__corporation_orders_contracts_jobs_blueprints.sql",
+            "db/migrations/V54__character_blueprints.sql"
     );
 
     public static void run(Database database) {

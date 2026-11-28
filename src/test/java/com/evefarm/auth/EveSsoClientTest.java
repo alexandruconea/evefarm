@@ -2,9 +2,12 @@ package com.evefarm.auth;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.stream.Stream;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class EveSsoClientTest {
 
@@ -15,6 +18,20 @@ class EveSsoClientTest {
 
         assertInstanceOf(LoginRejectedException.class, failure);
         assertEquals("EVE didn't accept the login - try again", failure.getMessage());
+    }
+
+    @Test
+    void theCorporationIsOnlyAskedForWhenTicked() {
+        EveSsoClient client = new EveSsoClient();
+        String personal = client.buildAuthorizeUrl(OAuthConfig.DEFAULT, "state", "challenge", OAuthConfig.SCOPES)
+                .toString();
+        String withCorporation = client.buildAuthorizeUrl(OAuthConfig.DEFAULT, "state", "challenge",
+                Stream.concat(OAuthConfig.SCOPES.stream(), OAuthConfig.CORPORATION_SCOPES.stream()).toList())
+                .toString();
+
+        assertFalse(personal.contains("corporation"));
+        assertTrue(withCorporation.contains("esi-assets.read_corporation_assets.v1"));
+        assertTrue(withCorporation.contains("esi-wallet.read_corporation_wallets.v1"));
     }
 
     @Test

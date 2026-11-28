@@ -9,7 +9,8 @@ public record JournalRow(
         double balance,
         String description,
         Party firstParty,
-        Party secondParty
+        Party secondParty,
+        boolean corporation
 ) {
 
     public record Party(Long id, String name, String category) {

@@ -98,7 +98,8 @@ public final class WalletJournalDao {
                                 new JournalRow.Party(JdbcUtil.getNullableLong(rs, "first_party_id"),
                                         rs.getString("first_party_name"), rs.getString("first_party_category")),
                                 new JournalRow.Party(JdbcUtil.getNullableLong(rs, "second_party_id"),
-                                        rs.getString("second_party_name"), rs.getString("second_party_category"))
+                                        rs.getString("second_party_name"), rs.getString("second_party_category")),
+                                false
                         ));
                     }
                 }

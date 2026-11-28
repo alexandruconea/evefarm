@@ -15,6 +15,7 @@ public record AssetRow(
         boolean singleton,
         double volume,
         double unitPrice,
-        double totalValue
+        double totalValue,
+        boolean corporation
 ) {
 }

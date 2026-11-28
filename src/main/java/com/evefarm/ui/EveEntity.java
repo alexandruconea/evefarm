@@ -30,6 +30,10 @@ record EveEntity(String name, Kind kind, Long id) implements Comparable<EveEntit
         }
     }
 
+    static EveEntity owner(String name, long id, boolean corporation) {
+        return corporation ? new EveEntity(name, Kind.CORPORATION, id) : character(name, id);
+    }
+
     static EveEntity character(String name, long characterId) {
         return new EveEntity(name, Kind.CHARACTER, characterId);
     }

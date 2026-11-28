@@ -1,6 +1,6 @@
 # EVE Farm
 
-EVE Farm is a desktop app for Windows and Linux that keeps all your EVE Online characters in one place: assets and net worth over time, wallet journal and transactions, market orders, contracts, industry jobs, mining ledger, loyalty points and LP store value, standings with factions, corporations and agents, a skill planner, an industry calculator with invention, build or buy and reactions, NPC kills from your game logs, officer spawns and drops, agents, and Abyssal Deadspace runs with a timer that starts and stops by itself.
+EVE Farm is a desktop app for Windows and Linux that keeps all your EVE Online characters in one place: assets and net worth over time, wallet journal and transactions, market orders, contracts, industry jobs, blueprints, mining ledger, loyalty points and LP store value, standings with factions, corporations and agents, a skill planner, an industry calculator with invention, build or buy and reactions, NPC kills from your game logs, officer spawns and drops, agents, and Abyssal Deadspace runs with a timer that starts and stops by itself.
 
 ## Download
 
@@ -49,6 +49,8 @@ EVE Farm has no telemetry and sends nothing to its developer. It only connects t
 - GitHub (`api.github.com`, `github.com`), to check for and download updates. You can turn the automatic check off in **Options → Settings...**.
 
 A character's location and ship are only read while you track Abyss runs for it in the **Abyss** tab, every 10 seconds. EVE Farm saves the runs it detects (start, length and ship), not where the character has been. While tracking, it also checks the clipboard every second, so that a cargo list you copy in EVE counts as the cargo before or after a run. Anything that isn't a list of EVE items is ignored and never saved.
+
+Your corporation's wallets, journal, transactions, assets, market orders, contracts, industry jobs and blueprints are only read for the characters you add with **Also read the corporation** in **File → Characters...**, and only as far as their corporation roles allow (Director for the assets and blueprints, Accountant or Junior Accountant for the wallets, Accountant or Trader for the market orders, Factory Manager for the industry jobs; the contracts need no role).
 
 The aggro voice in the **Abyss** tab reads your characters' Gamelogs on this computer and speaks with your system's voice (Windows' own voice, or speech-dispatcher or espeak-ng on Linux) when NPCs start shooting at one of your characters. It only plays a sound; it never sends anything or acts in the game for you.
 

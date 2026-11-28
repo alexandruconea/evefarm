@@ -148,7 +148,8 @@ public final class IndustryJobDao {
                                 JdbcUtil.getNullableDouble(rs, "cost"),
                                 rs.getString("facility_name"),
                                 rs.getString("start_date"),
-                                rs.getString("end_date")
+                                rs.getString("end_date"),
+                                false
                         ));
                     }
                 }

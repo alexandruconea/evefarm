@@ -15,9 +15,9 @@ import com.evefarm.service.IndustryCalculator.Rig;
 import com.evefarm.service.IndustryCalculator.Structure;
 import com.evefarm.service.IndustryService;
 import com.evefarm.ui.column.ColumnCopySupport;
-import com.evefarm.ui.column.ColumnVisibilitySupport;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -35,11 +35,13 @@ import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.Timer;
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.LayoutManager;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.FocusAdapter;
@@ -199,29 +201,28 @@ public final class IndustryPanel extends TabPanel {
         });
         multibuyButton.addActionListener(e -> copyMultibuy());
 
-        TableStyler.style(materialsTable);
-        ColumnVisibilitySupport.install(materialsTable, materialsModel, MATERIALS_KEY,
+        SortableTables.withColumnChooser(materialsTable, materialsModel, MATERIALS_KEY,
                 appContext.tableColumnStateDao);
         ColumnCopySupport.install(materialsTable, materialsModel);
-        TableStyler.style(buildTable);
-        ColumnVisibilitySupport.install(buildTable, buildModel, BUILD_KEY, appContext.tableColumnStateDao);
+        SortableTables.withColumnChooser(buildTable, buildModel, BUILD_KEY, appContext.tableColumnStateDao);
         ColumnCopySupport.install(buildTable, buildModel);
         surplusCombo.addActionListener(e -> changed());
         stockCombo.addActionListener(e -> changed());
-        TableStyler.style(chainTable);
-        ColumnVisibilitySupport.install(chainTable, chainModel, CHAIN_KEY, appContext.tableColumnStateDao);
+        SortableTables.withColumnChooser(chainTable, chainModel, CHAIN_KEY, appContext.tableColumnStateDao);
         ColumnCopySupport.install(chainTable, chainModel);
-        TableStyler.style(shoppingTable);
-        ColumnVisibilitySupport.install(shoppingTable, shoppingModel, SHOPPING_KEY, appContext.tableColumnStateDao);
+        SortableTables.withColumnChooser(shoppingTable, shoppingModel, SHOPPING_KEY, appContext.tableColumnStateDao);
         ColumnCopySupport.install(shoppingTable, shoppingModel);
-        TableStyler.style(decryptorTable);
         decryptorTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        ColumnVisibilitySupport.install(decryptorTable, decryptorModel, DECRYPTORS_KEY,
+        SortableTables.withColumnChooser(decryptorTable, decryptorModel, DECRYPTORS_KEY,
                 appContext.tableColumnStateDao);
         decryptorTable.getSelectionModel().addListSelectionListener(e -> {
             int row = decryptorTable.getSelectedRow();
-            if (!e.getValueIsAdjusting() && row >= 0 && result != null && row != shownOption) {
-                shownOption = row;
+            if (e.getValueIsAdjusting() || row < 0 || result == null) {
+                return;
+            }
+            int option = decryptorTable.convertRowIndexToModel(row);
+            if (option != shownOption) {
+                shownOption = option;
                 showOption();
             }
         });
@@ -273,7 +274,7 @@ public final class IndustryPanel extends TabPanel {
         chooseButton.setEnabled(false);
         boolean downloading = appContext.industryCatalogService.isStale();
         if (downloading) {
-            hintLabel.setText("Downloading EVE's blueprint and solar system data (about 27 MB, once a month)...");
+            hint("Downloading EVE's blueprint and solar system data (about 27 MB, once a month)...");
         }
         new SwingWorker<List<BlueprintChoice>, Void>() {
             @Override
@@ -290,14 +291,14 @@ public final class IndustryPanel extends TabPanel {
                 try {
                     List<BlueprintChoice> choices = get();
                     if (downloading) {
-                        hintLabel.setText(" ");
+                        hint(" ");
                     }
                     if (blueprint == null) {
                         restoreBlueprint(choices);
                     }
                 } catch (Exception e) {
                     LOG.log(Level.WARNING, "Failed to load the industry data", e);
-                    hintLabel.setText("Couldn't download EVE's blueprint data - see the log. It is tried again when "
+                    warn("Couldn't download EVE's blueprint data - see the log. It is tried again when "
                             + "you open this tab.");
                 }
             }
@@ -392,11 +393,11 @@ public final class IndustryPanel extends TabPanel {
             return;
         }
         IndustryService.Settings settings = settings();
-        hintLabel.setText("Calculating...");
+        hint("Calculating...");
         BackgroundLoader.load(generation, () -> appContext.industryService.calculate(settings), calculated -> {
             calculatedRuns = settings.runs();
             showResult(calculated);
-        }, "the industry job", failure -> hintLabel.setText("Couldn't calculate: " + failure.getMessage()));
+        }, "the industry job", failure -> warn("Couldn't calculate: " + failure.getMessage()));
     }
 
     private void showResult(IndustryService.Result calculated) {
@@ -411,11 +412,9 @@ public final class IndustryPanel extends TabPanel {
         if (skills.assumed()) {
             notes.add("Skills are assumed at level IV - run Update > Skills for this character's real skills.");
         }
-        if (!skills.canBuild()) {
-            notes.add("This character lacks a skill needed to build it.");
-        }
-        if (!skills.canInvent()) {
-            notes.add("This character lacks a skill needed to invent it.");
+        String missing = missingSkills(skills.canBuild(), skills.canInvent());
+        if (missing != null) {
+            notes.add(missing);
         }
         if (calculated.productPrice() <= 0) {
             notes.add("No market price for the product.");
@@ -423,14 +422,19 @@ public final class IndustryPanel extends TabPanel {
         if (buildMode() != BuildPlanner.Mode.BUY && !calculated.reactionsAllowed()) {
             notes.add("Reactions need low-sec or null-sec, so their products are bought.");
         }
-        hintLabel.setText(notes.isEmpty() ? " " : String.join("  ", notes));
+        if (notes.isEmpty()) {
+            hint(" ");
+        } else {
+            warn(String.join("  ", notes));
+        }
         salesTaxLabel.setText(String.format(Locale.US, "%.2f%%", skills.salesTax() * 100));
         showInventionTab(calculated.invented());
         inventionCheck.setEnabled(calculated.inventable());
         decryptorModel.setRows(calculated.invented() ? calculated.options() : List.of());
         TableStyler.packColumns(decryptorTable);
         if (calculated.invented()) {
-            decryptorTable.setRowSelectionInterval(shownOption, shownOption);
+            int row = decryptorTable.convertRowIndexToView(shownOption);
+            decryptorTable.setRowSelectionInterval(row, row);
         }
         showOption();
     }
@@ -539,11 +543,11 @@ public final class IndustryPanel extends TabPanel {
             }
         }
         if (copied == 0) {
-            hintLabel.setText("Nothing left to buy - your stock covers the whole shopping list.");
+            hint("Nothing left to buy - your stock covers the whole shopping list.");
             return;
         }
         Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(text.toString()), null);
-        hintLabel.setText("Copied " + items(copied) + " of the shopping list - paste them into Multibuy in EVE.");
+        hint("Copied " + items(copied) + " of the shopping list - paste them into Multibuy in EVE.");
     }
 
     private static String items(long count) {
@@ -583,44 +587,55 @@ public final class IndustryPanel extends TabPanel {
         chooseHolder.setOpaque(false);
         chooseHolder.add(chooseButton);
         blueprintHeader.add(chooseHolder, BorderLayout.EAST);
-        JPanel blueprintForm = new JPanel(new GridBagLayout());
-        place(blueprintForm, blueprintHeader, 0, 0, 6);
-        field(blueprintForm, "Character", characterCombo, 0, 1, 5);
-        field(blueprintForm, "Runs", runsSpinner, 0, 2, 1);
-        field(blueprintForm, "ME", meSpinner, 2, 2, 1);
-        field(blueprintForm, "TE", teSpinner, 4, 2, 1);
-        place(blueprintForm, inventionCheck, 0, 3, 6);
-        field(blueprintForm, "Components", buildCombo, 0, 4, 5);
-        field(blueprintForm, "Stock", stockCombo, 0, 5, 5);
+        ComboSizing.input(meSpinner);
+        ComboSizing.input(teSpinner);
+        JPanel runsRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        runsRow.setOpaque(false);
+        runsRow.add(runsSpinner);
+        runsRow.add(Box.createHorizontalStrut(14));
+        runsRow.add(UiColors.mutedLabel("ME"));
+        runsRow.add(Box.createHorizontalStrut(8));
+        runsRow.add(meSpinner);
+        runsRow.add(Box.createHorizontalStrut(14));
+        runsRow.add(UiColors.mutedLabel("TE"));
+        runsRow.add(Box.createHorizontalStrut(8));
+        runsRow.add(teSpinner);
 
-        JPanel facilityForm = new JPanel(new GridBagLayout());
-        field(facilityForm, "System", systemField, 0, 0, 1);
-        place(facilityForm, systemLabel, 2, 0, 2);
-        field(facilityForm, "Built in", structureCombo, 0, 1, 1);
-        field(facilityForm, "Facility tax %", taxSpinner, 2, 1, 1);
-        field(facilityForm, "Material rig", materialRigCombo, 0, 2, 1);
-        field(facilityForm, "Time rig", timeRigCombo, 2, 2, 1);
+        JPanel form = new JPanel(new GridBagLayout());
+        int row = 0;
+        place(form, blueprintHeader, 0, row++, 4);
+        field(form, "Character", characterCombo, 0, row++, 3);
+        place(form, UiColors.mutedLabel("Runs"), 0, row, 1);
+        place(form, runsRow, 1, row++, 3);
+        place(form, inventionCheck, 0, row++, 4);
+        field(form, "Components", buildCombo, 0, row++, 3);
+        field(form, "Stock", stockCombo, 0, row++, 3);
 
-        JPanel sellingForm = new JPanel(new GridBagLayout());
-        field(sellingForm, "Broker fee %", brokerSpinner, 0, 0, 1);
-        field(sellingForm, "Sales tax", salesTaxLabel, 0, 1, 1);
+        place(form, heading("Facility"), 0, row++, 4);
+        field(form, "System", systemField, 0, row, 1);
+        place(form, systemLabel, 2, row++, 2);
+        field(form, "Built in", structureCombo, 0, row, 1);
+        field(form, "Facility tax %", taxSpinner, 2, row++, 1);
+        field(form, "Material rig", materialRigCombo, 0, row, 1);
+        field(form, "Time rig", timeRigCombo, 2, row++, 1);
 
-        JPanel cards = new JPanel(new GridBagLayout());
-        cards.setBorder(BorderFactory.createEmptyBorder(8, 8, 0, 8));
-        section(cards, "Blueprint", blueprintForm, 0);
-        section(cards, "Facility", facilityForm, 1);
-        section(cards, "Selling", sellingForm, 2);
+        place(form, heading("Selling"), 0, row++, 4);
+        field(form, "Broker fee %", brokerSpinner, 0, row, 1);
+        field(form, "Sales tax", salesTaxLabel, 2, row, 1);
+
+        JPanel blueprintSection = new KeepsItsSize(new BorderLayout());
+        blueprintSection.add(section("Blueprint", form), BorderLayout.CENTER);
         JPanel resultSection = new JPanel(new BorderLayout(0, 6));
         resultSection.add(bold(new JLabel("Result")), BorderLayout.NORTH);
         resultSection.add(resultCard.component(), BorderLayout.CENTER);
-        GridBagConstraints resultCell = new GridBagConstraints();
-        resultCell.gridx = 3;
-        resultCell.weightx = 1;
-        resultCell.fill = GridBagConstraints.BOTH;
-        resultCell.anchor = GridBagConstraints.NORTHWEST;
-        cards.add(resultSection, resultCell);
 
-        hintLabel.setBorder(BorderFactory.createEmptyBorder(6, 10, 2, 8));
+        JPanel cards = new JPanel(new GridBagLayout());
+        cards.setBorder(BorderFactory.createEmptyBorder(8, 8, 0, 8));
+        column(cards, blueprintSection, 0, 0);
+        column(cards, resultSection, 1, 1);
+
+        hintLabel.setBorder(BorderFactory.createEmptyBorder(8, 10, 2, 8));
+        hintLabel.setIconTextGap(8);
         JPanel top = new JPanel(new BorderLayout());
         top.add(cards, BorderLayout.CENTER);
         top.add(hintLabel, BorderLayout.SOUTH);
@@ -663,24 +678,79 @@ public final class IndustryPanel extends TabPanel {
         add(production, BorderLayout.CENTER);
     }
 
+    static String missingSkills(boolean canBuild, boolean canInvent) {
+        if (!canBuild && !canInvent) {
+            return "This character lacks skills needed to build it and to invent it.";
+        }
+        if (!canBuild) {
+            return "This character lacks a skill needed to build it.";
+        }
+        return canInvent ? null : "This character lacks a skill needed to invent it.";
+    }
+
+    private void hint(String text) {
+        hintLabel.setIcon(null);
+        hintLabel.setText(text);
+    }
+
+    private void warn(String text) {
+        hintLabel.setIcon(Icons.WARNING);
+        hintLabel.setText(text);
+    }
+
+    private static JPanel heading(String title) {
+        JLabel label = bold(new JLabel(title));
+        JPanel heading = new JPanel(new BorderLayout());
+        heading.setOpaque(false);
+        heading.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createCompoundBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0),
+                        BorderFactory.createMatteBorder(1, 0, 0, 0, IndustryResultCard.faintLine())),
+                BorderFactory.createEmptyBorder(8, 0, 0, 0)));
+        heading.add(label, BorderLayout.CENTER);
+        return heading;
+    }
+
     private static JLabel bold(JLabel label) {
         label.setFont(label.getFont().deriveFont(Font.BOLD));
         return label;
     }
 
-    private static void section(JPanel cards, String title, JPanel form, int column) {
+    private static JPanel section(String title, JPanel form) {
         form.setOpaque(false);
+        GridBagConstraints rest = new GridBagConstraints();
+        rest.gridx = 99;
+        rest.gridy = 0;
+        rest.weightx = 1;
+        form.add(Box.createHorizontalGlue(), rest);
         CardPanel card = new CardPanel(new BorderLayout());
         card.add(form, BorderLayout.NORTH);
         JPanel section = new JPanel(new BorderLayout(0, 6));
         section.add(bold(new JLabel(title)), BorderLayout.NORTH);
         section.add(card, BorderLayout.CENTER);
+        return section;
+    }
+
+    private static void column(JPanel cards, JComponent content, int column, double weight) {
         GridBagConstraints c = new GridBagConstraints();
         c.gridx = column;
+        c.weightx = weight;
+        c.weighty = 1;
         c.fill = GridBagConstraints.BOTH;
         c.anchor = GridBagConstraints.NORTHWEST;
-        c.insets = new Insets(0, 0, 0, 12);
-        cards.add(section, c);
+        c.insets = new Insets(0, 0, 0, weight > 0 ? 0 : 14);
+        cards.add(content, c);
+    }
+
+    private static final class KeepsItsSize extends JPanel {
+
+        KeepsItsSize(LayoutManager layout) {
+            super(layout);
+        }
+
+        @Override
+        public Dimension getMinimumSize() {
+            return getPreferredSize();
+        }
     }
 
     private static void field(JPanel form, String label, JComponent component, int column, int row, int width) {
@@ -702,7 +772,7 @@ public final class IndustryPanel extends TabPanel {
         c.gridwidth = width;
         c.anchor = GridBagConstraints.WEST;
         c.fill = fillsItsCell(component) ? GridBagConstraints.HORIZONTAL : GridBagConstraints.NONE;
-        c.insets = new Insets(5, 0, 5, 10);
+        c.insets = new Insets(4, 0, 4, 10);
         form.add(component, c);
     }
 

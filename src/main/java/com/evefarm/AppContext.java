@@ -6,6 +6,7 @@ import com.evefarm.db.dao.AbyssalRunDao;
 import com.evefarm.db.dao.AcceleratorDao;
 import com.evefarm.db.dao.AgentDao;
 import com.evefarm.db.dao.AssetDao;
+import com.evefarm.db.dao.BlueprintDao;
 import com.evefarm.db.dao.CharacterDao;
 import com.evefarm.db.dao.CharacterSkillDao;
 import com.evefarm.db.dao.ContractDao;
@@ -64,6 +65,7 @@ import com.evefarm.service.AggroWatchService;
 import com.evefarm.service.AssetService;
 import com.evefarm.service.BackupRestoreService;
 import com.evefarm.service.BeltKillMilestoneService;
+import com.evefarm.service.BlueprintService;
 import com.evefarm.service.CharacterPortraits;
 import com.evefarm.service.CharacterService;
 import com.evefarm.service.ContractService;
@@ -97,6 +99,11 @@ import com.evefarm.service.SkillCatalogService;
 import com.evefarm.service.SkillService;
 import com.evefarm.service.StandingService;
 import com.evefarm.service.TrackerCombinationService;
+import com.evefarm.service.CorporationService;
+import com.evefarm.esi.CorporationApi;
+import com.evefarm.db.dao.CorporationDao;
+import com.evefarm.db.dao.CorporationIndustryDao;
+import com.evefarm.db.dao.CorporationMarketDao;
 import com.evefarm.service.IncomeSources;
 import com.evefarm.service.ForecastSettings;
 import com.evefarm.service.TrackerSnapshotService;
@@ -147,6 +154,7 @@ public final class AppContext {
     public final TransactionService transactionService;
     public final ContractService contractService;
     public final IndustryJobService industryJobService;
+    public final BlueprintService blueprintService;
     public final MiningService miningService;
     public final StandingService standingService;
     public final SkillCatalogService skillCatalogService;
@@ -173,6 +181,7 @@ public final class AppContext {
     public final CharacterPortraits characterPortraits;
     public final ValueSummaryService valueSummaryService;
     public final TrackerCombinationService trackerCombinationService;
+    public final CorporationService corporationService;
     public final ForecastSettings forecastSettings;
     public final NotificationService notificationService;
     public final SchedulerService schedulerService;
@@ -270,6 +279,8 @@ public final class AppContext {
                 locationNameCacheService, contractDao, typeNameCacheService, priceService);
         this.industryJobService = new IndustryJobService(authService, industryApi, typeNameCacheService,
                 locationNameCacheService, industryJobDao);
+        this.blueprintService = new BlueprintService(authService, characterDao, industryApi, typeNameCacheService,
+                new BlueprintDao(database));
         this.miningService = new MiningService(authService, characterDao, industryApi, typeNameCacheService,
                 locationNameCacheService, new MiningLedgerDao(database),
                 new OreCatalogService(fuzzworkApi, new OreDao(database), settingsDao), priceService);
@@ -304,8 +315,12 @@ public final class AppContext {
         this.notificationService = new NotificationService(authService, characterService, industryJobService,
                 marketWatchService, skillsApi, contractsApi, typeNameCacheService, new NotificationDao(database),
                 settingsDao, lpPurchaseService);
+        this.corporationService = new CorporationService(authService, new CorporationApi(esiHttpClient),
+                new CorporationDao(database), new CorporationMarketDao(database, Clock.systemUTC()),
+                new CorporationIndustryDao(database), assetService, transactionService, entityNameCacheService,
+                typeNameCacheService, locationNameCacheService, Clock.systemDefaultZone());
         this.schedulerService = new SchedulerService(authService, characterService, priceService, assetService,
                 trackerSnapshotService, updateCooldownDao, backupRestoreService, killService, skillService,
-                notificationService, loyaltyPointService);
+                notificationService, loyaltyPointService, corporationService);
     }
 }

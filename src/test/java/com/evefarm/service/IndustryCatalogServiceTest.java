@@ -9,16 +9,19 @@ import com.evefarm.model.Decryptor;
 import com.evefarm.model.IndustryActivity;
 import com.evefarm.model.IndustryCatalog;
 import com.evefarm.model.IndustryType;
+import com.evefarm.model.InventionSource;
 import com.evefarm.model.SkillRequirement;
 import com.evefarm.model.SolarSystem;
 import com.evefarm.model.TypeQuantity;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -90,6 +93,43 @@ class IndustryCatalogServiceTest {
     }
 
     @Test
+    void tech3IsInventedFromEveryRelicWithTheBestChanceFirst() {
+        IndustryCatalog relics = IndustryCatalogService.parse(
+                csv("typeID,activityID,time", "30187,8,3600", "30562,8,3600", "45705,1,10000"),
+                csv("typeID,activityID,materialTypeID,quantity", "30187,8,20114,3", "30562,8,20114,3",
+                        "45705,1,34,100"),
+                csv("typeID,activityID,productTypeID,quantity", "30562,8,45705,3", "30187,8,45705,20",
+                        "45705,1,45700,1"),
+                csv("typeID,activityID,productTypeID,probability", "30187,8,45705,0.26", "30562,8,45705,0.14"),
+                csv("typeID,activityID,skillID,level", "30187,8,3408,1"),
+                csv("typeID,groupID,typeName,published", "34,18,Tritanium,1", "30187,990,Intact Thruster Sections,1",
+                        "30562,990,Wrecked Thruster Sections,1", "45700,954,Legion Propulsion - Wake Limiter,1",
+                        "45705,1112,Legion Propulsion - Wake Limiter Blueprint,1",
+                        "20114,333,Datacore - Propulsion Subsystems Engineering,1"),
+                csv("groupID,categoryID,groupName", "18,4,Mineral", "990,34,Sleeper Propulsion Relics",
+                        "954,32,Propulsion Subsystems", "1112,9,Subsystem Blueprints", "333,17,Datacores"),
+                csv("categoryID,categoryName", "4,Material", "9,Blueprint", "17,Commodity", "32,Subsystem",
+                        "34,Ancient Relics"));
+        Database database = new Database(":memory:");
+        MigrationRunner.run(database);
+        IndustryCatalogDao dao = new IndustryCatalogDao(database);
+
+        dao.replaceAll(relics, List.of(), List.of());
+
+        assertEquals(List.of(new InventionSource(30187, "Intact Thruster Sections", true),
+                new InventionSource(30562, "Wrecked Thruster Sections", true)), dao.inventionSources(45705));
+        assertEquals(0.14, dao.activity(30562, IndustryActivity.INVENTION).orElseThrow().probability(45705), 1e-12);
+    }
+
+    private static String csv(String header, String... rows) {
+        StringBuilder text = new StringBuilder();
+        for (String line : Stream.concat(Stream.of(header), Arrays.stream(rows)).toList()) {
+            text.append('"').append(line.replace(",", "\",\"")).append("\"\n");
+        }
+        return text.toString();
+    }
+
+    @Test
     void theCatalogIsSavedAndReadBack() {
         Database database = new Database(":memory:");
         MigrationRunner.run(database);
@@ -104,11 +144,11 @@ class IndustryCatalogServiceTest {
         assertEquals(4, dao.countSolarSystems());
         assertEquals(List.of("Jaguar", "Rifter"), dao.manufacturingChoices().stream()
                 .map(BlueprintChoice::productName).toList());
-        assertEquals(Optional.of(691), dao.inventedFrom(11400));
+        assertEquals(List.of(new InventionSource(691, "Rifter Blueprint", false)), dao.inventionSources(11400));
         assertEquals(691, dao.producedBy(587).orElseThrow().blueprintId());
         assertEquals(IndustryActivity.MANUFACTURING, dao.producedBy(587).orElseThrow().activityId());
         assertEquals(Optional.empty(), dao.producedBy(34));
-        assertEquals(Optional.empty(), dao.inventedFrom(691));
+        assertEquals(List.of(), dao.inventionSources(691));
         IndustryActivity invention = dao.activity(691, IndustryActivity.INVENTION).orElseThrow();
         assertEquals(0.30, invention.probability(11400), 1e-12);
         assertEquals(List.of(new TypeQuantity(11400, 10)), invention.products());

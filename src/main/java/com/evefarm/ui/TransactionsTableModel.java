@@ -11,9 +11,9 @@ import java.util.List;
 public final class TransactionsTableModel extends ColumnTableModel<TransactionRow> {
 
     private static final List<ColumnDef<TransactionRow>> COLUMNS = List.of(
-            new ColumnDef<>("character", "Character", EveEntity.class,
-                    r -> EveEntity.character(r.characterName(), r.characterId()),
-                    "The character who bought or sold"),
+            new ColumnDef<>("character", "Wallet", EveEntity.class,
+                    r -> EveEntity.owner(r.characterName(), r.characterId(), r.corporation()),
+                    "The character who bought or sold, or the corporation and its wallet division"),
             new ColumnDef<>("date", "Date", String.class, r -> DateUtil.formatIsoInstant(r.date()),
                     "When it happened, in your local time"),
             new ColumnDef<>("side", "Side", String.class, r -> r.isBuy() ? "Buy" : "Sell",

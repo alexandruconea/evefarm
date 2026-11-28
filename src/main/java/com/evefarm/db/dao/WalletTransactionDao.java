@@ -97,7 +97,8 @@ public final class WalletTransactionDao {
                                 rs.getDouble("price"),
                                 rs.getString("client_name"),
                                 rs.getString("location_name"),
-                                rs.getInt("is_buy") != 0
+                                rs.getInt("is_buy") != 0,
+                                false
                         ));
                     }
                 }

@@ -11,6 +11,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.List;
 
 public final class EveSsoClient {
 
@@ -24,8 +25,8 @@ public final class EveSsoClient {
             .connectTimeout(Duration.ofSeconds(10))
             .build();
 
-    public URI buildAuthorizeUrl(OAuthConfig config, String state, String codeChallenge) {
-        String scope = String.join(" ", OAuthConfig.SCOPES);
+    public URI buildAuthorizeUrl(OAuthConfig config, String state, String codeChallenge, List<String> scopes) {
+        String scope = String.join(" ", scopes);
         String query = "response_type=code"
                 + "&redirect_uri=" + encode(config.redirectUri())
                 + "&client_id=" + encode(config.clientId())

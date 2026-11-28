@@ -55,7 +55,8 @@ public final class MarketOrdersPanel extends TabPanel {
 
     private void loadRowsFromDatabase() {
         boolean includeClosed = showClosedCheckBox.isSelected();
-        BackgroundLoader.load(loadGeneration, () -> appContext.marketOrderService.getOrderRows(includeClosed),
+        BackgroundLoader.load(loadGeneration, () -> appContext.marketOrderService.getOrderRows(includeClosed,
+                        appContext.corporationService.orderRows(includeClosed)),
                 this::applyRows, "market orders",
                 failure -> orderCountLabel.setText("Couldn't load market orders - see the log"));
     }

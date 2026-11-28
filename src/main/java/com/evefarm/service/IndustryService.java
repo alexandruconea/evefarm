@@ -3,6 +3,7 @@ package com.evefarm.service;
 import com.evefarm.model.CharacterSkills;
 import com.evefarm.model.Decryptor;
 import com.evefarm.model.IndustryActivity;
+import com.evefarm.model.InventionSource;
 import com.evefarm.model.OwnedSkill;
 import com.evefarm.model.SolarSystem;
 import com.evefarm.model.TypeQuantity;
@@ -18,6 +19,7 @@ import com.evefarm.service.IndustryCalculator.Structure;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -56,9 +58,9 @@ public final class IndustryService {
     public record SkillEffects(boolean assumed, boolean canBuild, boolean canInvent, int lines, double salesTax) {
     }
 
-    public record Option(Decryptor decryptor, Invention invention, Manufacturing manufacturing, Plan plan,
-                         double inventionCost, double totalCost, Sale sale, double profit, double iskPerHour,
-                         Plan stocked, double toSpend) {
+    public record Option(InventionSource relic, Decryptor decryptor, Invention invention,
+                         Manufacturing manufacturing, Plan plan, double inventionCost, double totalCost, Sale sale,
+                         double profit, double iskPerHour, Plan stocked, double toSpend) {
 
         public double unitCost() {
             return manufacturing.units() > 0 ? totalCost / manufacturing.units() : 0;
@@ -103,9 +105,12 @@ public final class IndustryService {
         Map<Integer, Integer> levels = activeLevels(character);
         IntUnaryOperator level = skillId -> levels == null ? ASSUMED_LEVEL : levels.getOrDefault(skillId, 0);
 
-        IndustryActivity inventionActivity = industryCatalogService.inventedFrom(settings.blueprintId())
-                .flatMap(source -> industryCatalogService.activity(source, IndustryActivity.INVENTION))
-                .orElse(null);
+        Map<InventionSource, IndustryActivity> inventions = new LinkedHashMap<>();
+        for (InventionSource source : industryCatalogService.inventionSources(settings.blueprintId())) {
+            industryCatalogService.activity(source.typeId(), IndustryActivity.INVENTION)
+                    .ifPresent(activity -> inventions.put(source, activity));
+        }
+        IndustryActivity inventionActivity = inventions.values().stream().findFirst().orElse(null);
         IndustryActivity invention = settings.includeInvention() ? inventionActivity : null;
         List<Decryptor> decryptors = invention == null ? List.of() : industryCatalogService.decryptors();
         SkillEffects skills = new SkillEffects(levels == null,
@@ -121,7 +126,12 @@ public final class IndustryService {
         typeIds.addAll(BuildPlanner.typesInvolved(
                 manufacturing.materials().stream().map(TypeQuantity::typeId).toList(), producer));
         if (invention != null) {
-            invention.materials().forEach(material -> typeIds.add(material.typeId()));
+            inventions.forEach((source, activity) -> {
+                activity.materials().forEach(material -> typeIds.add(material.typeId()));
+                if (source.relic()) {
+                    typeIds.add(source.typeId());
+                }
+            });
             decryptors.forEach(decryptor -> typeIds.add(decryptor.typeId()));
         }
         priceService.ensureFreshPrices(typeIds);
@@ -153,32 +163,38 @@ public final class IndustryService {
             Plan plan = BuildPlanner.plan(built.materials(), setup, skills.lines(), reactionLines);
             Plan stocked = BuildPlanner.withStock(built.materials(), setup, plan, stock, skills.lines(),
                     reactionLines);
-            options.add(option(null, null, built, plan, stocked, 0, productPrice, skills.salesTax(), settings));
+            options.add(option(null, null, null, built, plan, stocked, 0, productPrice, skills.salesTax(),
+                    settings));
         } else {
-            double datacores = invention.materials().stream()
-                    .mapToDouble(material -> material.quantity() * prices.getOrDefault(material.typeId(), 0.0))
-                    .sum();
             double inventionFee = IndustryCalculator.scienceJobFee(facility, manufacturing.materials(),
                     costIndex(system, "invention"), adjusted);
-            double copyFee = industryCatalogService.activity(invention.blueprintId(), IndustryActivity.MANUFACTURING)
-                    .map(original -> IndustryCalculator.scienceJobFee(facility, original.materials(),
-                            costIndex(system, "copying"), adjusted))
-                    .orElse(0.0);
             List<Decryptor> choices = new ArrayList<>();
             choices.add(null);
             choices.addAll(decryptors);
-            for (Decryptor decryptor : choices) {
-                double decryptorPrice = decryptor == null ? 0 : prices.getOrDefault(decryptor.typeId(), 0.0);
-                Invention invented = IndustryCalculator.invent(invention, settings.blueprintId(), decryptor, level,
-                        datacores, decryptorPrice, inventionFee, copyFee);
-                Manufacturing built = IndustryCalculator.manufacture(manufacturing,
-                        new Jobs(settings.runs(), invented.runsPerCopy(), skills.lines()), invented.me(),
-                        invented.te(), facility, manufacturingIndex, timeMultiplier, prices, adjusted);
-                Plan plan = BuildPlanner.plan(built.materials(), setup, skills.lines(), reactionLines);
-                Plan stocked = BuildPlanner.withStock(built.materials(), setup, plan, stock, skills.lines(),
-                        reactionLines);
-                options.add(option(decryptor, invented, built, plan, stocked, invented.costPerRun() * settings.runs(),
-                        productPrice, skills.salesTax(), settings));
+            for (Map.Entry<InventionSource, IndustryActivity> entry : inventions.entrySet()) {
+                InventionSource source = entry.getKey();
+                IndustryActivity activity = entry.getValue();
+                double datacores = activity.materials().stream()
+                        .mapToDouble(material -> material.quantity() * prices.getOrDefault(material.typeId(), 0.0))
+                        .sum();
+                double sourceCost = source.relic() ? prices.getOrDefault(source.typeId(), 0.0)
+                        : industryCatalogService.activity(source.typeId(), IndustryActivity.MANUFACTURING)
+                        .map(original -> IndustryCalculator.scienceJobFee(facility, original.materials(),
+                                costIndex(system, "copying"), adjusted))
+                        .orElse(0.0);
+                for (Decryptor decryptor : choices) {
+                    double decryptorPrice = decryptor == null ? 0 : prices.getOrDefault(decryptor.typeId(), 0.0);
+                    Invention invented = IndustryCalculator.invent(activity, settings.blueprintId(), decryptor, level,
+                            datacores, decryptorPrice, inventionFee, sourceCost);
+                    Manufacturing built = IndustryCalculator.manufacture(manufacturing,
+                            new Jobs(settings.runs(), invented.runsPerCopy(), skills.lines()), invented.me(),
+                            invented.te(), facility, manufacturingIndex, timeMultiplier, prices, adjusted);
+                    Plan plan = BuildPlanner.plan(built.materials(), setup, skills.lines(), reactionLines);
+                    Plan stocked = BuildPlanner.withStock(built.materials(), setup, plan, stock, skills.lines(),
+                            reactionLines);
+                    options.add(option(source.relic() ? source : null, decryptor, invented, built, plan, stocked,
+                            invented.costPerRun() * settings.runs(), productPrice, skills.salesTax(), settings));
+                }
             }
         }
         int best = 0;
@@ -197,14 +213,14 @@ public final class IndustryService {
         return system == null ? 0 : industryMarketService.costIndex(system.systemId(), activity);
     }
 
-    private static Option option(Decryptor decryptor, Invention invention, Manufacturing built, Plan plan,
-                                 Plan stocked, double inventionCost, double productPrice, double salesTax,
-                                 Settings settings) {
+    private static Option option(InventionSource relic, Decryptor decryptor, Invention invention,
+                                 Manufacturing built, Plan plan, Plan stocked, double inventionCost,
+                                 double productPrice, double salesTax, Settings settings) {
         Sale sale = IndustryCalculator.sell(built.units(), productPrice, salesTax, settings.brokerFee());
         double totalCost = plan.materialsCost() + built.jobFee() + inventionCost;
         double profit = sale.net() - totalCost;
         double toSpend = stocked.purchaseCost() + stocked.jobFees() + built.jobFee() + inventionCost;
-        return new Option(decryptor, invention, built, plan, inventionCost, totalCost, sale, profit,
+        return new Option(relic, decryptor, invention, built, plan, inventionCost, totalCost, sale, profit,
                 IndustryCalculator.iskPerHour(profit, built.time().plus(plan.extraTime())), stocked, toSpend);
     }
 

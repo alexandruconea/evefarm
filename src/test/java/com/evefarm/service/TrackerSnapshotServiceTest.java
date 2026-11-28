@@ -156,7 +156,7 @@ class TrackerSnapshotServiceTest {
 
     private static IndustryJobDto job(int activityId, int blueprintTypeId, int productTypeId, int runs) {
         return new IndustryJobDto(activityId * 1000L + blueprintTypeId, activityId, null, "active", blueprintTypeId,
-                productTypeId, runs, null, null, null, null);
+                productTypeId, runs, null, null, null, null, null);
     }
 
     private static ContractDto contract(String type, String status, Integer issuerId, Integer acceptorId,

@@ -10,6 +10,7 @@ import com.evefarm.model.Decryptor;
 import com.evefarm.model.IndustryActivity;
 import com.evefarm.model.IndustryCatalog;
 import com.evefarm.model.IndustryType;
+import com.evefarm.model.InventionSource;
 import com.evefarm.model.SkillRequirement;
 import com.evefarm.model.SolarSystem;
 import com.evefarm.model.TypeQuantity;
@@ -101,8 +102,8 @@ public final class IndustryCatalogService {
         return industryCatalogDao.activity(blueprintId, activityId);
     }
 
-    public Optional<Integer> inventedFrom(int blueprintId) {
-        return industryCatalogDao.inventedFrom(blueprintId);
+    public List<InventionSource> inventionSources(int blueprintId) {
+        return industryCatalogDao.inventionSources(blueprintId);
     }
 
     public Optional<IndustryActivity> producedBy(int typeId) {

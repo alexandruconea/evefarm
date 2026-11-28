@@ -1,5 +1,6 @@
 package com.evefarm.esi;
 
+import com.evefarm.esi.dto.BlueprintDto;
 import com.evefarm.esi.dto.IndustryJobDto;
 import com.evefarm.esi.dto.MiningLedgerDto;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -28,6 +29,12 @@ public final class IndustryApi {
                 accessToken, Map.of("include_completed", String.valueOf(includeCompleted)));
         return client.read(body, new TypeReference<List<IndustryJobDto>>() {
         }, "industry jobs");
+    }
+
+    public List<BlueprintDto> listBlueprints(long characterId, String accessToken) {
+        List<String> pages = client.getAllPages("/characters/" + characterId + "/blueprints/", accessToken, Map.of());
+        return client.readPages(pages, new TypeReference<List<BlueprintDto>>() {
+        }, "blueprints");
     }
 
     public List<MiningLedgerDto> listMiningLedger(long characterId, String accessToken) {

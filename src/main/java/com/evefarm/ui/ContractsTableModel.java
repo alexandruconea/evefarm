@@ -20,9 +20,9 @@ public final class ContractsTableModel extends ColumnTableModel<ContractRow> {
     private static final List<ColumnDef<ContractRow>> COLUMNS = List.of(
             new ColumnDef<>(INFO_COLUMN, "Info", Icon.class, r -> Icons.INFO,
                     "Click the icon to see the items in the contract and what they are worth"),
-            new ColumnDef<>("character", "Character", EveEntity.class,
-                    r -> EveEntity.character(r.characterName(), r.characterId()),
-                    "The character the contract belongs to"),
+            new ColumnDef<>("character", "Owner", EveEntity.class,
+                    r -> EveEntity.owner(r.characterName(), r.characterId(), r.corporation()),
+                    "The character or the corporation the contract belongs to"),
             new ColumnDef<>("type", "Type", String.class, r -> Text.titleCase(r.type()),
                     "Item Exchange, Auction or Courier"),
             new ColumnDef<>("status", "Status", String.class, r -> statusText(r, Instant.now()),

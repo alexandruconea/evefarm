@@ -7,6 +7,7 @@ import com.evefarm.model.EveCharacter;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +60,7 @@ public final class SchedulerService {
     private final SkillService skillService;
     private final NotificationService notificationService;
     private final LoyaltyPointService loyaltyPointService;
+    private final CorporationService corporationService;
     private final List<Runnable> snapshotListeners = new CopyOnWriteArrayList<>();
     private final Map<Long, Instant> loyaltyPointRetries = new HashMap<>();
 
@@ -66,7 +68,9 @@ public final class SchedulerService {
                              AssetService assetService, TrackerSnapshotService trackerSnapshotService,
                              UpdateCooldownDao updateCooldownDao, BackupRestoreService backupRestoreService,
                              KillService killService, SkillService skillService,
-                             NotificationService notificationService, LoyaltyPointService loyaltyPointService) {
+                             NotificationService notificationService, LoyaltyPointService loyaltyPointService,
+                             CorporationService corporationService) {
+        this.corporationService = corporationService;
         this.authService = authService;
         this.characterService = characterService;
         this.priceService = priceService;
@@ -214,8 +218,24 @@ public final class SchedulerService {
         if (skillsSucceeded) {
             updateCooldownDao.markRefreshed(UpdateCategories.SKILLS);
         }
+        refreshCorporations();
         for (Runnable listener : snapshotListeners) {
             listener.run();
+        }
+    }
+
+    private void refreshCorporations() {
+        List<String> failures = new ArrayList<>();
+        try {
+            corporationService.refresh(characterService.listCharacters(), failures);
+        } catch (Exception e) {
+            failures.add(e.getMessage());
+            LOG.log(Level.WARNING, "Failed to read the corporations", e);
+        }
+        if (failures.isEmpty()) {
+            updateCooldownDao.markRefreshed(UpdateCategories.CORPORATION);
+        } else {
+            LOG.warning("Couldn't read everything of the corporations: " + failures);
         }
     }
 

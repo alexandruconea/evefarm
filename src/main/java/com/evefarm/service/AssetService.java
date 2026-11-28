@@ -17,6 +17,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -24,6 +26,7 @@ import java.util.stream.Collectors;
 public final class AssetService {
 
     private static final Logger LOG = Logger.getLogger(AssetService.class.getName());
+    private static final String OFFICE_FOLDER = "OfficeFolder";
 
     private final AuthService authService;
     private final AssetsApi assetsApi;
@@ -45,13 +48,22 @@ public final class AssetService {
 
     public double refreshAssetsForCharacter(long characterId) {
         String accessToken = authService.getValidAccessToken(characterId);
-        List<AssetDto> assets = List.copyOf(assetsApi.listAssets(characterId, accessToken).stream()
+        List<AssetDto> assets = distinct(assetsApi.listAssets(characterId, accessToken));
+        Map<Long, String> customNames = fetchCustomNames("character " + characterId, assets,
+                ids -> assetsApi.resolveNames(characterId, accessToken, ids), () -> assetDao.findNames(characterId));
+        List<AssetEntry> entries = entries(assets, customNames, accessToken);
+        assetDao.replaceForCharacter(characterId, entries);
+        return entries.stream().mapToDouble(AssetEntry::totalValue).sum();
+    }
+
+    static List<AssetDto> distinct(List<AssetDto> assets) {
+        return List.copyOf(assets.stream()
                 .collect(Collectors.toMap(AssetDto::itemId, asset -> asset, (earlier, later) -> later,
                         LinkedHashMap::new))
                 .values());
+    }
 
-        Map<Long, String> customNames = fetchCustomNames(characterId, accessToken, assets);
-
+    List<AssetEntry> entries(List<AssetDto> assets, Map<Long, String> customNames, String accessToken) {
         Set<Integer> distinctTypeIds = assets.stream().map(AssetDto::typeId).collect(Collectors.toSet());
         typeNameCacheService.resolveTypes(distinctTypeIds);
 
@@ -72,20 +84,16 @@ public final class AssetService {
         Map<Integer, Double> unitPrices = priceService.getUnitPrices();
 
         List<AssetEntry> entries = new ArrayList<>(assets.size());
-        double total = 0;
         for (AssetDto asset : assets) {
             double unitPrice = asset.isBlueprintCopy() ? 0 : unitPrices.getOrDefault(asset.typeId(), 0.0);
             double totalValue = unitPrice * asset.quantity();
-            total += totalValue;
             long displayLocationId = topLevelLocationByItemId.get(asset.itemId());
             entries.add(new AssetEntry(
                     asset.itemId(), asset.typeId(), asset.quantity(), displayLocationId,
                     asset.locationFlag(), asset.isSingleton(), asset.isBlueprintCopy(), customNames.get(asset.itemId()),
                     containerNameByItemId.get(asset.itemId()), unitPrice, totalValue));
         }
-
-        assetDao.replaceForCharacter(characterId, entries);
-        return total;
+        return entries;
     }
 
     public List<AssetRow> getAssetRows() {
@@ -124,7 +132,7 @@ public final class AssetService {
             return null;
         }
         AssetDto parent = byItemId.get(asset.locationId());
-        if (parent == null) {
+        if (parent == null || OFFICE_FOLDER.equals(parent.locationFlag())) {
             return null;
         }
         String customName = customNames.get(parent.itemId());
@@ -134,7 +142,9 @@ public final class AssetService {
         return typeNameCacheService.resolveType(parent.typeId()).name();
     }
 
-    private Map<Long, String> fetchCustomNames(long characterId, String accessToken, List<AssetDto> assets) {
+    static Map<Long, String> fetchCustomNames(String owner, List<AssetDto> assets,
+                                              Function<List<Long>, List<AssetNameDto>> lookup,
+                                              Supplier<Map<Long, String>> namesReadLastTime) {
         List<Long> singletonIds = assets.stream()
                 .filter(AssetDto::isSingleton)
                 .map(AssetDto::itemId)
@@ -145,16 +155,15 @@ public final class AssetService {
         try {
             Map<Long, String> names = new HashMap<>();
             for (List<Long> batch : Chunks.of(singletonIds, 1000)) {
-                for (AssetNameDto dto : IdLookup.skippingInvalidIds(batch,
-                        ids -> assetsApi.resolveNames(characterId, accessToken, ids))) {
+                for (AssetNameDto dto : IdLookup.skippingInvalidIds(batch, lookup)) {
                     names.put(dto.itemId(), dto.name());
                 }
             }
             return names;
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "Failed to resolve custom asset names for character " + characterId
+            LOG.log(Level.WARNING, "Failed to resolve custom asset names for " + owner
                     + " - keeping the names read last time", e);
-            return assetDao.findNames(characterId);
+            return namesReadLastTime.get();
         }
     }
 }

@@ -11,6 +11,7 @@ public record TransactionRow(
         double price,
         String clientName,
         String locationName,
-        boolean isBuy
+        boolean isBuy,
+        boolean corporation
 ) {
 }

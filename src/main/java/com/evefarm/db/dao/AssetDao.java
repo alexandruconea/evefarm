@@ -248,7 +248,8 @@ public final class AssetDao {
                                 rs.getInt("is_singleton") == 1,
                                 rs.getDouble("volume"),
                                 rs.getDouble("unit_price"),
-                                rs.getDouble("total_value")
+                                rs.getDouble("total_value"),
+                                false
                         ));
                     }
                 }

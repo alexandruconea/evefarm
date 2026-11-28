@@ -22,7 +22,7 @@ class MarketOrderServiceTest {
     private static MarketOrderRow sellOrder(long orderId) {
         return new MarketOrderRow(orderId, 1, "Pilot", 34, "Tritanium", null, null, false, MarketOrderRow.ACTIVE,
                 5.0, 10, 10, null, 60008494L, "Amarr", "2026-10-01T00:00:00Z", 90, "station", null, 0.01, null,
-                null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, false);
     }
 
     @Test

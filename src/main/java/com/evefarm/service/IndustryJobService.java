@@ -9,6 +9,7 @@ import com.evefarm.model.IndustryJobRow;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -33,7 +34,12 @@ public final class IndustryJobService {
     public void refreshJobsForCharacter(long characterId) {
         String accessToken = authService.getValidAccessToken(characterId);
         List<IndustryJobDto> jobs = industryApi.listJobsWithHistory(characterId, accessToken);
+        typeNameCacheService.resolveTypes(typeIds(jobs));
+        locationNameCacheService.resolveLocations(facilityIds(jobs), accessToken);
+        industryJobDao.saveForCharacter(characterId, jobs.stream().map(IndustryJobService::entry).toList());
+    }
 
+    static Set<Integer> typeIds(List<IndustryJobDto> jobs) {
         Set<Integer> typeIds = new HashSet<>();
         for (IndustryJobDto job : jobs) {
             typeIds.add(job.blueprintTypeId());
@@ -41,20 +47,20 @@ public final class IndustryJobService {
                 typeIds.add(job.productTypeId());
             }
         }
-        typeNameCacheService.resolveTypes(typeIds);
+        return typeIds;
+    }
 
-        Set<Long> facilityIds = jobs.stream()
+    static Set<Long> facilityIds(List<IndustryJobDto> jobs) {
+        return jobs.stream()
                 .map(IndustryJobDto::facilityId)
-                .filter(id -> id != null)
+                .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-        locationNameCacheService.resolveLocations(facilityIds, accessToken);
+    }
 
-        List<IndustryJobEntry> entries = jobs.stream()
-                .map(j -> new IndustryJobEntry(j.jobId(), j.activityId(), j.status(), j.blueprintTypeId(),
-                        j.productTypeId(), j.runs(), j.cost(), j.facilityId(), j.outputLocationId(),
-                        j.startDate(), j.endDate()))
-                .toList();
-        industryJobDao.saveForCharacter(characterId, entries);
+    static IndustryJobEntry entry(IndustryJobDto job) {
+        return new IndustryJobEntry(job.jobId(), job.activityId(), job.status(), job.blueprintTypeId(),
+                job.productTypeId(), job.runs(), job.cost(), job.facilityId(), job.outputLocationId(),
+                job.startDate(), job.endDate());
     }
 
     public List<IndustryJobRow> getJobRows(Set<Long> characterIdFilter) {

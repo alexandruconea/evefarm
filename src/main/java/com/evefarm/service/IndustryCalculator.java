@@ -275,7 +275,7 @@ public final class IndustryCalculator {
 
     public static Invention invent(IndustryActivity invention, int inventedBlueprintId, Decryptor decryptor,
                                    IntUnaryOperator level, double datacoresCost, double decryptorPrice,
-                                   double inventionFee, double copyFee) {
+                                   double inventionFee, double sourceCost) {
         int science = 0;
         int encryption = 0;
         for (SkillRequirement skill : invention.skills()) {
@@ -293,7 +293,7 @@ public final class IndustryCalculator {
         int runs = (int) Math.max(1, baseRuns + (decryptor == null ? 0 : decryptor.runsModifier()));
         int me = INVENTED_BASE_ME + (decryptor == null ? 0 : decryptor.meModifier());
         int te = INVENTED_BASE_TE + (decryptor == null ? 0 : decryptor.teModifier());
-        double attemptCost = datacoresCost + (decryptor == null ? 0 : decryptorPrice) + inventionFee + copyFee;
+        double attemptCost = datacoresCost + (decryptor == null ? 0 : decryptorPrice) + inventionFee + sourceCost;
         double costPerRun = chance > 0 ? attemptCost / (chance * runs) : Double.POSITIVE_INFINITY;
         return new Invention(chance, runs, me, te, costPerRun);
     }

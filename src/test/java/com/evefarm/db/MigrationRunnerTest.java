@@ -78,7 +78,10 @@ class MigrationRunnerTest {
             Map.entry(48, "b55a6a41bbf022fe783446b080ce6413f2aaa2843bc19fdac59437e3ce6e771b"),
             Map.entry(49, "2f78246ef76bf7729fea72853b0d6fb734b0ea128f80882666cd5560de2e8733"),
             Map.entry(50, "012e1a7834f098bfeecb0335f127bc56cc8586b4145d09ce6b17bf0928d220d1"),
-            Map.entry(51, "566521b693559e22e59fad38693d377e6ab62b87cb8550d20ecf6bfa8a1e9caa"));
+            Map.entry(51, "566521b693559e22e59fad38693d377e6ab62b87cb8550d20ecf6bfa8a1e9caa"),
+            Map.entry(52, "9f26445a4e8d30a4c01424ce4c60a76c31c2f8afd1b2bddd5569c44b081e5925"),
+            Map.entry(53, "7cfe1d124b6dba693fe1b4de355c28b5d49133a95fcb8ea754f2e2a4370a1244"),
+            Map.entry(54, "a7d0493ae3eb90d136f547e9caf57416931f49ea481b5981a94cd36bbdd5e8fa"));
 
     @Test
     void semicolonInsideQuotedStringDoesNotSplit() {

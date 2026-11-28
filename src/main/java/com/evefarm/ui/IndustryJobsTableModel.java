@@ -25,9 +25,9 @@ public final class IndustryJobsTableModel extends ColumnTableModel<IndustryJobRo
     );
 
     private static final List<ColumnDef<IndustryJobRow>> COLUMNS = List.of(
-            new ColumnDef<>("character", "Character", EveEntity.class,
-                    r -> EveEntity.character(r.characterName(), r.characterId()),
-                    "The character who started the job"),
+            new ColumnDef<>("character", "Owner", EveEntity.class,
+                    r -> EveEntity.owner(r.characterName(), r.characterId(), r.corporation()),
+                    "The character who started the job, or the corporation and who started it for the corporation"),
             new ColumnDef<>("activity", "Activity", String.class,
                     r -> ACTIVITY_NAMES.getOrDefault(r.activityId(), "Activity #" + r.activityId()),
                     "Manufacturing, research, copying, invention or reactions"),

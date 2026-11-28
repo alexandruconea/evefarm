@@ -19,6 +19,7 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 
 public final class AssetsPanel extends TabPanel {
 
@@ -75,7 +76,8 @@ public final class AssetsPanel extends TabPanel {
         Snapshot snapshot = (Snapshot) snapshotCombo.getSelectedItem();
         String month = snapshot == null ? null : snapshot.month();
         BackgroundLoader.load(loadGeneration, () -> new Loaded(appContext.assetService.getArchivedMonths(),
-                month == null ? appContext.assetService.getAssetRows()
+                month == null ? Stream.concat(appContext.assetService.getAssetRows().stream(),
+                        appContext.corporationService.assetRows().stream()).toList()
                         : appContext.assetService.getArchivedAssetRows(month)), loaded -> {
             showSnapshots(loaded.months(), month);
             filteredTable.showRows(loaded.rows());

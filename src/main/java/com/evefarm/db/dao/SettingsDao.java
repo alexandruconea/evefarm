@@ -25,6 +25,7 @@ public final class SettingsDao {
     public static final String FORECAST_VIEWS = "forecast_views";
     public static final String FORECAST_VIEW = "forecast_view";
     public static final String CHARACTER_GROUPS = "character_groups";
+    public static final String CORPORATIONS_IN_GRAND_TOTAL = "corporations_in_grand_total";
     public static final String WINDOW_WIDTH = "window_width";
     public static final String WINDOW_HEIGHT = "window_height";
     public static final String WINDOW_MAXIMIZED = "window_maximized";
@@ -80,6 +81,7 @@ public final class SettingsDao {
     public static final String NOTIFY_LP_TARGET = "notify_lp_target";
     public static final String UI_SOUNDS = "ui_sounds";
     public static final String UI_SOUND_VOLUME = "ui_sound_volume";
+    public static final String ADD_WITH_CORPORATION = "add_with_corporation";
 
     private final Database database;
 

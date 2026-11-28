@@ -12,6 +12,7 @@ public record IndustryJobRow(
         Double cost,
         String facilityName,
         String startDate,
-        String endDate
+        String endDate,
+        boolean corporation
 ) {
 }

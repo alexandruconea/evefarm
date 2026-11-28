@@ -13,7 +13,7 @@ class IndustryJobsTableModelTest {
 
     private static IndustryJobRow job(String status, String endDate) {
         return new IndustryJobRow(1, "Pilot", 1, 1, status, "Rifter Blueprint", "Rifter", 1, 100.0, "Jita",
-                "2026-09-29T10:00:00Z", endDate);
+                "2026-09-29T10:00:00Z", endDate, false);
     }
 
     @Test

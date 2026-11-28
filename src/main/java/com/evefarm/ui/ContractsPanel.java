@@ -2,6 +2,7 @@ package com.evefarm.ui;
 
 import com.evefarm.AppContext;
 import com.evefarm.model.ContractRow;
+import com.evefarm.service.CorporationService;
 
 import javax.swing.SwingUtilities;
 import javax.swing.table.TableColumn;
@@ -20,7 +21,9 @@ public final class ContractsPanel extends DataTablePanel<ContractRow> {
     }
 
     private ContractsPanel(AppContext appContext, ContractsTableModel tableModel) {
-        super(appContext, "contracts", tableModel, "contracts", appContext.contractService::getContractRows);
+        super(appContext, "contracts", tableModel, "contracts", () -> CorporationService.merged(
+                appContext.contractService.getContractRows(), appContext.corporationService.contractRows(),
+                ContractRow::contractId));
         this.appContext = appContext;
         this.tableModel = tableModel;
         showInfoColumn();

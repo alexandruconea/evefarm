@@ -66,18 +66,23 @@ public final class MarketOrderService {
         marketOrderDao.saveForCharacter(characterId, entries);
     }
 
-    private static MarketOrderEntry entry(MarketOrderDto order, String state) {
+    static MarketOrderEntry entry(MarketOrderDto order, String state) {
         return new MarketOrderEntry(order.orderId(), order.typeId(), order.isBuyOrder(), order.price(),
                 order.volumeRemain(), order.volumeTotal(), order.escrow(), order.locationId(), order.issued(),
                 order.duration(), state, order.range(), order.minVolume());
     }
 
     public List<MarketOrderRow> getOrderRows(boolean includeClosed) {
+        return getOrderRows(includeClosed, List.of());
+    }
+
+    public List<MarketOrderRow> getOrderRows(boolean includeClosed, List<MarketOrderRow> corporationRows) {
         Map<Integer, Double> marketPrices = priceService.getUnitPrices();
         Map<Integer, Double> sellMins = priceService.getUnitPrices(PriceMode.SELL_MIN);
         Map<Integer, Double> buyMaxes = priceService.getUnitPrices(PriceMode.BUY_MAX);
         Map<Long, OrderCompetition> competition = marketWatchService.latestResults();
-        List<MarketOrderRow> rows = marketOrderDao.listRows(includeClosed).stream()
+        List<MarketOrderRow> rows = CorporationService.merged(marketOrderDao.listRows(includeClosed),
+                        corporationRows, MarketOrderRow::orderId).stream()
                 .map(row -> row.active()
                         ? withMarketPrice(row, marketPrices, sellMins, buyMaxes, competition.get(row.orderId()))
                         : row)
@@ -103,11 +108,12 @@ public final class MarketOrderService {
                 row.typeName(), row.groupName(), row.categoryName(), row.isBuyOrder(), row.state(), row.price(),
                 row.volumeRemain(), row.volumeTotal(), row.escrow(), row.locationId(), row.locationName(),
                 row.issued(), row.duration(), row.range(), row.minVolume(), row.volume(), marketPrice, sellMin,
-                buyMax, marginPercent, profit, outbid, competitorPrice, null, null);
+                buyMax, marginPercent, profit, outbid, competitorPrice, null, null, row.corporation());
     }
 
     private List<MarketOrderRow> withBrokerFees(List<MarketOrderRow> rows) {
         Map<Long, List<MarketOrderRow>> byCharacter = rows.stream()
+                .filter(row -> !row.corporation())
                 .collect(Collectors.groupingBy(MarketOrderRow::characterId));
 
         Map<Long, Double> feesByOrderId = new HashMap<>();
@@ -128,7 +134,7 @@ public final class MarketOrderService {
                     row.volumeRemain(), row.volumeTotal(), row.escrow(), row.locationId(), row.locationName(),
                     row.issued(), row.duration(), row.range(), row.minVolume(), row.volume(), row.marketPrice(),
                     row.marketSellMin(), row.marketBuyMax(), row.marketMarginPercent(), row.marketProfit(),
-                    row.outbid(), row.competitorPrice(), fee, feePercent));
+                    row.outbid(), row.competitorPrice(), fee, feePercent, row.corporation()));
         }
         return result;
     }

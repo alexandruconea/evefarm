@@ -29,7 +29,8 @@ public record MarketOrderRow(
         Boolean outbid,
         Double competitorPrice,
         Double brokerFee,
-        Double brokerFeePercent
+        Double brokerFeePercent,
+        boolean corporation
 ) {
     public static final String ACTIVE = "active";
     public static final String CLOSED = "closed";

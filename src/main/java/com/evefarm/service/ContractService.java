@@ -5,6 +5,7 @@ import com.evefarm.db.dao.ContractDao;
 import com.evefarm.esi.ContractsApi;
 import com.evefarm.esi.EsiException;
 import com.evefarm.esi.dto.ContractDto;
+import com.evefarm.esi.dto.ContractItemDto;
 import com.evefarm.model.ContractEntry;
 import com.evefarm.model.ContractItem;
 import com.evefarm.model.ContractItemEntry;
@@ -14,10 +15,12 @@ import com.evefarm.model.TypeInfo;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.OptionalDouble;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 public final class ContractService {
 
@@ -45,10 +48,13 @@ public final class ContractService {
     }
 
     public List<ContractItem> listContractItems(long characterId, long contractId) {
-        List<ContractItemEntry> items = contractDao.findItems(characterId, contractId).orElseGet(() -> {
+        return priced(contractDao.findItems(characterId, contractId).orElseGet(() -> {
             String accessToken = authService.getValidAccessToken(characterId);
             return fetchAndSaveItems(characterId, contractId, accessToken);
-        });
+        }));
+    }
+
+    public List<ContractItem> priced(List<ContractItemEntry> items) {
         typeNameCacheService.resolveTypes(items.stream().map(ContractItemEntry::typeId).toList());
         return items.stream()
                 .map(item -> {
@@ -69,37 +75,41 @@ public final class ContractService {
     public void refreshContractsForCharacter(long characterId) {
         String accessToken = authService.getValidAccessToken(characterId);
         List<ContractDto> contracts = contractsApi.listContracts(characterId, accessToken);
+        entityNameCacheService.resolveEntities(parties(contracts));
+        locationNameCacheService.resolveLocations(locations(contracts), accessToken);
+        contractDao.saveForCharacter(characterId, contracts.stream().map(ContractService::entry).toList());
+        saveMissingItems(characterId, accessToken);
+    }
 
+    static Set<Long> parties(List<ContractDto> contracts) {
         Set<Long> entityIds = new HashSet<>();
+        for (ContractDto contract : contracts) {
+            Stream.of(contract.issuerId(), contract.assigneeId(), contract.acceptorId())
+                    .filter(Objects::nonNull)
+                    .forEach(id -> entityIds.add((long) id));
+        }
+        return entityIds;
+    }
+
+    static Set<Long> locations(List<ContractDto> contracts) {
         Set<Long> locationIds = new HashSet<>();
         for (ContractDto contract : contracts) {
-            if (contract.issuerId() != null) {
-                entityIds.add((long) contract.issuerId());
-            }
-            if (contract.assigneeId() != null) {
-                entityIds.add((long) contract.assigneeId());
-            }
-            if (contract.acceptorId() != null) {
-                entityIds.add((long) contract.acceptorId());
-            }
-            if (contract.startLocationId() != null) {
-                locationIds.add(contract.startLocationId());
-            }
-            if (contract.endLocationId() != null) {
-                locationIds.add(contract.endLocationId());
-            }
+            Stream.of(contract.startLocationId(), contract.endLocationId())
+                    .filter(Objects::nonNull)
+                    .forEach(locationIds::add);
         }
-        entityNameCacheService.resolveEntities(entityIds);
-        locationNameCacheService.resolveLocations(locationIds, accessToken);
+        return locationIds;
+    }
 
-        List<ContractEntry> entries = contracts.stream()
-                .map(c -> new ContractEntry(c.contractId(), c.type(), c.status(), c.title(), c.collateral(),
-                        c.price(), c.reward(), c.volume(), c.dateIssued(), c.dateExpired(), c.dateCompleted(),
-                        c.forCorporation(), c.issuerId(), c.assigneeId(), c.acceptorId(),
-                        c.startLocationId(), c.endLocationId()))
-                .toList();
-        contractDao.saveForCharacter(characterId, entries);
-        saveMissingItems(characterId, accessToken);
+    static ContractEntry entry(ContractDto c) {
+        return new ContractEntry(c.contractId(), c.type(), c.status(), c.title(), c.collateral(), c.price(),
+                c.reward(), c.volume(), c.dateIssued(), c.dateExpired(), c.dateCompleted(), c.forCorporation(),
+                c.issuerId(), c.assigneeId(), c.acceptorId(), c.startLocationId(), c.endLocationId());
+    }
+
+    static ContractItemEntry itemEntry(ContractItemDto item) {
+        return new ContractItemEntry(item.recordId(), item.typeId(), item.quantity(), item.rawQuantity(),
+                item.included());
     }
 
     private void saveMissingItems(long characterId, String accessToken) {
@@ -118,8 +128,7 @@ public final class ContractService {
 
     private List<ContractItemEntry> fetchAndSaveItems(long characterId, long contractId, String accessToken) {
         List<ContractItemEntry> items = contractsApi.listContractItems(characterId, contractId, accessToken).stream()
-                .map(item -> new ContractItemEntry(item.recordId(), item.typeId(), item.quantity(),
-                        item.rawQuantity(), item.included()))
+                .map(ContractService::itemEntry)
                 .toList();
         typeNameCacheService.resolveTypes(items.stream().map(ContractItemEntry::typeId).toList());
         contractDao.saveItems(characterId, contractId, items);

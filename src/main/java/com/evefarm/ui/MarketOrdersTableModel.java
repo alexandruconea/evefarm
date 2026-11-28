@@ -14,9 +14,9 @@ import java.util.Locale;
 public final class MarketOrdersTableModel extends ColumnTableModel<MarketOrderRow> {
 
     private static final List<ColumnDef<MarketOrderRow>> COLUMNS = List.of(
-            new ColumnDef<>("character", "Character", EveEntity.class,
-                    r -> EveEntity.character(r.characterName(), r.characterId()),
-                    "The character who placed the order"),
+            new ColumnDef<>("character", "Owner", EveEntity.class,
+                    r -> EveEntity.owner(r.characterName(), r.characterId(), r.corporation()),
+                    "The character who placed the order, or the corporation and the wallet it pays from"),
             new ColumnDef<>("item", "Item", String.class, MarketOrderRow::typeName,
                     "The item bought or sold"),
             new ColumnDef<>("group", "Group", String.class, r -> nullToEmpty(r.groupName()),

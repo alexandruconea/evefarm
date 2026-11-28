@@ -37,7 +37,10 @@ public final class TransactionService {
     public void refreshTransactionsForCharacter(long characterId) {
         String accessToken = authService.getValidAccessToken(characterId);
         List<WalletTransactionDto> transactions = walletApi.listTransactions(characterId, accessToken);
+        walletTransactionDao.saveForCharacter(characterId, prepare(transactions, accessToken));
+    }
 
+    List<TransactionEntry> prepare(List<WalletTransactionDto> transactions, String accessToken) {
         Set<Integer> typeIds = transactions.stream().map(WalletTransactionDto::typeId).collect(Collectors.toSet());
         typeNameCacheService.resolveTypes(typeIds);
 
@@ -53,11 +56,10 @@ public final class TransactionService {
         }
         entityNameCacheService.resolveEntities(clientIds);
 
-        List<TransactionEntry> entries = transactions.stream()
+        return transactions.stream()
                 .map(t -> new TransactionEntry(t.transactionId(), t.date(), t.typeId(), t.quantity(), t.price(),
                         t.clientId(), t.locationId(), t.isBuy(), t.isPersonal(), t.journalRefId()))
                 .toList();
-        walletTransactionDao.saveForCharacter(characterId, entries);
     }
 
     public List<TransactionRow> getTransactionRows() {

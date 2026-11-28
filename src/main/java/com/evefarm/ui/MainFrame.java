@@ -2,6 +2,8 @@ package com.evefarm.ui;
 
 import com.evefarm.AppContext;
 import com.evefarm.db.dao.SettingsDao;
+import com.evefarm.model.IndustryJobRow;
+import com.evefarm.service.CorporationService;
 import com.evefarm.update.ReleaseInfo;
 import com.evefarm.update.UpdateInstaller;
 import com.evefarm.util.AppInfo;
@@ -52,6 +54,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.stream.Stream;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -127,10 +130,13 @@ public final class MainFrame extends JFrame {
                 page("assets", "Assets", "box", new AssetsPanel(appContext)));
         group("group.wallet", "Wallet", "wallet",
                 page("journal", "Journal", "book", new DataTablePanel<>(appContext, "journal",
-                        new JournalTableModel(), "entries", appContext.journalService::getJournalRows)),
+                        new JournalTableModel(), "entries", () -> Stream.concat(
+                                appContext.journalService.getJournalRows().stream(),
+                                appContext.corporationService.journalRows().stream()).toList())),
                 page("transactions", "Transactions", "right-left", new DataTablePanel<>(appContext,
-                        "transactions", new TransactionsTableModel(), "transactions",
-                        appContext.transactionService::getTransactionRows)),
+                        "transactions", new TransactionsTableModel(), "transactions", () -> Stream.concat(
+                                appContext.transactionService.getTransactionRows().stream(),
+                                appContext.corporationService.transactionRows().stream()).toList())),
                 page("marketOrders", "Market Orders", "tag", marketOrdersPanel),
                 page("contracts", "Contracts", "handshake", new ContractsPanel(appContext)));
         standingsPanel = new StandingsPanel(appContext);
@@ -140,7 +146,13 @@ public final class MainFrame extends JFrame {
         group("group.industry", "Industry", "industry",
                 page("industry", "Calculator", "calculator", new IndustryPanel(appContext)),
                 page("industryJobs", "Jobs", "hammer", new DataTablePanel<>(appContext, "industryJobs",
-                        new IndustryJobsTableModel(), "jobs", () -> appContext.industryJobService.getJobRows(null))),
+                        new IndustryJobsTableModel(), "jobs", () -> CorporationService.merged(
+                                appContext.industryJobService.getJobRows(null),
+                                appContext.corporationService.jobRows(), IndustryJobRow::jobId))),
+                page("blueprints", "Blueprints", "file-lines", new DataTablePanel<>(appContext, "blueprints",
+                        new BlueprintsTableModel(), "blueprints", () -> Stream.concat(
+                                appContext.blueprintService.getBlueprintRows().stream(),
+                                appContext.corporationService.blueprintRows().stream()).toList())),
                 page("mining", "Mining", "gem", new MiningPanel(appContext)));
         group(STANDINGS_GROUP, "Standings", "scale-balanced",
                 page(STANDINGS_PAGE, "Standings", "ranking-star", standingsPanel),

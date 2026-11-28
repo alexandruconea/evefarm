@@ -2,6 +2,7 @@ package com.evefarm.service;
 
 import com.evefarm.model.Decryptor;
 import com.evefarm.model.IndustryActivity;
+import com.evefarm.model.InventionSource;
 import com.evefarm.model.SkillRequirement;
 import com.evefarm.model.SolarSystem;
 import com.evefarm.model.TypeQuantity;
@@ -95,7 +96,8 @@ class IndustryServiceTest {
                 new SkillRequirement(ENCRYPTION_METHODS, 1)));
         when(catalog.activity(JAGUAR_BLUEPRINT, IndustryActivity.MANUFACTURING)).thenReturn(Optional.of(
                 manufacturing(JAGUAR_BLUEPRINT, JAGUAR, new TypeQuantity(TRITANIUM, 50_000))));
-        when(catalog.inventedFrom(JAGUAR_BLUEPRINT)).thenReturn(Optional.of(RIFTER_BLUEPRINT));
+        when(catalog.inventionSources(JAGUAR_BLUEPRINT)).thenReturn(List.of(new InventionSource(RIFTER_BLUEPRINT,
+                "Rifter Blueprint", false)));
         when(catalog.activity(RIFTER_BLUEPRINT, IndustryActivity.INVENTION)).thenReturn(Optional.of(invention));
         when(catalog.decryptors()).thenReturn(List.of(ACCELERANT, ATTAINMENT));
         when(catalog.findSystem("Jita")).thenReturn(Optional.of(JITA));
@@ -112,6 +114,50 @@ class IndustryServiceTest {
         assertEquals(List.of(2, 4, 1), options.stream().map(option -> option.invention().me()).toList());
         assertEquals(List.of(4, 14, 8), options.stream().map(option -> option.invention().te()).toList());
         assertEquals(2, result.bestIndex(), "with free materials, the best chance and the most runs win");
+    }
+
+    @Test
+    void tech3IsInventedFromRelicsThatAreUsedUpOnEveryTry() {
+        int legionBlueprint = 45705;
+        int legionPropulsion = 45700;
+        int intact = 30187;
+        int wrecked = 30562;
+        int sleeperEncryption = 3408;
+        List<SkillRequirement> skills = List.of(new SkillRequirement(MECHANICAL_ENGINEERING, 1),
+                new SkillRequirement(sleeperEncryption, 1));
+        when(catalog.activity(legionBlueprint, IndustryActivity.MANUFACTURING)).thenReturn(Optional.of(
+                manufacturing(legionBlueprint, legionPropulsion, new TypeQuantity(TRITANIUM, 1_000))));
+        when(catalog.inventionSources(legionBlueprint)).thenReturn(List.of(
+                new InventionSource(intact, "Intact Thruster Sections", true),
+                new InventionSource(wrecked, "Wrecked Thruster Sections", true)));
+        when(catalog.activity(intact, IndustryActivity.INVENTION)).thenReturn(Optional.of(new IndustryActivity(intact,
+                IndustryActivity.INVENTION, 3_600, List.of(new TypeQuantity(DATACORE, 3)),
+                List.of(new TypeQuantity(legionBlueprint, 20)), Map.of(legionBlueprint, 0.26), skills)));
+        when(catalog.activity(wrecked, IndustryActivity.INVENTION)).thenReturn(Optional.of(new IndustryActivity(
+                wrecked, IndustryActivity.INVENTION, 3_600, List.of(new TypeQuantity(DATACORE, 3)),
+                List.of(new TypeQuantity(legionBlueprint, 3)), Map.of(legionBlueprint, 0.14), skills)));
+        when(catalog.decryptors()).thenReturn(List.of(ACCELERANT));
+        when(catalog.findSystem("Jita")).thenReturn(Optional.of(JITA));
+        when(catalog.names(any())).thenReturn(Map.of(legionPropulsion, "Legion Propulsion"));
+        when(market.adjustedPrices()).thenReturn(Map.of());
+        when(prices.getUnitPrices()).thenReturn(Map.of(DATACORE, 100_000.0, intact, 50_000_000.0,
+                wrecked, 1_000_000.0, legionPropulsion, 30_000_000.0));
+
+        Result result = industry.calculate(settings(legionBlueprint, true));
+
+        assertTrue(result.inventable());
+        List<Option> options = result.options();
+        assertEquals(List.of("Intact Thruster Sections", "Intact Thruster Sections", "Wrecked Thruster Sections",
+                "Wrecked Thruster Sections"), options.stream().map(option -> option.relic().name()).toList());
+        assertEquals(Arrays.asList(null, ACCELERANT, null, ACCELERANT),
+                options.stream().map(Option::decryptor).toList());
+        assertEquals(List.of(20, 21, 3, 4), options.stream().map(option -> option.invention().runsPerCopy()).toList());
+        Option intactPlain = options.getFirst();
+        assertEquals(300_000 + 50_000_000.0, intactPlain.invention().costPerRun() * intactPlain.invention().chance()
+                * intactPlain.invention().runsPerCopy(), 1, "datacores and the relic, used up on every try");
+        Option wreckedPlain = options.get(2);
+        assertEquals(300_000 + 1_000_000.0, wreckedPlain.invention().costPerRun() * wreckedPlain.invention().chance()
+                * wreckedPlain.invention().runsPerCopy(), 1);
     }
 
     @Test

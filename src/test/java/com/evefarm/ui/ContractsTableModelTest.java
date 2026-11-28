@@ -13,7 +13,7 @@ class ContractsTableModelTest {
 
     private static ContractRow contract(String status, String expires) {
         return new ContractRow(1, "Trader", 2, "item_exchange", status, "", null, 100.0, null, null,
-                "2026-09-01T10:00:00Z", expires, null, "Trader", null, null, "Jita", "Jita");
+                "2026-09-01T10:00:00Z", expires, null, "Trader", null, null, "Jita", "Jita", false);
     }
 
     @Test

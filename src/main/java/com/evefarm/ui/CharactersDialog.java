@@ -2,12 +2,17 @@ package com.evefarm.ui;
 
 import com.evefarm.AppContext;
 import com.evefarm.auth.CharacterIdentity;
+import com.evefarm.db.dao.SettingsDao;
+import com.evefarm.model.Corporation;
+import com.evefarm.model.CorporationAccess;
 import com.evefarm.model.EveCharacter;
+import com.evefarm.service.CorporationService;
 import com.evefarm.ui.column.ColumnDescriptions;
 import com.evefarm.ui.column.ColumnWidthMemory;
 import com.evefarm.util.DateUtil;
 
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JDialog;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -23,7 +28,9 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Window;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -35,6 +42,7 @@ public final class CharactersDialog extends JDialog {
     private final Runnable onChanged;
     private final CharacterTableModel tableModel = new CharacterTableModel();
 
+    private final JCheckBox corporationBox = new JCheckBox("Also read the corporation");
     private JButton addButton;
     private JButton mainButton;
     private JTable table;
@@ -93,6 +101,15 @@ public final class CharactersDialog extends JDialog {
 
         JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT));
         toolbar.add(ButtonSizing.row(4, addButton, removeButton, mainButton, copySettingsButton));
+        corporationBox.setToolTipText("Also lets EVE Farm read your corporation's wallets, assets, market orders, "
+                + "contracts, industry jobs and blueprints, as far as the character's corporation roles allow. For a "
+                + "character you already have, tick it and add the character again. It is ticked at first and stays "
+                + "as you leave it");
+        corporationBox.setSelected("true".equals(appContext.settingsDao.getOrDefault(
+                SettingsDao.ADD_WITH_CORPORATION, "true")));
+        corporationBox.addActionListener(e -> appContext.settingsDao.set(SettingsDao.ADD_WITH_CORPORATION,
+                String.valueOf(corporationBox.isSelected())));
+        toolbar.add(corporationBox);
 
         JButton closeButton = new JButton("Close", Icons.CANCEL);
         closeButton.addActionListener(e -> {
@@ -117,10 +134,11 @@ public final class CharactersDialog extends JDialog {
         addButton.setText("Cancel Login");
         addButton.setIcon(Icons.CANCEL);
 
+        boolean corporation = corporationBox.isSelected();
         loginWorker = new SwingWorker<CharacterIdentity, Void>() {
             @Override
             protected CharacterIdentity doInBackground() throws Exception {
-                return appContext.characterService.addCharacter();
+                return appContext.characterService.addCharacter(corporation);
             }
 
             @Override
@@ -204,22 +222,50 @@ public final class CharactersDialog extends JDialog {
     }
 
     private void reloadCharacters() {
-        tableModel.setRows(appContext.characterService.listCharactersMainFirst(),
-                appContext.characterService.mainCharacterId().orElse(null));
+        List<EveCharacter> characters = appContext.characterService.listCharactersMainFirst();
+        tableModel.setRows(characters, appContext.characterService.mainCharacterId().orElse(null),
+                corporationAccess(characters));
         TableStyler.packColumns(table);
         updateMainButton();
     }
 
+    private Map<Long, String> corporationAccess(List<EveCharacter> characters) {
+        Map<Long, CorporationAccess> access = appContext.corporationService.accessByCharacter();
+        Map<Long, Corporation> corporations = appContext.corporationService.corporations();
+        Map<Long, String> texts = new HashMap<>();
+        for (EveCharacter character : characters) {
+            CorporationAccess entry = access.get(character.characterId());
+            texts.put(character.characterId(), corporationText(CorporationService.reads(character), entry,
+                    entry == null ? null : corporations.get(entry.corporationId())));
+        }
+        return texts;
+    }
+
+    static String corporationText(boolean asked, CorporationAccess access, Corporation corporation) {
+        if (!asked) {
+            return "Not asked";
+        }
+        if (access == null) {
+            return "Run Update > Corporation";
+        }
+        return (corporation == null ? "Corporation #" + access.corporationId() : corporation.label()) + "  ·  "
+                + access.summary();
+    }
+
     private static final class CharacterTableModel extends AbstractTableModel implements ColumnDescriptions {
-        private final String[] columns = {"Character", "Character ID", "Added"};
+        private final String[] columns = {"Character", "Character ID", "Added", "Corporation"};
         private final String[] descriptions = {"The character's name", "EVE's ID of the character",
-                "When you added the character to EVE Farm, in your local time"};
+                "When you added the character to EVE Farm, in your local time",
+                "The character's corporation and the roles EVE Farm can use to read it. Not asked means the "
+                        + "character was added without Also read the corporation"};
         private List<EveCharacter> rows = new ArrayList<>();
         private Long mainCharacterId;
+        private Map<Long, String> corporations = Map.of();
 
-        void setRows(List<EveCharacter> rows, Long mainCharacterId) {
+        void setRows(List<EveCharacter> rows, Long mainCharacterId, Map<Long, String> corporations) {
             this.rows = rows;
             this.mainCharacterId = mainCharacterId;
+            this.corporations = corporations;
             fireTableDataChanged();
         }
 
@@ -254,6 +300,7 @@ public final class CharactersDialog extends JDialog {
                 case 0 -> character.characterName();
                 case 1 -> character.characterId();
                 case 2 -> DateUtil.format(character.addedAt());
+                case 3 -> corporations.getOrDefault(character.characterId(), "");
                 default -> "";
             };
         }

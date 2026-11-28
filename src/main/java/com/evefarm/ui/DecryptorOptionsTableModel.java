@@ -11,9 +11,8 @@ import java.util.Locale;
 public final class DecryptorOptionsTableModel extends ColumnTableModel<IndustryService.Option> {
 
     private static final List<ColumnDef<IndustryService.Option>> COLUMNS = List.of(
-            new ColumnDef<>("decryptor", "Decryptor", String.class,
-                    o -> o.decryptor() == null ? "None" : o.decryptor().name(),
-                    "The decryptor used in the invention, or None"),
+            new ColumnDef<>("decryptor", "Invented With", String.class, DecryptorOptionsTableModel::inventedWith,
+                    "The decryptor used in the invention, and for Tech III the relic the copy is invented from"),
             new ColumnDef<>("chance", "Chance", String.class,
                     o -> String.format(Locale.US, "%.1f%%", o.invention().chance() * 100),
                     "The chance that an invention job succeeds, with your skills"),
@@ -39,5 +38,13 @@ public final class DecryptorOptionsTableModel extends ColumnTableModel<IndustryS
 
     public DecryptorOptionsTableModel() {
         super(COLUMNS);
+    }
+
+    static String inventedWith(IndustryService.Option option) {
+        String decryptor = option.decryptor() == null ? null : option.decryptor().name();
+        if (option.relic() == null) {
+            return decryptor == null ? "No decryptor" : decryptor;
+        }
+        return option.relic().name() + (decryptor == null ? "" : " + " + decryptor);
     }
 }

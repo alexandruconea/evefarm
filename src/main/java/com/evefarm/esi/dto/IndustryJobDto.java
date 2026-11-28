@@ -15,6 +15,7 @@ public record IndustryJobDto(
         @JsonProperty("facility_id") Long facilityId,
         @JsonProperty("output_location_id") Long outputLocationId,
         @JsonProperty("start_date") String startDate,
-        @JsonProperty("end_date") String endDate
+        @JsonProperty("end_date") String endDate,
+        @JsonProperty("installer_id") Long installerId
 ) {
 }

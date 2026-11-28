@@ -204,7 +204,7 @@ class SchedulerServiceTest {
         return new SchedulerService(mock(AuthService.class), mock(CharacterService.class), mock(PriceService.class),
                 mock(AssetService.class), mock(TrackerSnapshotService.class), mock(UpdateCooldownDao.class),
                 mock(BackupRestoreService.class), kills, mock(SkillService.class), mock(NotificationService.class),
-                mock(LoyaltyPointService.class));
+                mock(LoyaltyPointService.class), mock(CorporationService.class));
     }
 
     private static SchedulerService scheduler(CharacterService characters, LoyaltyPointService loyalty,
@@ -212,7 +212,7 @@ class SchedulerServiceTest {
         return new SchedulerService(mock(AuthService.class), characters, mock(PriceService.class),
                 mock(AssetService.class), mock(TrackerSnapshotService.class), cooldowns,
                 mock(BackupRestoreService.class), mock(KillService.class), mock(SkillService.class),
-                mock(NotificationService.class), loyalty);
+                mock(NotificationService.class), loyalty, mock(CorporationService.class));
     }
 
     private static SchedulerService scheduler(PriceService prices, CharacterService characters,
@@ -220,7 +220,7 @@ class SchedulerServiceTest {
                                                UpdateCooldownDao cooldowns) {
         return new SchedulerService(mock(AuthService.class), characters, prices, assets, snapshots,
                 cooldowns, mock(BackupRestoreService.class), mock(KillService.class), mock(SkillService.class),
-                mock(NotificationService.class), mock(LoyaltyPointService.class));
+                mock(NotificationService.class), mock(LoyaltyPointService.class), mock(CorporationService.class));
     }
 
     private static EveCharacter character(long id) {

@@ -248,13 +248,13 @@ class LpOfferDepthServiceTest {
 
     private static MarketOrderDto sell(long orderId, double price, long units, long location) {
         return new MarketOrderDto(orderId, 0, units, units, price, false, null, null, location, null, 90, "region",
-                null, FORGE, system(location));
+                null, FORGE, system(location), false, null);
     }
 
     private static MarketOrderDto buy(long orderId, double price, long units, long location, String range,
                                       Long minVolume) {
         return new MarketOrderDto(orderId, 0, units, units, price, true, null, null, location, null, 90, range,
-                minVolume, FORGE, system(location));
+                minVolume, FORGE, system(location), false, null);
     }
 
     private static long system(long location) {
