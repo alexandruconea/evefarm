@@ -1,5 +1,6 @@
 package com.evefarm.ui;
 
+import com.evefarm.model.Corporation;
 import com.evefarm.model.EveCharacter;
 import com.evefarm.service.ForecastSettings.Group;
 
@@ -20,6 +21,7 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Window;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -35,16 +37,21 @@ final class CharacterGroupsDialog extends JDialog {
     private final DefaultListModel<String> names = new DefaultListModel<>();
     private final JList<String> list = new JList<>(names);
     private final Map<Long, JCheckBox> boxes = new LinkedHashMap<>();
+    private final Set<Long> corporationIds = new HashSet<>();
     private final JButton renameButton = new JButton("Rename...");
     private final JButton deleteButton = new JButton("Delete", Icons.REMOVE);
     private final Consumer<List<Group>> onSave;
     private boolean showing;
 
-    CharacterGroupsDialog(Window owner, List<EveCharacter> characters, List<Group> saved,
-                          Consumer<List<Group>> onSave) {
+    CharacterGroupsDialog(Window owner, List<EveCharacter> characters, List<Corporation> corporations,
+                          List<Group> saved, Consumer<List<Group>> onSave) {
         super(owner, TITLE, ModalityType.APPLICATION_MODAL);
         this.onSave = onSave;
-        saved.forEach(group -> groups.put(group.name(), new LinkedHashSet<>(group.characterIds())));
+        saved.forEach(group -> {
+            Set<Long> members = new LinkedHashSet<>(group.characterIds());
+            members.addAll(group.corporationIds());
+            groups.put(group.name(), members);
+        });
         groups.keySet().forEach(names::addElement);
 
         list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -69,11 +76,26 @@ final class CharacterGroupsDialog extends JDialog {
             boxes.put(character.characterId(), box);
             members.add(box);
         }
+        if (!corporations.isEmpty()) {
+            JLabel heading = new JLabel("Corporations:");
+            heading.setBorder(BorderFactory.createEmptyBorder(10, 0, 4, 0));
+            members.add(heading);
+        }
+        for (Corporation corporation : corporations) {
+            JCheckBox box = new JCheckBox(corporation.label());
+            box.putClientProperty("html.disable", Boolean.TRUE);
+            box.setToolTipText("What the corporation owns, from one snapshot a day, and what it earned");
+            box.addActionListener(e -> membersChanged());
+            boxes.put(corporation.corporationId(), box);
+            corporationIds.add(corporation.corporationId());
+            members.add(box);
+        }
         JScrollPane membersScroll = new JScrollPane(members);
         membersScroll.setPreferredSize(new Dimension(240, 260));
         membersScroll.setBorder(BorderFactory.createEmptyBorder());
         JPanel right = new JPanel(new BorderLayout(0, 6));
-        right.add(new JLabel("Characters in the group:"), BorderLayout.NORTH);
+        right.add(new JLabel(corporations.isEmpty() ? "Characters in the group:" : "In the group:"),
+                BorderLayout.NORTH);
         right.add(membersScroll, BorderLayout.CENTER);
 
         JButton save = new JButton("Save", Icons.SAVE);
@@ -178,7 +200,9 @@ final class CharacterGroupsDialog extends JDialog {
 
     private void save() {
         List<Group> result = new ArrayList<>();
-        groups.forEach((name, members) -> result.add(new Group(name, List.copyOf(members))));
+        groups.forEach((name, members) -> result.add(new Group(name,
+                members.stream().filter(id -> !corporationIds.contains(id)).toList(),
+                members.stream().filter(corporationIds::contains).toList())));
         onSave.accept(result);
         dispose();
     }

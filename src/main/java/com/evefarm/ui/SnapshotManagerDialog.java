@@ -22,6 +22,7 @@ import java.awt.FlowLayout;
 import java.awt.Window;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -39,8 +40,10 @@ public final class SnapshotManagerDialog extends JDialog {
         this.appContext = appContext;
         this.snapshots = new ArrayList<>(snapshots);
         this.onChanged = onChanged;
-        this.characterNames = appContext.characterService.listCharacters().stream()
-                .collect(Collectors.toMap(EveCharacter::characterId, EveCharacter::characterName));
+        this.characterNames = new HashMap<>(appContext.characterService.listCharacters().stream()
+                .collect(Collectors.toMap(EveCharacter::characterId, EveCharacter::characterName)));
+        appContext.corporationService.corporations().forEach((id, corporation) ->
+                characterNames.put(id, corporation.label()));
         this.tableModel = new SnapshotTableModel();
         buildUi();
         pack();
@@ -85,7 +88,7 @@ public final class SnapshotManagerDialog extends JDialog {
             toDelete.add(snapshots.get(table.convertRowIndexToModel(row)));
         }
         for (TrackerSnapshot snapshot : toDelete) {
-            appContext.snapshotDao.delete(snapshot.characterId(), snapshot.capturedAt());
+            TrackerPanel.delete(appContext, snapshot);
         }
         snapshots.removeAll(toDelete);
         tableModel.fireTableDataChanged();
@@ -94,8 +97,8 @@ public final class SnapshotManagerDialog extends JDialog {
 
     private final class SnapshotTableModel extends AbstractTableModel implements ColumnDescriptions {
         private final String[] columns = {"Character", "Captured At", "Total"};
-        private final String[] descriptions = {"The character the snapshot is for",
-                "When the snapshot was taken, in your local time", "The character's total value in the snapshot"};
+        private final String[] descriptions = {"The character or corporation the snapshot is for",
+                "When the snapshot was taken, in your local time", "The total value in the snapshot"};
 
         @Override
         public int getRowCount() {

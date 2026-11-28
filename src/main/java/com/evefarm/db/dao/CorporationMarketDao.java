@@ -120,13 +120,51 @@ public final class CorporationMarketDao {
                 """, corporationId);
     }
 
+    /** The ISK held in escrow by the active buy orders. */
+    public double escrowValue(long corporationId) {
+        return Queries.sum(database, """
+                SELECT COALESCE(SUM(COALESCE(escrow, 0)), 0) FROM corporation_market_order
+                WHERE corporation_id = ? AND is_buy_order = 1 AND state = 'active'
+                """, corporationId);
+    }
+
+    /** What the active buy orders still need beyond their escrow, if they all fill. */
+    public double escrowToCoverValue(long corporationId) {
+        return Queries.sum(database, """
+                SELECT COALESCE(SUM(MAX(0, price * volume_remain - COALESCE(escrow, 0))), 0)
+                FROM corporation_market_order
+                WHERE corporation_id = ? AND is_buy_order = 1 AND state = 'active'
+                """, corporationId);
+    }
+
+    /** The price and reward of the open contracts issued for the corporation. */
+    public double contractsValue(long corporationId) {
+        return Queries.sum(database, """
+                SELECT COALESCE(SUM(COALESCE(price, 0) + COALESCE(reward, 0)), 0) FROM corporation_contract
+                WHERE corporation_id = ? AND for_corporation = 1 AND status IN ('outstanding', 'in_progress')
+                """, corporationId);
+    }
+
+    /** The collateral of the open couriers the corporation issued or is carrying. */
+    public double contractCollateralValue(long corporationId) {
+        return Queries.list(database, """
+                SELECT COALESCE(SUM(COALESCE(collateral, 0)), 0) FROM corporation_contract
+                WHERE corporation_id = ? AND LOWER(type) = 'courier'
+                  AND ((for_corporation = 1 AND status IN ('outstanding', 'in_progress'))
+                    OR (acceptor_id = ? AND status = 'in_progress'))
+                """, "the contract collateral of corporation " + corporationId, ps -> {
+                    ps.setLong(1, corporationId);
+                    ps.setLong(2, corporationId);
+                }, rs -> rs.getDouble(1)).stream().findFirst().orElse(0.0);
+    }
+
     public void saveContracts(long corporationId, List<ContractEntry> entries) {
         String sql = """
                 INSERT INTO corporation_contract(
                   corporation_id, contract_id, type, status, title, collateral, price, reward, volume,
                   date_issued, date_expired, date_completed, issuer_id, assignee_id, acceptor_id,
-                  start_location_id, end_location_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  start_location_id, end_location_id, for_corporation)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(corporation_id, contract_id) DO UPDATE SET
                   type = excluded.type, status = excluded.status, title = excluded.title,
                   collateral = excluded.collateral, price = excluded.price, reward = excluded.reward,
@@ -134,7 +172,7 @@ public final class CorporationMarketDao {
                   date_expired = excluded.date_expired, date_completed = excluded.date_completed,
                   issuer_id = excluded.issuer_id, assignee_id = excluded.assignee_id,
                   acceptor_id = excluded.acceptor_id, start_location_id = excluded.start_location_id,
-                  end_location_id = excluded.end_location_id
+                  end_location_id = excluded.end_location_id, for_corporation = excluded.for_corporation
                 """;
         database.transaction("Failed to save the contracts of corporation " + corporationId, connection -> {
             try (PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -156,6 +194,7 @@ public final class CorporationMarketDao {
                     JdbcUtil.setNullable(ps, 15, entry.acceptorId());
                     JdbcUtil.setNullable(ps, 16, entry.startLocationId());
                     JdbcUtil.setNullable(ps, 17, entry.endLocationId());
+                    ps.setInt(18, entry.forCorporation() ? 1 : 0);
                     ps.addBatch();
                 }
                 ps.executeBatch();

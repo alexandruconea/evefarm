@@ -21,7 +21,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 public final class CorporationDao {
 
@@ -360,6 +362,66 @@ public final class CorporationDao {
             }
             return rows;
         }
+    }
+
+    /** An amount in a corporation's wallet journal. */
+    public record Amount(long corporationId, Instant date, double amount) {
+    }
+
+    /** When the wallets, assets or market orders of the corporation were last read, if ever. */
+    public Optional<Instant> lastRead(long corporationId) {
+        List<String> latest = Queries.list(database, """
+                SELECT MAX(at) FROM (
+                  SELECT MAX(updated_at) AS at FROM corporation_wallet WHERE corporation_id = ?1
+                  UNION ALL SELECT MAX(fetched_at) FROM corporation_asset WHERE corporation_id = ?1
+                  UNION ALL SELECT MAX(fetched_at) FROM corporation_market_order WHERE corporation_id = ?1)
+                """, "when corporation " + corporationId + " was last read",
+                ps -> ps.setLong(1, corporationId), rs -> rs.getString(1));
+        return latest.stream().filter(Objects::nonNull).findFirst().map(Instant::parse);
+    }
+
+    public List<Amount> findJournal(Set<Long> corporationIds, Set<String> refTypes, Instant since) {
+        if (corporationIds.isEmpty() || refTypes.isEmpty()) {
+            return List.of();
+        }
+        List<Long> ids = new ArrayList<>(corporationIds);
+        List<String> types = new ArrayList<>(refTypes);
+        return Queries.list(database, "SELECT corporation_id, date, amount FROM corporation_journal "
+                        + "WHERE corporation_id IN (" + JdbcUtil.placeholders(ids.size()) + ") AND ref_type IN ("
+                        + JdbcUtil.placeholders(types.size()) + ") AND date >= ? ORDER BY date",
+                "the corporation journal", ps -> {
+                    int index = 1;
+                    for (Long id : ids) {
+                        ps.setLong(index++, id);
+                    }
+                    for (String type : types) {
+                        ps.setString(index++, type);
+                    }
+                    ps.setString(index, since.toString());
+                }, rs -> new Amount(rs.getLong("corporation_id"), Instant.parse(rs.getString("date")),
+                        rs.getDouble("amount")));
+    }
+
+    /** What the corporations sold on the market (positive) and bought (negative). */
+    public List<Amount> findTrades(Set<Long> corporationIds, Instant since) {
+        if (corporationIds.isEmpty()) {
+            return List.of();
+        }
+        List<Long> ids = new ArrayList<>(corporationIds);
+        return Queries.list(database, "SELECT corporation_id, date, quantity, price, is_buy FROM "
+                        + "corporation_transaction WHERE corporation_id IN (" + JdbcUtil.placeholders(ids.size())
+                        + ") AND date >= ? ORDER BY date",
+                "the corporation transactions", ps -> {
+                    int index = 1;
+                    for (Long id : ids) {
+                        ps.setLong(index++, id);
+                    }
+                    ps.setString(index, since.toString());
+                }, rs -> {
+                    double value = rs.getLong("quantity") * rs.getDouble("price");
+                    return new Amount(rs.getLong("corporation_id"), Instant.parse(rs.getString("date")),
+                            rs.getInt("is_buy") != 0 ? -value : value);
+                });
     }
 
     public List<JournalRow> listJournalRows() {

@@ -8,7 +8,12 @@ import com.evefarm.model.IndustryJobEntry;
 import com.evefarm.model.IndustryJobRow;
 
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public final class CorporationIndustryDao {
 
@@ -64,6 +69,44 @@ public final class CorporationIndustryDao {
                 ps.executeBatch();
             }
         });
+    }
+
+    /** The jobs still running, paused or waiting to be delivered. */
+    public List<IndustryJobDao.FinishedJob> listOpenJobs(long corporationId) {
+        return Queries.list(database, """
+                SELECT corporation_id, end_date, activity_id, blueprint_type_id, product_type_id, runs
+                FROM corporation_industry_job
+                WHERE corporation_id = ? AND status IN ('active', 'paused', 'ready')
+                """, "the open industry jobs of corporation " + corporationId,
+                ps -> ps.setLong(1, corporationId), CorporationIndustryDao::job);
+    }
+
+    /** The jobs that ended between {@code since} and {@code until}, as {@link IndustryJobDao#findFinished}. */
+    public List<IndustryJobDao.FinishedJob> findFinished(Set<Long> corporationIds, Instant since, Instant until) {
+        if (corporationIds.isEmpty()) {
+            return List.of();
+        }
+        List<Long> ids = new ArrayList<>(corporationIds);
+        return Queries.list(database, "SELECT corporation_id, end_date, activity_id, blueprint_type_id, "
+                        + "product_type_id, runs FROM corporation_industry_job WHERE corporation_id IN ("
+                        + JdbcUtil.placeholders(ids.size()) + ") AND end_date >= ? AND end_date <= ? "
+                        + "AND (status IS NULL OR status NOT IN ('cancelled', 'reverted'))",
+                "the finished industry jobs of the corporations", ps -> {
+                    int index = 1;
+                    for (Long id : ids) {
+                        ps.setLong(index++, id);
+                    }
+                    ps.setString(index++, since.toString());
+                    ps.setString(index, until.toString());
+                }, CorporationIndustryDao::job);
+    }
+
+    private static IndustryJobDao.FinishedJob job(ResultSet rs) throws SQLException {
+        Integer runs = JdbcUtil.getNullableInt(rs, "runs");
+        String end = rs.getString("end_date");
+        return new IndustryJobDao.FinishedJob(rs.getLong("corporation_id"), end == null ? null : Instant.parse(end),
+                rs.getInt("activity_id"), rs.getInt("blueprint_type_id"),
+                JdbcUtil.getNullableInt(rs, "product_type_id"), runs == null ? 1 : runs);
     }
 
     public List<IndustryJobRow> listJobRows() {

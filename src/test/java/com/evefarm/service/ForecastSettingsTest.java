@@ -3,9 +3,11 @@ package com.evefarm.service;
 import com.evefarm.db.Database;
 import com.evefarm.db.MigrationRunner;
 import com.evefarm.db.dao.SettingsDao;
+import com.evefarm.model.Corporation;
 import com.evefarm.model.EveCharacter;
 import com.evefarm.service.ForecastSettings.Group;
 import com.evefarm.service.ForecastSettings.Horizon;
+import com.evefarm.service.ForecastSettings.Selection;
 import com.evefarm.service.ForecastSettings.View;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,13 +29,15 @@ class ForecastSettingsTest {
             new EveCharacter(1, "Main", List.of(), NOW), new EveCharacter(2, "Alt One", List.of(), NOW),
             new EveCharacter(3, "Alt Two", List.of(), NOW));
 
+    private SettingsDao settingsDao;
     private ForecastSettings settings;
 
     @BeforeEach
     void setUp() {
         Database database = new Database(":memory:");
         MigrationRunner.run(database);
-        settings = new ForecastSettings(new SettingsDao(database));
+        settingsDao = new SettingsDao(database);
+        settings = new ForecastSettings(settingsDao);
     }
 
     @Test
@@ -64,7 +68,7 @@ class ForecastSettingsTest {
 
     @Test
     void groupsAndCharactersAreFoundAndMissingOnesFallBackToTheFavorite() {
-        List<Group> groups = List.of(new Group("Alts", List.of(2L, 3L, 99L)));
+        List<Group> groups = List.of(new Group("Alts", List.of(2L, 3L, 99L), List.of()));
 
         assertEquals(Set.of(1L, 2L, 3L), ForecastSettings.resolve("all", CHARACTERS, groups).characterIds());
         assertEquals(Set.of(2L, 3L), ForecastSettings.resolve("group:Alts", CHARACTERS, groups).characterIds(),
@@ -90,8 +94,39 @@ class ForecastSettingsTest {
 
     @Test
     void groupsAreKept() {
-        settings.saveGroups(List.of(new Group("Miners", List.of(2L))));
+        settings.saveGroups(List.of(new Group("Miners", List.of(2L), List.of(98_000_001L))));
 
-        assertEquals(List.of(new Group("Miners", List.of(2L))), settings.groups());
+        assertEquals(List.of(new Group("Miners", List.of(2L), List.of(98_000_001L))), settings.groups());
+    }
+
+    @Test
+    void groupsSavedBeforeCorporationsStillRead() {
+        settingsDao.set(SettingsDao.CHARACTER_GROUPS, "[{\"name\":\"Alts\",\"characterIds\":[2,3]}]");
+
+        assertEquals(List.of(new Group("Alts", List.of(2L, 3L), List.of())), settings.groups());
+    }
+
+    @Test
+    void corporationsAreChosenAloneInGroupsOrWithEveryone() {
+        List<Corporation> corporations = List.of(new Corporation(98_000_001L, "Deep Core Mining", "DCM"));
+        List<Group> groups = List.of(new Group("Industry", List.of(2L), List.of(98_000_001L, 98_000_002L)));
+
+        Selection corporation = ForecastSettings.resolve("corporation:98000001", CHARACTERS, corporations, groups);
+        assertEquals("Deep Core Mining [DCM]", corporation.label());
+        assertEquals(Set.of(), corporation.characterIds());
+        assertEquals(Set.of(98_000_001L), corporation.corporationIds());
+
+        Selection group = ForecastSettings.resolve("group:Industry", CHARACTERS, corporations, groups);
+        assertEquals(Set.of(2L), group.characterIds());
+        assertEquals(Set.of(98_000_001L), group.corporationIds(), "a corporation no longer tracked is left out");
+
+        Selection everyone = ForecastSettings.resolve(ForecastSettings.ALL_WITH_CORPORATIONS, CHARACTERS,
+                corporations, groups);
+        assertEquals(Set.of(1L, 2L, 3L), everyone.characterIds());
+        assertEquals(Set.of(98_000_001L), everyone.corporationIds());
+        assertEquals(Set.of(), ForecastSettings.resolve("all", CHARACTERS, corporations, groups).corporationIds(),
+                "All characters stays without corporations");
+        assertEquals(Set.of(1L), ForecastSettings.resolve("corporation:5", CHARACTERS, corporations, groups)
+                .characterIds(), "a corporation not tracked falls back to the favorite");
     }
 }

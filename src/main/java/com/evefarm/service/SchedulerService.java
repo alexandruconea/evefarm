@@ -61,6 +61,7 @@ public final class SchedulerService {
     private final NotificationService notificationService;
     private final LoyaltyPointService loyaltyPointService;
     private final CorporationService corporationService;
+    private final CorporationTracker corporationTracker;
     private final List<Runnable> snapshotListeners = new CopyOnWriteArrayList<>();
     private final Map<Long, Instant> loyaltyPointRetries = new HashMap<>();
 
@@ -69,7 +70,8 @@ public final class SchedulerService {
                              UpdateCooldownDao updateCooldownDao, BackupRestoreService backupRestoreService,
                              KillService killService, SkillService skillService,
                              NotificationService notificationService, LoyaltyPointService loyaltyPointService,
-                             CorporationService corporationService) {
+                             CorporationService corporationService, CorporationTracker corporationTracker) {
+        this.corporationTracker = corporationTracker;
         this.corporationService = corporationService;
         this.authService = authService;
         this.characterService = characterService;
@@ -236,6 +238,11 @@ public final class SchedulerService {
             updateCooldownDao.markRefreshed(UpdateCategories.CORPORATION);
         } else {
             LOG.warning("Couldn't read everything of the corporations: " + failures);
+        }
+        try {
+            corporationTracker.capture();
+        } catch (RuntimeException e) {
+            LOG.log(Level.WARNING, "Failed to capture the corporation snapshots", e);
         }
     }
 

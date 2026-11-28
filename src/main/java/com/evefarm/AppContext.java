@@ -100,10 +100,12 @@ import com.evefarm.service.SkillService;
 import com.evefarm.service.StandingService;
 import com.evefarm.service.TrackerCombinationService;
 import com.evefarm.service.CorporationService;
+import com.evefarm.service.CorporationTracker;
 import com.evefarm.esi.CorporationApi;
 import com.evefarm.db.dao.CorporationDao;
 import com.evefarm.db.dao.CorporationIndustryDao;
 import com.evefarm.db.dao.CorporationMarketDao;
+import com.evefarm.db.dao.CorporationSnapshotDao;
 import com.evefarm.service.IncomeSources;
 import com.evefarm.service.ForecastSettings;
 import com.evefarm.service.TrackerSnapshotService;
@@ -182,6 +184,7 @@ public final class AppContext {
     public final ValueSummaryService valueSummaryService;
     public final TrackerCombinationService trackerCombinationService;
     public final CorporationService corporationService;
+    public final CorporationTracker corporationTracker;
     public final ForecastSettings forecastSettings;
     public final NotificationService notificationService;
     public final SchedulerService schedulerService;
@@ -301,8 +304,13 @@ public final class AppContext {
                 industryCatalogService, priceService, miningService, loyaltyPointService, abyssalRunDao,
                 new LpPurchaseDao(database),
                 npcCatalogService, settingsDao, Clock.systemDefaultZone());
+        CorporationDao corporationDao = new CorporationDao(database);
+        CorporationMarketDao corporationMarketDao = new CorporationMarketDao(database, Clock.systemUTC());
+        CorporationIndustryDao corporationIndustryDao = new CorporationIndustryDao(database);
+        this.corporationTracker = new CorporationTracker(corporationDao, corporationMarketDao, corporationIndustryDao,
+                new CorporationSnapshotDao(database), industryCatalogService, priceService, Clock.systemDefaultZone());
         this.trackerCombinationService = new TrackerCombinationService(snapshotDao, walletJournalDao, incomeSources,
-                settingsDao, Clock.systemDefaultZone());
+                settingsDao, corporationTracker, Clock.systemDefaultZone());
         this.forecastSettings = new ForecastSettings(settingsDao);
         this.backupRestoreService = new BackupRestoreService(database, settingsDao, killService::gameLogDirectory);
         this.eveSettingsService = new EveSettingsService(settingsDao);
@@ -316,11 +324,11 @@ public final class AppContext {
                 marketWatchService, skillsApi, contractsApi, typeNameCacheService, new NotificationDao(database),
                 settingsDao, lpPurchaseService);
         this.corporationService = new CorporationService(authService, new CorporationApi(esiHttpClient),
-                new CorporationDao(database), new CorporationMarketDao(database, Clock.systemUTC()),
-                new CorporationIndustryDao(database), assetService, transactionService, entityNameCacheService,
+                corporationDao, corporationMarketDao,
+                corporationIndustryDao, assetService, transactionService, entityNameCacheService,
                 typeNameCacheService, locationNameCacheService, Clock.systemDefaultZone());
         this.schedulerService = new SchedulerService(authService, characterService, priceService, assetService,
                 trackerSnapshotService, updateCooldownDao, backupRestoreService, killService, skillService,
-                notificationService, loyaltyPointService, corporationService);
+                notificationService, loyaltyPointService, corporationService, corporationTracker);
     }
 }

@@ -76,7 +76,8 @@ public final class MigrationRunner {
             "db/migrations/V51__lp_purchase_icons.sql",
             "db/migrations/V52__corporations.sql",
             "db/migrations/V53__corporation_orders_contracts_jobs_blueprints.sql",
-            "db/migrations/V54__character_blueprints.sql"
+            "db/migrations/V54__character_blueprints.sql",
+            "db/migrations/V55__corporation_snapshots.sql"
     );
 
     public static void run(Database database) {

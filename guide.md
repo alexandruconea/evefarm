@@ -77,7 +77,7 @@ To choose what to update, open **Update > Update...**:
 | Contracts | Your contracts | 1 hour |
 | Industry Jobs | Your industry jobs | 1 hour |
 | Blueprints | Your blueprints, with their ME, TE and runs | 1 hour |
-| Corporation | The wallets, journal, transactions, assets, market orders, contracts, industry jobs and blueprints of your corporations, for the characters added with **Also read the corporation** | 1 hour |
+| Corporation | The wallets, journal, transactions, assets, market orders, contracts, industry jobs and blueprints of your corporations, for the characters added with **Also read the corporation**, and the day's Tracker snapshot of each corporation | 1 hour |
 | Tracker Snapshot | Wallet, net worth and skill points, saved as one point in the Tracker chart | 1 hour |
 | Loyalty Points | Your LP with every corporation | 1 hour |
 | NPC Kills | Reads your Gamelogs for new NPC kills | 1 hour |
@@ -145,6 +145,7 @@ A chart of your net worth over time. Each point is a snapshot, taken when EVE Fa
 - **Skill Point Filters...** chooses, per character, whether its skill points count in the total. The value counted is what you would get by extracting the skill points above 5,000,000: the number of 500,000 SP extractions times the price of a Large Skill Injector minus the price of a Skill Extractor. **Extra SP kept** raises that floor if you never want to extract below a certain amount.
 - **LP Value** is the LP you hold with your favorite corporation in the LP Store tab, times your **Set ISK/LP Target...**, the same as **Estimated Value** in the LP Store. It goes up when you earn LP and down when you spend it, not with the market. A snapshot keeps the target it was taken with.
 - **Manage Snapshots...** lists every snapshot. Select some and click **Delete Selected** to remove wrong points. You can also right-click a point in the chart and choose **Delete Snapshot**.
+- **Corporations**, under **Characters**, adds your corporations to the chart. It shows once a corporation has a snapshot, when a character was added with **Also read the corporation**. A corporation has one snapshot a day: each **Update > Corporation**, and each time EVE Farm reads the corporations by itself, replaces that day's snapshot with a newer one. Until the next snapshot, the chart keeps the corporation's last value. A corporation snapshot has the ISK in all its wallets, its assets, its open sell orders, the escrow of its buy orders, what its running jobs will make, its open contracts and the collateral of its couriers. It has no implants, skill points or LP. A corporation EVE Farm hasn't read for a day gets no new snapshots. Clear the corporations you don't want in the list to see only your characters.
 
 #### Forecast
 
@@ -152,6 +153,7 @@ Where your ISK is heading. The chart shows the days so far, the expected value a
 
 - **View:** a view keeps all the choices below together, so you can switch between, for example, *Main to the end of the year* and *All alts, 90 days, goal 500b*. Every change is kept in the view you are on. **New...** starts a new view from the one you are on; **Rename...** and **Delete** change it.
 - **Characters:** your favorite character (**Set as Main**), all characters, a group or one character. **Groups...** makes groups of characters, such as your mission alts or your miners.
+- A corporation that has Tracker snapshots can be chosen there too: on its own, in a group, or with **All characters and corporations**. **All characters** leaves the corporations out. What it owns comes from its daily snapshot. What it earned comes from its own wallets: **Missions** and **Bounties** are the corporation tax on them, **Market** is its trades less their fees, and **Industry** its finished jobs. It earns no mining, LP or Abyss. When a character takes ISK out of the corporation wallet, the ISK isn't counted as lost by the corporation or as earned by the character.
 - **Adds up:** what the forecast adds up. **Edit...** makes combinations of what you own, from the Tracker snapshots (Wallet Balance, Assets, Sell Orders, LP Value and the others), and of what you earned, day by day:
   - **Missions**: rewards, time bonuses and the bounties of mission NPCs; **Bounties**: bounties far from any mission turn-in, such as ratting. Both are counted as in **LP Store > Report**.
   - **Market**: what you sold on the market less what you bought, the broker fees and the sales tax. Items from the LP store that you recorded in **LP Store > Purchases** count under **LP Sales** instead.

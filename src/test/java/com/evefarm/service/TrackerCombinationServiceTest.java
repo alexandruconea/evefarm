@@ -3,11 +3,16 @@ package com.evefarm.service;
 import com.evefarm.db.Database;
 import com.evefarm.db.MigrationRunner;
 import com.evefarm.db.dao.CharacterDao;
+import com.evefarm.db.dao.CorporationDao;
+import com.evefarm.db.dao.CorporationIndustryDao;
+import com.evefarm.db.dao.CorporationMarketDao;
+import com.evefarm.db.dao.CorporationSnapshotDao;
 import com.evefarm.db.dao.LpPurchaseDao;
 import com.evefarm.db.dao.SettingsDao;
 import com.evefarm.db.dao.SnapshotDao;
 import com.evefarm.db.dao.WalletJournalDao;
 import com.evefarm.db.dao.WalletTransactionDao;
+import com.evefarm.model.JournalEntry;
 import com.evefarm.model.LpPurchase;
 import com.evefarm.model.TrackerSnapshot;
 import com.evefarm.service.TrackerCombinationService.Point;
@@ -39,6 +44,8 @@ class TrackerCombinationServiceTest {
     private Database database;
     private SettingsDao settingsDao;
     private SnapshotDao snapshotDao;
+    private CorporationDao corporationDao;
+    private CorporationSnapshotDao corporationSnapshotDao;
     private TrackerCombinationService service;
 
     @BeforeEach
@@ -54,7 +61,12 @@ class TrackerCombinationServiceTest {
         WalletJournalDao journalDao = new WalletJournalDao(database);
         IncomeSources incomeSources = new IncomeSources(journalDao, new WalletTransactionDao(database), null,
                 null, null, null, null, null, new LpPurchaseDao(database), null, settingsDao, clock);
-        service = new TrackerCombinationService(snapshotDao, journalDao, incomeSources, settingsDao,
+        corporationDao = new CorporationDao(database);
+        corporationSnapshotDao = new CorporationSnapshotDao(database);
+        CorporationTracker corporations = new CorporationTracker(corporationDao,
+                new CorporationMarketDao(database, clock), new CorporationIndustryDao(database),
+                corporationSnapshotDao, null, null, clock);
+        service = new TrackerCombinationService(snapshotDao, journalDao, incomeSources, settingsDao, corporations,
                 clock);
     }
 
@@ -126,6 +138,31 @@ class TrackerCombinationServiceTest {
         assertEquals(1_500_000_000.0, projection.pace().perDay(), 1_000);
         TrackerCombination walletOnly = new TrackerCombination("Wallet", List.of(TrackerCombination.WALLET));
         assertEquals(1_000_000_000.0, service.project(walletOnly, Set.of(1L), END, WINDOW).pace().perDay(), 1_000);
+    }
+
+    @Test
+    void aCorporationAddsItsDailySnapshotAndWhatItMovesOutIsNotLost() {
+        long corporation = 98_000_001L;
+        Instant withdrawal = NOW.minus(Duration.ofDays(9)).minus(Duration.ofHours(1));
+        for (int day = 20; day >= 0; day--) {
+            Instant at = NOW.minus(Duration.ofDays(day));
+            double wallet = 2_000_000_000L * (20 - day) - (at.isAfter(withdrawal) ? 10_000_000_000L : 0);
+            corporationSnapshotDao.save(TrackerSnapshot.ofCorporation(corporation, at, wallet, 0, 0, 0, 0, 0, 0, 0),
+                    LocalDate.ofInstant(at, ZoneOffset.UTC));
+            snapshotDao.insert(snapshot(1, at.minusSeconds(20), 1_000_000_000L, 0, 0));
+        }
+        corporationDao.saveJournal(corporation, 1, List.of(new JournalEntry(1, withdrawal.toString(),
+                "corporation_account_withdrawal", -10_000_000_000.0, 0, null, null, null, null, 0, null)));
+        TrackerCombination walletOnly = new TrackerCombination("Wallet", List.of(TrackerCombination.WALLET));
+
+        Forecast.Projection projection = service.project(walletOnly, Set.of(1L), Set.of(corporation), END, WINDOW);
+
+        assertEquals(1_000_000_000.0 + 30_000_000_000.0, projection.latest().total(), 1,
+                "the character's wallet and the corporation's");
+        assertEquals(2_000_000_000.0, projection.pace().perDay(), 1_000,
+                "the ISK taken out of the corporation wallet is not counted as lost");
+        assertEquals(0, service.project(walletOnly, Set.of(1L), END, WINDOW).pace().perDay(), 1_000,
+                "without the corporation only the character counts");
     }
 
     @Test

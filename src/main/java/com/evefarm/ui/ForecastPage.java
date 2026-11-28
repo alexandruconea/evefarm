@@ -1,6 +1,7 @@
 package com.evefarm.ui;
 
 import com.evefarm.AppContext;
+import com.evefarm.model.Corporation;
 import com.evefarm.model.EveCharacter;
 import com.evefarm.service.Forecast.Projection;
 import com.evefarm.service.ForecastSettings;
@@ -50,7 +51,8 @@ public final class ForecastPage extends TabPanel {
         }
     }
 
-    private record Loaded(List<EveCharacter> characters, List<Group> groups, List<View> views, View view,
+    private record Loaded(List<EveCharacter> characters, List<Corporation> corporations, List<Group> groups,
+                          List<View> views, View view,
                           List<TrackerCombination> combinations, TrackerCombination combination,
                           Selection selection, Projection projection, Map<Source, Double> earnedPerDay) {
     }
@@ -111,8 +113,9 @@ public final class ForecastPage extends TabPanel {
                 + "comes from and the goal. Every change is kept in the view you are on");
         newViewButton.setToolTipText("Start a new view from this one");
         characterCombo.setToolTipText("Whose ISK to forecast: your favorite character, all characters, a group or "
-                + "one character");
-        groupsButton.setToolTipText("Make groups of characters, such as your mission alts, to forecast together");
+                + "one character or corporation. A corporation counts from one snapshot a day");
+        groupsButton.setToolTipText("Make groups of characters and corporations, such as your mission alts, to "
+                + "forecast together");
         combinationCombo.setToolTipText("What the forecast adds up. Edit... chooses what each combination adds up");
         horizonCombo.setToolTipText("How far ahead to forecast");
         dateField.setToolTipText("The last day of the forecast, as year-month-day");
@@ -206,15 +209,19 @@ public final class ForecastPage extends TabPanel {
         List<TrackerCombination> all = combinations.combinations();
         TrackerCombination combination = view.combination() == null ? combinations.forecastCombination()
                 : combinations.find(view.combination()).orElseGet(combinations::forecastCombination);
-        Selection selection = ForecastSettings.resolve(view.characters(), characters, groups);
-        if (selection.characterIds().isEmpty()) {
-            return new Loaded(characters, groups, views, view, all, combination, selection, null, Map.of());
+        List<Corporation> corporations = appContext.corporationTracker.corporations();
+        Selection selection = ForecastSettings.resolve(view.characters(), characters, corporations, groups);
+        if (selection.isEmpty()) {
+            return new Loaded(characters, corporations, groups, views, view, all, combination, selection, null,
+                    Map.of());
         }
         Instant now = combinations.clock().instant();
         Instant end = view.horizon().end(now, combinations.clock().getZone(), view.date());
-        return new Loaded(characters, groups, views, view, all, combination, selection,
-                combinations.project(combination, selection.characterIds(), end, view.window()),
-                combinations.earnedPerDay(EnumSet.allOf(Source.class), selection.characterIds(), view.window()));
+        return new Loaded(characters, corporations, groups, views, view, all, combination, selection,
+                combinations.project(combination, selection.characterIds(), selection.corporationIds(), end,
+                        view.window()),
+                combinations.earnedPerDay(EnumSet.allOf(Source.class), selection.characterIds(),
+                        selection.corporationIds(), view.window()));
     }
 
     private void show(Loaded result) {
@@ -228,7 +235,7 @@ public final class ForecastPage extends TabPanel {
             deleteViewButton.setEnabled(result.views().size() > 1);
 
             characterCombo.removeAllItems();
-            for (Choice choice : characterChoices(result.characters(), result.groups())) {
+            for (Choice choice : characterChoices(result.characters(), result.corporations(), result.groups())) {
                 characterCombo.addItem(choice);
                 if (choice.key().equals(view.characters())) {
                     characterCombo.setSelectedItem(choice);
@@ -263,15 +270,21 @@ public final class ForecastPage extends TabPanel {
         forecastPanel.showSources(result.earnedPerDay(), result.combination().sources(), view.windowDays());
     }
 
-    private static List<Choice> characterChoices(List<EveCharacter> characters, List<Group> groups) {
+    private static List<Choice> characterChoices(List<EveCharacter> characters, List<Corporation> corporations,
+                                                 List<Group> groups) {
         List<Choice> choices = new ArrayList<>();
         String favorite = characters.isEmpty() ? "" : " (" + characters.getFirst().characterName() + ")";
         choices.add(new Choice(ForecastSettings.MAIN, "Favorite character" + favorite));
         choices.add(new Choice(ForecastSettings.ALL, "All characters"));
+        if (!corporations.isEmpty()) {
+            choices.add(new Choice(ForecastSettings.ALL_WITH_CORPORATIONS, "All characters and corporations"));
+        }
         groups.forEach(group -> choices.add(new Choice(ForecastSettings.GROUP_PREFIX + group.name(),
                 "Group: " + group.name())));
         characters.forEach(character -> choices.add(new Choice(ForecastSettings.CHARACTER_PREFIX
                 + character.characterId(), character.characterName())));
+        corporations.forEach(corporation -> choices.add(new Choice(ForecastSettings.CORPORATION_PREFIX
+                + corporation.corporationId(), "Corporation: " + corporation.label())));
         return choices;
     }
 
@@ -376,7 +389,8 @@ public final class ForecastPage extends TabPanel {
         if (loaded == null) {
             return;
         }
-        new CharacterGroupsDialog(SwingUtilities.getWindowAncestor(this), loaded.characters(), loaded.groups(),
+        new CharacterGroupsDialog(SwingUtilities.getWindowAncestor(this), loaded.characters(),
+                loaded.corporations(), loaded.groups(),
                 groups -> {
                     settings.saveGroups(groups);
                     onShown();

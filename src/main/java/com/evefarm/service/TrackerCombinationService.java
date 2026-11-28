@@ -40,14 +40,17 @@ public final class TrackerCombinationService {
     private final WalletJournalDao walletJournalDao;
     private final IncomeSources incomeSources;
     private final SettingsDao settingsDao;
+    private final CorporationTracker corporationTracker;
     private final Clock clock;
 
     public TrackerCombinationService(SnapshotDao snapshotDao, WalletJournalDao walletJournalDao,
-                                     IncomeSources incomeSources, SettingsDao settingsDao, Clock clock) {
+                                     IncomeSources incomeSources, SettingsDao settingsDao,
+                                     CorporationTracker corporationTracker, Clock clock) {
         this.snapshotDao = snapshotDao;
         this.walletJournalDao = walletJournalDao;
         this.incomeSources = incomeSources;
         this.settingsDao = settingsDao;
+        this.corporationTracker = corporationTracker;
         this.clock = clock;
     }
 
@@ -144,23 +147,38 @@ public final class TrackerCombinationService {
 
     public Projection project(TrackerCombination combination, Set<Long> characterIds, Instant end,
                               Duration window) {
+        return project(combination, characterIds, Set.of(), end, window);
+    }
+
+    public Projection project(TrackerCombination combination, Set<Long> characterIds, Set<Long> corporationIds,
+                              Instant end, Duration window) {
         Instant now = clock.instant();
         ZoneId zone = clock.getZone();
         Instant historyStart = historyStart(now, end, window);
         Instant windowStart = now.minus(window);
         Instant since = (windowStart.isBefore(historyStart) ? windowStart : historyStart).minus(Duration.ofDays(1));
         NavigableMap<LocalDate, Double> earnedByDay = new TreeMap<>();
-        incomeSources.daily(combination.sources(), characterIds, since).values()
+        daily(combination.sources(), characterIds, corporationIds, since).values()
                 .forEach(days -> days.forEach((day, value) -> earnedByDay.merge(day, value, Double::sum)));
         ToDoubleFunction<Instant> earned = cumulative(earnedByDay, zone);
-        List<Point> points = combination.usesSnapshots()
-                ? points(snapshotDao.listBetween(characterIds, since, now), combination, earned)
-                : dailyPoints(since, now, zone, earned);
+        List<Point> points;
+        if (combination.usesSnapshots()) {
+            List<TrackerSnapshot> snapshots = new ArrayList<>(snapshotDao.listBetween(characterIds, since, now));
+            if (!corporationIds.isEmpty()) {
+                snapshots.addAll(corporationTracker.snapshots(corporationIds, since, now));
+            }
+            points = points(snapshots, combination, earned);
+        } else {
+            points = dailyPoints(since, now, zone, earned);
+        }
         List<Transfer> transfers = new ArrayList<>();
         if (combination.includes(TrackerCombination.WALLET)) {
             for (long characterId : characterIds) {
                 walletJournalDao.findByRefTypes(characterId, Forecast.TRANSFER_REF_TYPES, since)
                         .forEach(entry -> transfers.add(new Transfer(Instant.parse(entry.date()), entry.amount())));
+            }
+            if (!corporationIds.isEmpty()) {
+                transfers.addAll(corporationTracker.transfers(corporationIds, since));
             }
         }
         return Forecast.project(points.stream().map(point -> new Forecast.Point(point.at(), point.value()))
@@ -168,11 +186,28 @@ public final class TrackerCombinationService {
     }
 
     public Map<Source, Double> earnedPerDay(Set<Source> sources, Set<Long> characterIds, Duration window) {
+        return earnedPerDay(sources, characterIds, Set.of(), window);
+    }
+
+    public Map<Source, Double> earnedPerDay(Set<Source> sources, Set<Long> characterIds, Set<Long> corporationIds,
+                                            Duration window) {
         Instant since = clock.instant().minus(window);
         double days = Math.max(1, window.toSeconds() / (double) Duration.ofDays(1).toSeconds());
         Map<Source, Double> perDay = new EnumMap<>(Source.class);
-        incomeSources.daily(sources, characterIds, since).forEach((source, byDay) ->
+        daily(sources, characterIds, corporationIds, since).forEach((source, byDay) ->
                 perDay.put(source, byDay.values().stream().mapToDouble(Double::doubleValue).sum() / days));
         return perDay;
+    }
+
+    private Map<Source, NavigableMap<LocalDate, Double>> daily(Set<Source> sources, Set<Long> characterIds,
+                                                               Set<Long> corporationIds, Instant since) {
+        Map<Source, NavigableMap<LocalDate, Double>> bySource = incomeSources.daily(sources, characterIds, since);
+        if (!corporationIds.isEmpty()) {
+            corporationTracker.daily(sources, corporationIds, since).forEach((source, days) -> {
+                NavigableMap<LocalDate, Double> merged = bySource.computeIfAbsent(source, key -> new TreeMap<>());
+                days.forEach((day, value) -> merged.merge(day, value, Double::sum));
+            });
+        }
+        return bySource;
     }
 }

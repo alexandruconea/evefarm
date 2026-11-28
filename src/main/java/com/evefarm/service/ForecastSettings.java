@@ -1,6 +1,7 @@
 package com.evefarm.service;
 
 import com.evefarm.db.dao.SettingsDao;
+import com.evefarm.model.Corporation;
 import com.evefarm.model.EveCharacter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -22,6 +23,8 @@ public final class ForecastSettings {
     public static final String ALL = "all";
     public static final String GROUP_PREFIX = "group:";
     public static final String CHARACTER_PREFIX = "character:";
+    public static final String CORPORATION_PREFIX = "corporation:";
+    public static final String ALL_WITH_CORPORATIONS = "all+corporations";
     public static final List<Integer> WINDOWS = List.of(14, 30, 60, 90);
     public static final int DEFAULT_WINDOW = 30;
     public static final String DEFAULT_VIEW = "Favorite Character";
@@ -108,14 +111,23 @@ public final class ForecastSettings {
         }
     }
 
-    public record Group(String name, List<Long> characterIds) {
+    public record Group(String name, List<Long> characterIds, List<Long> corporationIds) {
 
         public Group {
             characterIds = characterIds == null ? List.of() : List.copyOf(characterIds);
+            corporationIds = corporationIds == null ? List.of() : List.copyOf(corporationIds);
         }
     }
 
-    public record Selection(String label, Set<Long> characterIds) {
+    public record Selection(String label, Set<Long> characterIds, Set<Long> corporationIds) {
+
+        public Selection(String label, Set<Long> characterIds) {
+            this(label, characterIds, Set.of());
+        }
+
+        public boolean isEmpty() {
+            return characterIds.isEmpty() && corporationIds.isEmpty();
+        }
     }
 
     private final SettingsDao settingsDao;
@@ -159,10 +171,20 @@ public final class ForecastSettings {
     }
 
     public static Selection resolve(String selector, List<EveCharacter> charactersMainFirst, List<Group> groups) {
+        return resolve(selector, charactersMainFirst, List.of(), groups);
+    }
+
+    public static Selection resolve(String selector, List<EveCharacter> charactersMainFirst,
+                                    List<Corporation> corporations, List<Group> groups) {
         Set<Long> known = new LinkedHashSet<>();
         charactersMainFirst.forEach(character -> known.add(character.characterId()));
+        Set<Long> knownCorporations = new LinkedHashSet<>();
+        corporations.forEach(corporation -> knownCorporations.add(corporation.corporationId()));
         if (ALL.equals(selector)) {
             return new Selection("All characters", known);
+        }
+        if (ALL_WITH_CORPORATIONS.equals(selector)) {
+            return new Selection("All characters and corporations", known, knownCorporations);
         }
         if (selector.startsWith(GROUP_PREFIX)) {
             String name = selector.substring(GROUP_PREFIX.length());
@@ -170,7 +192,18 @@ public final class ForecastSettings {
             if (group.isPresent()) {
                 Set<Long> ids = new LinkedHashSet<>(group.get().characterIds());
                 ids.retainAll(known);
-                return new Selection(name, ids);
+                Set<Long> corporationIds = new LinkedHashSet<>(group.get().corporationIds());
+                corporationIds.retainAll(knownCorporations);
+                return new Selection(name, ids, corporationIds);
+            }
+        }
+        if (selector.startsWith(CORPORATION_PREFIX)) {
+            String id = selector.substring(CORPORATION_PREFIX.length());
+            Optional<Corporation> corporation = corporations.stream()
+                    .filter(candidate -> String.valueOf(candidate.corporationId()).equals(id)).findFirst();
+            if (corporation.isPresent()) {
+                return new Selection(corporation.get().label(), Set.of(),
+                        Set.of(corporation.get().corporationId()));
             }
         }
         if (selector.startsWith(CHARACTER_PREFIX)) {

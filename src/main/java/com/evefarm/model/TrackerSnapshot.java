@@ -21,7 +21,8 @@ public record TrackerSnapshot(
         long skillPoints,
         double skillPointValue,
         double lpValue,
-        double totalValue
+        double totalValue,
+        boolean corporation
 ) {
 
     public static final Map<String, ToDoubleFunction<TrackerSnapshot>> VALUE_PARTS = valueParts();
@@ -52,6 +53,21 @@ public record TrackerSnapshot(
                 + skillPointValue + lpValue;
         return new TrackerSnapshot(characterId, capturedAt, walletBalance, assetsValue, implantsValue,
                 sellOrdersValue, escrowValue, escrowToCoverValue, manufacturingValue, contractCollateralValue,
-                contractsValue, skillPoints, skillPointValue, lpValue, total);
+                contractsValue, skillPoints, skillPointValue, lpValue, total, false);
+    }
+
+    /**
+     * A corporation's snapshot. {@code characterId} then holds the corporation ID: EVE never gives a character
+     * and a corporation the same ID, so both can be added up together.
+     */
+    public static TrackerSnapshot ofCorporation(long corporationId, Instant capturedAt, double walletBalance,
+                                                double assetsValue, double sellOrdersValue, double escrowValue,
+                                                double escrowToCoverValue, double manufacturingValue,
+                                                double contractCollateralValue, double contractsValue) {
+        double total = walletBalance + assetsValue + sellOrdersValue + escrowValue + manufacturingValue
+                + contractCollateralValue + contractsValue;
+        return new TrackerSnapshot(corporationId, capturedAt, walletBalance, assetsValue, 0, sellOrdersValue,
+                escrowValue, escrowToCoverValue, manufacturingValue, contractCollateralValue, contractsValue, 0, 0, 0,
+                total, true);
     }
 }

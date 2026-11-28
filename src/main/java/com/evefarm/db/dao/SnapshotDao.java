@@ -152,7 +152,8 @@ public final class SnapshotDao {
                 rs.getLong("skill_points"),
                 rs.getDouble("skill_point_value"),
                 rs.getDouble("lp_value"),
-                rs.getDouble("total_value")
+                rs.getDouble("total_value"),
+                false
         );
     }
 }

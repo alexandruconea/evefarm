@@ -85,7 +85,10 @@ final class DataUpdater {
                         perCharacter(appContext.blueprintService::refreshBlueprintsForCharacter)),
                 new Category(UpdateCategories.CORPORATION, "Corporation", Duration.ofHours(1), true,
                         (characters, failures) -> attempt(failures, "Corporation",
-                                () -> appContext.corporationService.refresh(characters, failures))),
+                                () -> {
+                                    appContext.corporationService.refresh(characters, failures);
+                                    appContext.corporationTracker.capture();
+                                })),
                 new Category(UpdateCategories.TRACKER, "Tracker Snapshot", Duration.ofHours(1), true,
                         perCharacter(appContext.trackerSnapshotService::captureSnapshot)),
                 new Category(UpdateCategories.LOYALTY_POINTS, "Loyalty Points", Duration.ofHours(1), true,

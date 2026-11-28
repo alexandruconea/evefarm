@@ -1,6 +1,7 @@
 package com.evefarm.ui;
 
 import com.evefarm.AppContext;
+import com.evefarm.model.Corporation;
 import com.evefarm.model.EveCharacter;
 import com.evefarm.model.TrackerSnapshot;
 import com.evefarm.util.DateUtil;
@@ -28,6 +29,7 @@ import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.data.xy.XYDataset;
 
 import javax.swing.BoxLayout;
+import javax.swing.DefaultListModel;
 import javax.swing.GroupLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -41,6 +43,7 @@ import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.LayoutStyle;
+import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.UIManager;
@@ -62,6 +65,8 @@ import java.awt.geom.Line2D;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -92,6 +97,8 @@ public final class TrackerPanel extends TabPanel {
     private ChartPanel chartPanel;
     private ChartTimeNavigator timeNavigator;
     private List<TrackerSnapshot> shownSnapshots = List.of();
+    private final DefaultListModel<Corporation> corporationListModel = new DefaultListModel<>();
+    private boolean reloadingCorporations;
 
     public TrackerPanel(AppContext appContext) {
         initComponents();
@@ -124,6 +131,24 @@ public final class TrackerPanel extends TabPanel {
             seriesCheckBoxes.put(name, checkBox);
             seriesPanel.add(checkBox);
         }
+
+        corporationList.setModel(corporationListModel);
+        corporationList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        corporationList.setCellRenderer((list, value, index, isSelected, cellHasFocus) -> {
+            JLabel label = new JLabel(value.label());
+            label.putClientProperty("html.disable", Boolean.TRUE);
+            label.setOpaque(true);
+            label.setBackground(isSelected ? list.getSelectionBackground() : list.getBackground());
+            label.setForeground(isSelected ? list.getSelectionForeground() : list.getForeground());
+            return label;
+        });
+        corporationList.setToolTipText("The corporations to add to the chart. A corporation has one snapshot a day "
+                + "of its wallets, assets, market orders, industry jobs and contracts");
+        corporationList.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting() && !reloadingCorporations) {
+                reloadChart();
+            }
+        });
 
         quickDateCombo.setSelectedItem("1 Month");
         refreshCharacterFilter();
@@ -250,7 +275,59 @@ public final class TrackerPanel extends TabPanel {
     @Override
     public void refreshCharacterFilter() {
         characters.reload();
+        reloadCorporations();
         reloadChart();
+    }
+
+    private void reloadCorporations() {
+        List<Corporation> corporations;
+        try {
+            corporations = appContext.corporationTracker.corporations();
+        } catch (RuntimeException e) {
+            LOG.log(Level.WARNING, "Failed to list the corporations for the Tracker", e);
+            corporations = List.of();
+        }
+        reloadingCorporations = true;
+        try {
+            corporationListModel.clear();
+            corporations.forEach(corporationListModel::addElement);
+            if (!corporationListModel.isEmpty()) {
+                corporationList.setSelectionInterval(0, corporationListModel.size() - 1);
+            }
+        } finally {
+            reloadingCorporations = false;
+        }
+        boolean any = !corporations.isEmpty();
+        corporationsLabel.setVisible(any);
+        corporationScrollPane.setVisible(any);
+        revalidate();
+    }
+
+    private Set<Long> selectedCorporationIds() {
+        return corporationList.getSelectedValuesList().stream()
+                .map(Corporation::corporationId)
+                .collect(Collectors.toSet());
+    }
+
+    private List<TrackerSnapshot> snapshots(Set<Long> characterIds, Set<Long> corporationIds, Instant from,
+                                            Instant to) {
+        List<TrackerSnapshot> snapshots = new ArrayList<>();
+        if (!characterIds.isEmpty()) {
+            snapshots.addAll(appContext.snapshotDao.listBetween(characterIds, from, to));
+        }
+        if (!corporationIds.isEmpty()) {
+            snapshots.addAll(appContext.corporationTracker.snapshots(corporationIds, from, to));
+        }
+        snapshots.sort(Comparator.comparing(TrackerSnapshot::capturedAt));
+        return snapshots;
+    }
+
+    static void delete(AppContext appContext, TrackerSnapshot snapshot) {
+        if (snapshot.corporation()) {
+            appContext.corporationTracker.delete(snapshot);
+        } else {
+            appContext.snapshotDao.delete(snapshot.characterId(), snapshot.capturedAt());
+        }
     }
 
     private Set<String> visibleSeriesNames() {
@@ -268,7 +345,8 @@ public final class TrackerPanel extends TabPanel {
         Set<String> visibleSeries = visibleSeriesNames();
         Instant from = dates.from();
         Instant to = dates.to();
-        BackgroundLoader.load(reloadGeneration, () -> appContext.snapshotDao.listBetween(characterIds, from, to),
+        Set<Long> corporationIds = selectedCorporationIds();
+        BackgroundLoader.load(reloadGeneration, () -> snapshots(characterIds, corporationIds, from, to),
                 snapshots -> applyDataset(snapshots, visibleSeries), "the tracker chart");
     }
 
@@ -429,7 +507,9 @@ public final class TrackerPanel extends TabPanel {
     private void deleteSnapshot(Instant point, List<TrackerSnapshot> snapshots) {
         long characters = snapshots.stream().map(TrackerSnapshot::characterId).distinct().count();
         String message = "Permanently delete the snapshot from " + DateUtil.format(point)
-                + (characters > 1 ? " for all " + characters + " characters" : "")
+                + (characters > 1 ? " for all " + characters
+                + (snapshots.stream().anyMatch(TrackerSnapshot::corporation) ? " characters and corporations"
+                : " characters") : "")
                 + "? Every value at this point is removed. This cannot be undone.";
         int result = JOptionPane.showConfirmDialog(this, message, "Delete Snapshot",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
@@ -440,7 +520,7 @@ public final class TrackerPanel extends TabPanel {
             @Override
             protected Void doInBackground() {
                 for (TrackerSnapshot snapshot : snapshots) {
-                    appContext.snapshotDao.delete(snapshot.characterId(), snapshot.capturedAt());
+                    delete(appContext, snapshot);
                 }
                 return null;
             }
@@ -461,6 +541,7 @@ public final class TrackerPanel extends TabPanel {
 
     private void openSnapshotManager() {
         Set<Long> characterIds = characters.selectedIds();
+        Set<Long> corporationIds = selectedCorporationIds();
         Instant from = dates.from();
         Instant to = dates.to();
 
@@ -468,7 +549,7 @@ public final class TrackerPanel extends TabPanel {
         new SwingWorker<List<TrackerSnapshot>, Void>() {
             @Override
             protected List<TrackerSnapshot> doInBackground() {
-                return appContext.snapshotDao.listBetween(characterIds, from, to);
+                return snapshots(characterIds, corporationIds, from, to);
             }
 
             @Override
@@ -488,6 +569,9 @@ public final class TrackerPanel extends TabPanel {
     private JCheckBox allProfilesCheckBox;
     private JLabel charactersLabel;
     private JList<EveCharacter> characterList;
+    private JLabel corporationsLabel;
+    private JList<Corporation> corporationList;
+    private JScrollPane corporationScrollPane;
     private JScrollPane characterScrollPane;
     private JPanel chartContainerPanel;
     private JLabel fromLabel;
@@ -524,6 +608,9 @@ public final class TrackerPanel extends TabPanel {
         allProfilesCheckBox = new JCheckBox();
         characterScrollPane = new JScrollPane();
         characterList = new JList<>();
+        corporationsLabel = new JLabel();
+        corporationScrollPane = new JScrollPane();
+        corporationList = new JList<>();
 
         GroupLayout chartContainerPanelLayout = new GroupLayout(chartContainerPanel);
         chartContainerPanel.setLayout(chartContainerPanelLayout);
@@ -570,6 +657,10 @@ public final class TrackerPanel extends TabPanel {
 
         characterScrollPane.setViewportView(characterList);
 
+        corporationsLabel.setText("Corporations");
+
+        corporationScrollPane.setViewportView(corporationList);
+
         GroupLayout sidebarPanelLayout = new GroupLayout(sidebarPanel);
         sidebarPanel.setLayout(sidebarPanelLayout);
         sidebarPanelLayout.setHorizontalGroup(
@@ -590,7 +681,9 @@ public final class TrackerPanel extends TabPanel {
                     .addComponent(seriesScrollPane, GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
                     .addComponent(charactersLabel)
                     .addComponent(allProfilesCheckBox)
-                    .addComponent(characterScrollPane, GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE))
+                    .addComponent(characterScrollPane, GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
+                    .addComponent(corporationsLabel)
+                    .addComponent(corporationScrollPane, GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE))
                 .addContainerGap())
         );
         sidebarPanelLayout.setVerticalGroup(
@@ -624,6 +717,10 @@ public final class TrackerPanel extends TabPanel {
                 .addComponent(allProfilesCheckBox)
                 .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(characterScrollPane, GroupLayout.DEFAULT_SIZE, 150, Short.MAX_VALUE)
+                .addPreferredGap(LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(corporationsLabel)
+                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(corporationScrollPane, GroupLayout.DEFAULT_SIZE, 80, Short.MAX_VALUE)
                 .addContainerGap())
         );
 

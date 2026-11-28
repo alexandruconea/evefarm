@@ -41,6 +41,8 @@ public final class IndustryCatalogService {
     private static final int TE_MODIFIER = 1114;
     private static final int RUNS_MODIFIER = 1124;
     private static final int FIRST_ABYSSAL_REGION = 12_000_000;
+    /** ESI numbers reactions 9 in industry jobs, where the static data says 11. */
+    private static final int JOB_REACTION = 9;
 
     private final FuzzworkApi fuzzworkApi;
     private final SkillCatalogApi skillCatalogApi;
@@ -100,6 +102,23 @@ public final class IndustryCatalogService {
 
     public Optional<IndustryActivity> activity(int blueprintId, int activityId) {
         return industryCatalogDao.activity(blueprintId, activityId);
+    }
+
+    /** True for the ESI job activities that make items: manufacturing and reactions. */
+    public static boolean jobMakesItems(int jobActivityId) {
+        return jobActivityId == IndustryActivity.MANUFACTURING || jobActivityId == JOB_REACTION
+                || jobActivityId == IndustryActivity.REACTION;
+    }
+
+    /** The units one run of an ESI manufacturing or reaction job makes, 1 when the blueprint is unknown. */
+    public long unitsPerRun(int jobActivityId, int blueprintId) {
+        int activity = jobActivityId == IndustryActivity.MANUFACTURING ? IndustryActivity.MANUFACTURING
+                : IndustryActivity.REACTION;
+        return activity(blueprintId, activity)
+                .map(IndustryActivity::product)
+                .map(TypeQuantity::quantity)
+                .filter(quantity -> quantity > 0)
+                .orElse(1L);
     }
 
     public List<InventionSource> inventionSources(int blueprintId) {
